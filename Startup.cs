@@ -37,8 +37,6 @@ namespace UA.MQTT.Publisher
 
             services.AddLogging(logging =>
             {
-                logging.AddConsole();
-                logging.AddDebug();
                 logging.AddFile("Logs/UA-MQTT-Publisher.log");
             });
 
