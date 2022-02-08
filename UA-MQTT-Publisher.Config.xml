@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ApplicationConfiguration
+  xmlns:ua="http://opcfoundation.org/UA/2008/02/Types.xsd"
+  xmlns="http://opcfoundation.org/UA/SDK/Configuration.xsd"
+  schemaLocation="./Schema/ApplicationConfiguration.xsd"
+>
+  <ApplicationName>UA.MQTT.Publisher</ApplicationName>
+  <ApplicationUri>urn:localhost:UA-MQTT-Publisher</ApplicationUri>
+  <ProductUri>https://github.com/azure/iot-edge-opc-publisher</ProductUri>
+  <ApplicationType>Client_1</ApplicationType>
+  <SecurityConfiguration>
+    <ApplicationCertificate>
+      <StoreType>Directory</StoreType>
+      <StorePath>%LocalApplicationData%/UA-MQTT-Publisher/pki/own</StorePath>
+      <SubjectName>CN=UA-MQTT-Publisher, C=US, S=Arizona, O=OPCFoundation, DC=localhost</SubjectName>
+    </ApplicationCertificate>
+    <TrustedIssuerCertificates>
+      <StoreType>Directory</StoreType>
+      <StorePath>%LocalApplicationData%/UA-MQTT-Publisher/pki/issuer</StorePath>
+    </TrustedIssuerCertificates>
+    <TrustedPeerCertificates>
+      <StoreType>Directory</StoreType>
+      <StorePath>%LocalApplicationData%/UA-MQTT-Publisher/pki/trusted</StorePath>
+    </TrustedPeerCertificates>
+    <NonceLength>32</NonceLength>
+    <RejectedCertificateStore>
+      <StoreType>Directory</StoreType>
+      <StorePath>%LocalApplicationData%/UA-MQTT-Publisher/pki/rejected</StorePath>
+    </RejectedCertificateStore>
+    <RejectSHA1SignedCertificates>false</RejectSHA1SignedCertificates>
+    <MinimumCertificateKeySize>1024</MinimumCertificateKeySize>
+    <SendCertificateChain>false</SendCertificateChain>
+    <UserIssuerCertificates>
+      <StoreType>Directory</StoreType>
+      <StorePath>%LocalApplicationData%/UA-MQTT-Publisher/pki/issuerUser</StorePath>
+    </UserIssuerCertificates>
+    <TrustedUserCertificates>
+      <StoreType>Directory</StoreType>
+      <StorePath>%LocalApplicationData%/UA-MQTT-Publisher/pki/trustedUser</StorePath>
+    </TrustedUserCertificates>
+</SecurityConfiguration>
+  <TransportConfigurations/>
+  <TransportQuotas>
+    <OperationTimeout>120000</OperationTimeout>
+    <MaxStringLength>1048576</MaxStringLength>
+    <MaxByteStringLength>4194304</MaxByteStringLength>
+    <MaxArrayLength>65535</MaxArrayLength>
+    <MaxMessageSize>4194304</MaxMessageSize>
+    <MaxBufferSize>65535</MaxBufferSize>
+    <ChannelLifetime>300000</ChannelLifetime>
+    <SecurityTokenLifetime>3600000</SecurityTokenLifetime>
+  </TransportQuotas>
+  <ClientConfiguration>
+    <DefaultSessionTimeout>600000</DefaultSessionTimeout>
+    <WellKnownDiscoveryUrls>
+      <ua:String>opc.tcp://{0}:4840/UADiscovery</ua:String>
+      <ua:String>http://{0}:52601/UADiscovery</ua:String>
+      <ua:String>http://{0}/UADiscovery/Default.svc</ua:String>
+    </WellKnownDiscoveryUrls>
+    <DiscoveryServers/>
+    <EndpointCacheFilePath/>
+    <MinSubscriptionLifetime>10000</MinSubscriptionLifetime>
+  </ClientConfiguration>
+  <Extensions/>
+  <TraceConfiguration>
+    <!-- The following setting is not used, but a combined UA-MQTT-Publisher tracelog is written to the configured directory instead -->
+    <OutputFilePath>%CommonApplicationData%\OPC Foundation\Logs\UA-MQTT-Publisher.log</OutputFilePath>
+    <DeleteOnLoad>true</DeleteOnLoad>
+    <!--
+    Masks supported by the trace feature.
+    None = 0x0;
+    Error = 0x1;
+    Information = 0x2;
+    StackTrace = 0x4;
+    Service = 0x8;
+    ServiceDetail = 0x10;
+    Operation = 0x20;
+    OperationDetail = 0x40;
+    StartStop = 0x80;
+    ExternalSystem = 0x100;
+    Security = 0x200;
+    -->
+    <!--Error, Trace, StartStop, Security = 0x285 or 645 decimal-->
+    <TraceMasks>645</TraceMasks>
+  </TraceConfiguration>
+  <DisableHiResClock>true</DisableHiResClock>
+</ApplicationConfiguration>

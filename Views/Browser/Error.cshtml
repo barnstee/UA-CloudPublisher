@@ -1,0 +1,27 @@
+﻿@using UANodesetWebViewer.Models
+
+@model OpcSessionModel
+
+@{
+    ViewData["Title"] = "Error";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="container-fluid browser_error_container">
+    <div class="browser_top_container">
+        <div class="browser_error_details_line">
+            <p>
+                @Model.ErrorMessage<br/>
+            </p>
+        </div>
+        <div class="browser_error_disconnect_button">
+            <p>
+                @using (Html.BeginForm("Disconnect", "Browser"))
+                {
+                    <input class="btn btn-primary btn_browser" type="submit" value="Continue" />
+                }
+            </p>
+        </div>
+    </div>
+</div>

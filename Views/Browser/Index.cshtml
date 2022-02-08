@@ -1,0 +1,18 @@
+﻿@using UANodesetWebViewer.Models
+
+@{
+    ViewData["Title"] = "Diagnostic Info";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="LocalFileOpen">
+    <div class="container-fluid browser_connect_container">
+        <p>
+            <input class="btn btn-primary" type="file" name="files" multiple>
+        </p>
+        <p>
+            <input class="btn btn-primary" type="submit" value="Open">
+        </p>
+    </div>
+</form>
