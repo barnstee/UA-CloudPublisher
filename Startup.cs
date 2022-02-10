@@ -47,6 +47,7 @@ namespace UA.MQTT.Publisher
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
             services.AddSingleton<ISettingsConfiguration, SettingsConfiguration>();
             services.AddSingleton<IPeriodicDiagnosticsInfo, PeriodicDiagnosticsInfo>();
+            services.AddSingleton<OpcSessionHelper>();
 
             // add our message processing engine
             services.AddSingleton<IMessageProcessingEngine, MessageProcessingEngine>();

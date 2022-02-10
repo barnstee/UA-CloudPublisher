@@ -1,18 +1,112 @@
-﻿@using UANodesetWebViewer.Models
+﻿@using UA.MQTT.Publisher.Models
+
+@model OpcSessionModel
 
 @{
-    ViewData["Title"] = "Diagnostic Info";
+    ViewData["Title"] = "Connect to an OPC UA Server";
 }
 
 <h1>@ViewData["Title"]</h1>
 
-<form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="LocalFileOpen">
-    <div class="container-fluid browser_connect_container">
-        <p>
-            <input class="btn btn-primary" type="file" name="files" multiple>
-        </p>
-        <p>
-            <input class="btn btn-primary" type="submit" value="Open">
-        </p>
+<div class="container-fluid browser_connect_container">
+    <div class="row browser_connect_header">
+        <div class="browser_connect_header_text overflow"><b>Enter an OPC UA Server's URL to connect to (format: opc.tcp://ipaddress:port):</b></div>
     </div>
-</form>
+    <div class="row browser_top_container">
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+            <div class="row browser_select_connect_container">
+                <form data-ajax="true" data-ajax-complete="onSuccess" data-ajax-failure="onFailure" asp-action="Connect" asp-controller="Browser">
+                    <p>
+                        <div class="browser_connect_selection_textbox">
+                            @Html.TextBox("endpointUrl", null, new { style = "width:300%;" })
+                        </div>
+                    <p>
+                        <div class="browser_browse_connect_button">
+                            <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
+                        </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $("#connectButton").prop("disabled", false);
+        // initialize all context panels to default state closed
+        $("#connectContextpanel").addClass("overlay-close").removeClass("overlay-right-open");
+        $("#errorContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
+    });
+
+    var disconnect = false;
+    var title = "Browser";
+
+    function onSuccess(sessionModel) {
+        $("#hiddenEndpointUrl").val(sessionModel.EndpointUrl);
+        $("#connectLoader").hide();
+
+        if (sessionModel.ErrorHeader == "Untrusted Certificate") {
+            $("#waitingForConnect").hide();
+            $("#connectBodyContextPanel").show();
+            $("#connectContextpanelHeader").html("Security Warning");
+            $("#errorContextPanel").hide();
+            $("#proceedButton").show();
+            $("#cancelButton").show();
+
+        } else if (sessionModel.ErrorHeader != null) {
+            $("#connectLoader").hide();
+            $("#waitingForConnect").hide();
+            $("#connectContextpanelHeader").html("Error");
+            $("#errorContextPanel").show();
+            $("#errorHeader").html(sessionModel.ErrorHeader);
+            $("#errorMessage").html(sessionModel.ErrorMessage);
+            disconnect = true;
+        }
+        else {
+            var baseUrl = '@Url.Content("~")';
+            window.location.href = baseUrl + "Browser/Index";
+        }
+    }
+
+    function onFailure(response) {
+        $("#connectLoader").hide();
+        $("#waitingForConnect").hide();
+        $("#connectContextpanelHeader").html("Error");
+        $("#errorContextPanel").show();
+        $("#errorHeader").html(sessionModel.ErrorHeader);
+        $("#errorMessage").html(sessionModel.ErrorMessage);
+        disconnect = true;
+    }
+
+    $('form').submit(function () {
+        $("#connectButton").prop("disabled", true);
+    })
+
+    function connecting() {
+        $("#connectContextpanelHeader").html("Connect");
+        $("#connectBodyContextPanel").hide();
+        $("#proceedButton").hide();
+        $("#cancelButton").hide();
+        $("#waitingForConnect").show();
+        $("#connectLoader").show();
+    }
+
+    function closeConnectContextPanel() {
+        $("#connectContextpanel").addClass("overlay-close").removeClass("overlay-right-open");
+
+        if (disconnect == true) {
+            $.post({
+                url: "/Browser/Disconnect",
+                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), backUrl: window.location.href },
+                success: function onSuccess(response) {
+                },
+                error: function (response) {
+                    console.error("error connecting to an OPC UA server: ", response.d, response.responseText);
+                }
+            });
+        }
+        $("#connectButton").prop("disabled", false);
+        disconnect = false;
+    }
+</script>
+

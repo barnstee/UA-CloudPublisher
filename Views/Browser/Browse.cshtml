@@ -1,77 +1,61 @@
-﻿@using UANodesetWebViewer.Models
+﻿@using UA.MQTT.Publisher.Models
 
 @model OpcSessionModel
 
 @{
-    ViewData["Title"] = "Browsing Nodeset File(s)";
+    ViewData["Title"] = "Browse & Select Telemetry for Publishing to the Cloud";
 }
 
 <h1>@ViewData["Title"]</h1>
 
-
 <div class="container-fluid browser_browse_container">
+    <div class="row browser_container_header">
+        <div class="browser_container_header_text overflow">
+            <b>Connected to: @Model.EndpointUrl</b>
+        </div>
+    </div>
+    <p>
     <div class="row browser_top_container">
-        <div class="col">
+        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
             <div id="OpcNodeTree" class="browser_browse_nodetree_container">
                 <ul>
                     <li id="rootnode">
-                        @Model.ServerIP
+                        @Model.EndpointUrl
                         <ul>
                             <li></li>
                         </ul>
                     </li>
                 </ul>
             </div>
-        </div>
-        <div class="col">
-            <div class="mt-4 invisible" id="variableReadContainer">
-                <div class="alert alert-dark" role="alert" id="variableReadHeader"></div>
-                <ul class="list-group">
-                    <li class="list-group-item" id="variableReadValue"></li>
-                    <li class="list-group-item" id="variableReadStatus"></li>
-                    <li class="list-group-item" id="variableReadSourceTimeStamp"></li>
-                    <li class="list-group-item" id="variableReadSourceServerStamp"></li>
-                </ul>
-                <div class="input-group mt-2 invisible" id="variableWriteContainer">
-                    <input type="text" id="variableWriteInput" class="form-control" placeholder="New value" aria-label="New Value for OPC UA variable" aria-describedby="basic-addon2">
-                    <div class="input-group-append">
-                        <button onclick="VariableWrite_WriteButton_Click(this)" class="btn btn-secondary" type="button">Write</button>
-                    </div>
-                </div>
-            </div>
-            <div class="invisible" id="methodContainer">
-                <div class="alert alert-dark" role="alert" id="methodHeader"></div>
-                <div class="input-group">
-                    <form id="methodInputContainer">
-                    </form>
-                </div>
-                <div class="invisible" id="methodOutputContainer">
-
-                </div>
+            <p>
+            <div class="row browser_browse_disconnect_button">
+                @using (Html.BeginForm("Disconnect", "Browser"))
+                {
+                    @Html.HiddenFor(model => model.BackUrl, new { id = "hiddenBackUrl" })
+                    <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
+                }
             </div>
         </div>
     </div>
-    <div class="row browser_browse_status_message_container mt-2">
-        <p class="alert alert-light">Status: <div class="alert alert-light" id="message">Browsed OPC Server</div></p>
+    <div class="row browser_browse_status_message_container">
+        <p id="message"> </p>
     </div>
-    <div class="row browser_browse_disconnect_button mt-2">
-        @using (Html.BeginForm("Disconnect", "Browser"))
-        {
-<input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Close" />}
-    </div>
-    <div class="row browser_browse_disconnect_button mt-2">
-        <br />
-        Generate a Plattform Industrie 4.0 Asset Admin Shell from the loaded nodeset files
-    </div>
-    <div class="row browser_browse_disconnect_button mt-2">
-        @using (Html.BeginForm("GenerateAAS", "Browser"))
-        {
-<input id="generateAASButton" class="btn btn-primary btn_browser" type="submit" value="Generate AAS" />}
+    <div class="col">
+        <div class="mt-4 invisible" id="variableReadContainer">
+            <div class="alert alert-dark" role="alert" id="variableReadHeader"/>
+            <ul class="list-group">
+                <li class="list-group-item" id="variableReadValue"></li>
+                <li class="list-group-item" id="variableReadStatus"></li>
+                <li class="list-group-item" id="variableReadSourceTimeStamp"></li>
+                <li class="list-group-item" id="variableReadSourceServerStamp"></li>
+            </ul>
+        </div>
     </div>
 </div>
 
 @section scripts {
     <script src="~/lib/jstree/jstree.min.js"></script>
+    <script src="/signalr/hubs"></script>
     <script>
         var title = "TitleBrowser";
 
@@ -104,11 +88,34 @@
             await establishSignalRConnection();
         });
 
-        function getRightLeftDiv(leftContent, rightContent) {
-            return "<div class=\"bg-light d-flex justify-content-between\">"
-                + "<div>" + leftContent + "</div>"
-                + "<div>" + rightContent + "</div>"
-                + "</div>";
+        $(function () {
+            var status = $.connection.statusHub;
+
+            // Create a function that the hub can call back to display messages
+            status.client.addNewMessageToPage = function (session, message) {
+                if (session === '@Model.SessionId') {
+                    $('#message').replaceWith('<p id="message">CommunicationStatusMessageLabel' + ' ' + htmlEncode(message) + '</p>');
+                }
+            }
+
+            // Start/continue the connection
+            $.connection.hub.start().done(function () { });
+
+            // initialize all context panels to default state closed
+            $("#attributeReadContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
+            $("#variableReadContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
+            $("#variablePublishContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
+            $("#browserErrorContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
+        });
+
+        function htmlEncode(value) {
+            var encodedValue = $('<div />').text(value).html();
+            return encodedValue;
+        }
+
+        function htmlDecode(value) {
+            decodedValue = $('<div>').html(value).text();
+            return decodedValue;
         }
 
         function VariableRead(obj, onSuccess) {
@@ -141,129 +148,96 @@
             });
         }
 
-        function VariableWrite(obj) {
-            VariableRead(obj, function () {
-                $("#variableWriteContainer").attr("nodeId", obj.item.nodeId);
-                $("#variableWriteContainer").removeClass('invisible');
-            });
-        }
-
-        function VariableWrite_WriteButton_Click() {
-            var newVal = $("#variableWriteInput").val();
-            var id = $("#variableWriteContainer").attr("nodeId");
-            console.log("updating value of " + id + " to " + newVal);
-
+        var linkRDXExplorer
+        function VariablePublish(obj) {
             $.post({
-                url: "/Browser/VariableWrite",
-                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: id, newValue: newVal },
+                url: "/Browser/VariablePublishUnpublish",
+                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: obj.item.nodeId, method: "publish" },
                 success: function (data) {
-                    if (data.status === "ok") {
-                        console.log("Writing OPC UA attribute value successfull " + data);
-                    }
-                    else {
-                        console.warn("Writing OPC UA attribute value failed " + data);
+                    $("#variablePublish_variableData").html(data);
+                    $("#variablePublish_variableName").html(obj.item.nodeName);
+                    $("#connectLoader").hide();
+                    $("#waitingForPublishing").hide();
+                    $("#publishBody").show();
+                    if (data == htmlDecode('OpcMethodCallSucceeded')) {
+                        var jsonNode = $('#OpcNodeTree').jstree(true).get_node(obj.item.nodeId);
+                        $('#OpcNodeTree').jstree(true).set_type(jsonNode, "published");
+                        jsonNode.original.publishedNode = true;
+                        $("#rdxLink").show();
                     }
                 },
                 error: function (response) {
-                    console.error("Error updating value of node: %o ", response);
-                }
-            });
-        }
-
-        function MethodCall(obj) {
-            $("#methodHeader").html(obj.item.nodeName);
-            $("#methodContainer").removeClass('invisible');
-
-            $.post({
-                url: "/Browser/MethodCallGetParameter",
-                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: obj.item.nodeId },
-                success: function (data) {
-                    console.log("Loaded parameter for method " + obj.item.nodeName + " " + data);
-
-                    var $methodInput = $("#methodInputContainer");
-                    $methodInput.empty();
-
-                    if (data.count === 0) {
-                        $("#methodInputContainer").append("<strong>No Input Parameter!</strong> <br />");
+                    openErrorPanel();
+                    if (response.status == 403) {
+                        $('#browserErrorMessage').html('ErrorInsufficientPermissions');
                     } else {
-                        for (var i = 0; i < data.count; i++) {
-
-                            console.log("Append fields for parameter: %o", data.parameter[i]);
-
-                            var parameterInput = "<div class=\"form-group\">"
-                                + "<div class=\"input-group mb-2\">"
-                                + "<div class=\"input-group-prepend\">"
-                                + "<span class=\"input-group-text\">" + data.parameter[i].name + "</span>"
-                                + "<span class=\"input-group-text\">" + data.parameter[i].typename + "</span>"
-                                + "</div>"
-                                + "<input type=\"text\" class=\"form-control\" placeholder=\"" + data.parameter[i].description + "\" id=\"methodCall_parameter_" + i + "\" />"
-                                + "</div>"
-                                + "</div>";
-                            $methodInput.append(parameterInput);
-                        }
-
-                        // save context information at form control for call method
-                        $methodInput.attr("parameterData", JSON.stringify(data));
+                        $('#browserErrorMessage').html('ErrorUnknown');
                     }
-                    $methodInput.append("<button onclick=\"MethodCall_CallButton_Click()\" class=\"btn btn-secondary\" type=\"button\">Call Method</button>");
-
-                    $methodInput.attr("nodeId", JSON.stringify(obj.item.nodeId));
-                },
-                error: function (response) {
-                    console.error("Error during reading of opc method parameter %o", response);
                 }
             });
         }
 
-        function MethodCall_CallButton_Click() {
-            $("#methodOutputContainer").removeClass('invisible');
-            console.log("Calling Method");
-            var $methodInput = $("#methodInputContainer");
-            var jsonString = $methodInput.attr("parameterData");
-            var parameterOriginalData = "";
-            if (typeof jsonString !== "undefined" && jsonString !== "") {
-                parameterOriginalData = JSON.parse(jsonString);
-            } else {
-                parameterOriginalData.parameter = "";
+        function openErrorPanel() {
+            $("#browserErrorContextPanel").removeClass("overlay-close").addClass("overlay-right-open");
+            $("#disconnectButton").attr("disabled", "disabled");
+            $(".dashboard-cancel-icon").show();
+        }
+
+        function closeErrorPanel() {
+            $('#browserErrorContextPanel').addClass('overlay-close').removeClass("overlay-right-open");
+            $("#disconnectButton").attr("enabled", "enabled");
+            if ($('#browserErrorMessage').html() == 'ErrorUnknown') {
+                window.location.href = "/Browser/Disconnect?backUrl=" + back;
             }
-
-            console.log("parameterData: " + parameterOriginalData.parameter);
-
-            var id = JSON.parse($methodInput.attr("nodeId"));
-            console.log("NodeId " + id);
-
-            var parameterValues = [];
-            for (var i = 0; parameterOriginalData != undefined && i < parameterOriginalData.count; i++) {
-                var parameterId = "#methodCall_parameter_" + i;
-                var parameterVal = $(parameterId).val();
-                parameterValues.push(parameterVal );
-            }
-
-            console.log("parameterValues: " + parameterValues);
-
-            $.post({
-                url: "/Browser/MethodCall",
-                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: id, parameterData: JSON.stringify(parameterOriginalData.parameter), parameterValues: JSON.stringify(parameterValues) },
-                success: function (data) {
-                    console.log("Called method successfully %o", data);
-
-                    if (data.status === "ok") {
-                        for (var i = 0; i < data.numberOfOutputArguments; i++) {
-                            var content = getRightLeftDiv("<strong>" + i + "</strong>", data.numberOfOutputArguments[i]);
-                            $("#methodOutputContainer").append(content);
-                        }
-                    } else {
-                        console.warn("Error during calling method %o", data);
-                    }
-                },
-                error: function (response) {
-                    console.error("Error during invoke opc method %o", response);
-                }
-            });
         }
 
         function OpcServerMenu(node) {
             var result = {};
+
+            if (node.original.nodeClass === "Variable" && node.original.publishedNode != true && (node.original.accessLevel & 0x01)) {
+                $.extend(result, {
+                    "Publish": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "Publish",
+                        "nodeId": node.id,
+                        "nodeName": node.text,
+                        "action": function (obj) {
+                            $("#variablePublishContextPanel").removeClass("overlay-close").addClass("overlay-right-open");
+                            $("#publishHeader").html('ContextPanelHeaderPublish');
+                            $("#publishBody").hide();
+                            $("#waitingForPublishing").html('ContextPanelPublishing');
+                            $("#rdxLink").hide();
+                            $("#waitingForPublishing").show();
+                            $("#connectLoader").show();
+                            $(".dashboard-cancel-icon").show();
+                            VariablePublish(obj);
+                        }
+                    }
+                });
+            }
+
+            if (node.original.nodeClass === "Variable" && node.original.publishedNode == true && node.original.relevantNode == false && (node.original.accessLevel & 0x01)) {
+                $.extend(result, {
+                    "UnPublish": {
+                        "separator_before": false,
+                        "separator_after": false,
+                        "label": "Unpublish",
+                        "nodeId": node.id,
+                        "nodeName": node.text,
+                        "action": function (obj) {
+                            $("#variablePublishContextPanel").removeClass("overlay-close").addClass("overlay-right-open");
+                            $("#publishHeader").html('ContextPanelHeaderUnpublish');
+                            $("#publishBody").hide();
+                            $("#waitingForPublishing").html('ContextPanelUnPublishing');
+                            $("#waitingForPublishing").show();
+                            $("#connectLoader").show();
+                            $(".dashboard-cancel-icon").show();
+                            VariableUnpublish(obj);
+                        }
+                    }
+                });
+            }
 
             if (node.original.nodeClass === "Variable" && (node.original.accessLevel & 0x01)) {
                 $.extend(result, {
@@ -289,7 +263,7 @@
                         "nodeId": node.id,
                         "nodeName": node.text,
                         "action": function (obj) {
-                            VariableWrite(obj);
+                        VariableWrite(obj);
                         }
                     }
                 });
@@ -307,10 +281,10 @@
                             "nodeName": node.text,
                             "action": function (obj) {
                                 MethodCall(obj);
+                                }
                             }
-                        }
-                    });
-                }
+                        });
+                    }
             }
 
             return result;
@@ -350,7 +324,12 @@
                             return { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: node.id };
                         },
                         "error": function (xdr) {
-                            console.error("Error while reading opc ua nodes %o", xdr);
+                            openErrorPanel();
+                            if (xdr.status == 403) {
+                                $('#browserErrorMessage').html('ErrorInsufficientPermissions');
+                            } else {
+                                $('#browserErrorMessage').html('ErrorUnknown');
+                            }
                         }
                     }
                 },
@@ -379,26 +358,11 @@
             });
 
             $('#OpcNodeTree').on('open_node.jstree', function (e, data) {
-                var $table = $('#publishNodesTable');
-                $table.bootstrapTable('removeAll');
-
                 for (var node in data.instance._model.data) {
                     if (node != "#") {
                         var nodeOriginal = $(this).jstree(true).get_node(node).original;
                         if (nodeOriginal.publishedNode == true) {
-
-                            $('#publishedNodesContainer').removeClass('invisible');
-
                             var jsonNode = $(this).jstree(true).get_node(node)
-
-                            $table.bootstrapTable('append', {
-                                nodeId: nodeOriginal.id,
-                                name: nodeOriginal.text,
-                                nodeClass: nodeOriginal.nodeClass
-                            });
-
-                            $table.bootstrapTable('scrollTo', 'bottom');
-
                             $(this).jstree(true).set_type(jsonNode, "published")
                         }
                         else {
@@ -408,6 +372,7 @@
                     }
                 }
             });
+            jQuery('.scrollbar-macosx').scrollbar();
         });
     </script>
 }

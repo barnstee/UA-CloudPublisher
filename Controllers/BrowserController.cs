@@ -1,40 +1,32 @@
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.AspNetCore.SignalR;
-using Newtonsoft.Json;
-using Opc.Ua;
-using Opc.Ua.Client;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web;
-using UA.MQTT.Publisher.Interfaces;
-using UANodesetWebViewer.Models;
-
 namespace UA.MQTT.Publisher.Controllers
 {
-    public class StatusHub : Hub
-    {
-    }
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc.Rendering;
+    using Microsoft.AspNetCore.SignalR;
+    using Opc.Ua;
+    using Opc.Ua.Client;
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Threading.Tasks;
+    using System.Web;
+    using UA.MQTT.Publisher;
+    using UA.MQTT.Publisher.Models;
+
+    public class StatusHub : Hub { }
 
     public class BrowserController : Controller
     {
-        private IHubContext<StatusHub> _hubContext;
+        private List<string> _prepopulatedEndpoints = new List<string>();
 
-        private readonly IUAApplication _app;
+        private readonly OpcSessionHelper _helper;
 
-        public BrowserController(IHubContext<StatusHub> hubContext, IUAApplication app)
+        public BrowserController(OpcSessionHelper helper)
         {
-            _hubContext = hubContext;
-            _app = app;
+            _helper = helper;
         }
-
 
         private class MethodCallParameterData
         {
@@ -53,130 +45,134 @@ namespace UA.MQTT.Publisher.Controllers
             public string TypeName { get; set; }
         }
 
-        public ActionResult Index()
-        {
-            OpcSessionModel sessionModel = new OpcSessionModel
-            {
-                SessionId = HttpContext.Session.Id,
-                NodesetIDs = new SelectList(new List<string>())
-            };
-
-            OpcSessionCacheData entry = null;
-            if (OpcSessionHelper.Instance.OpcSessionCache.TryGetValue(HttpContext.Session.Id, out entry))
-            {
-                sessionModel.ServerIP = entry.EndpointURL.Host;
-                sessionModel.ServerPort = entry.EndpointURL.Port.ToString();
-
-                HttpContext.Session.SetString("EndpointUrl", entry.EndpointURL.AbsoluteUri);
-
-                return View("Browse", sessionModel);
-            }
-
-            UpdateStatus("Additional Information Required");
-            return View("Index", sessionModel);
-        }
-
+        [HttpGet]
         public ActionResult Privacy()
         {
             return View("Privacy");
         }
 
-        [HttpPost]
+        [HttpGet]
+        public ActionResult Index()
+        {
+            OpcSessionModel sessionModel = new OpcSessionModel();
+            sessionModel.SessionId = HttpContext.Session.Id;
+
+            OpcSessionCacheData entry = null;
+            if (_helper.OpcSessionCache.TryGetValue(HttpContext.Session.Id, out entry))
+            {
+                sessionModel.EndpointUrl = entry.EndpointURL;
+                HttpContext.Session.SetString("EndpointUrl", entry.EndpointURL);
+                return View("Browse", sessionModel);
+            }
+
+            sessionModel.PrepopulatedEndpoints = new SelectList(_prepopulatedEndpoints, "Value", "Text");
+            return View("Index", sessionModel);
+        }
+
+        [HttpGet]
         public ActionResult Error(string errorMessage)
         {
             OpcSessionModel sessionModel = new OpcSessionModel
             {
-                ErrorMessage = HttpUtility.HtmlDecode(errorMessage),
-                NodesetIDs = new SelectList(new List<string>())
+                ErrorHeader = "Error",
+                EndpointUrl = HttpContext.Session.GetString("EndpointUrl"),
+                ErrorMessage = HttpUtility.HtmlDecode(errorMessage)
             };
 
-            UpdateStatus($"Error Occured: {sessionModel.ErrorMessage}");
-
-            return View("Error", sessionModel);
+            return Json(sessionModel);
         }
-
 
         [HttpPost]
-        public async Task<ActionResult> LocalFileOpen(IFormFile[] files, bool autodownloadreferences)
+        public async Task<ActionResult> Connect(string endpointUrl, bool enforceTrust = false)
         {
-            OpcSessionModel sessionModel = new OpcSessionModel
-            {
-                ServerIP = "localhost",
-                ServerPort = "4840",
-            };
+            OpcSessionModel sessionModel = new OpcSessionModel { EndpointUrl = endpointUrl };
 
-            try
-            {
-                if ((files == null) || (files.Length == 0))
-                {
-                    throw new ArgumentException("No files specified!");
-                }
-
-                foreach (IFormFile file in files)
-                {
-                    if ((file.Length == 0) || (file.ContentType != "text/xml"))
-                    {
-                        throw new ArgumentException("Invalid file specified!");
-                    }
-
-                    // file name validation
-                    new FileInfo(file.FileName);
-
-                    // store the file on the webserver
-                    string filePath = Path.Combine(Directory.GetCurrentDirectory(), "NodeSets", file.FileName);
-                    using (FileStream stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream).ConfigureAwait(false);
-                    }
-                }
-
-                await StartClientAndServer(sessionModel).ConfigureAwait(false);
-
-                return View("Browse", sessionModel);
-            }
-            catch (Exception ex)
-            {
-                Trace.TraceError(ex.Message);
-
-                sessionModel.ErrorMessage = ex.Message;
-                UpdateStatus($"Error Occured: {sessionModel.ErrorMessage}");
-
-                return View("Error", sessionModel);
-            }
-        }
-
-        private async Task StartClientAndServer(OpcSessionModel sessionModel)
-        {
-            // start the UA client
             Session session = null;
-            string endpointURL = "opc.tcp://" + sessionModel.ServerIP + ":" + sessionModel.ServerPort + "/";
-            session = await OpcSessionHelper.Instance.GetSessionAsync(_app.GetAppConfig(), HttpContext.Session.Id, endpointURL, true).ConfigureAwait(false);
-            UpdateStatus("Connected");
+            try
+            {
+                session = await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl, true);
+            }
+            catch (Exception exception)
+            {
+                // Check for untrusted certificate
+                ServiceResultException ex = exception as ServiceResultException;
+                if ((ex != null) && (ex.InnerResult != null) && (ex.InnerResult.StatusCode == Opc.Ua.StatusCodes.BadCertificateUntrusted))
+                {
+                    sessionModel.ErrorHeader = "Untrusted";
+                    return Json(sessionModel);
+                }
 
-            HttpContext.Session.SetString("EndpointUrl", endpointURL);
+                // Generate an error to be shown in the error view and trace.
+                string errorMessageTrace = string.Format("Error", exception.Message,
+                exception.InnerException?.Message ?? "--", exception?.StackTrace ?? "--");
+                Trace.TraceError(errorMessageTrace);
+                sessionModel.ErrorHeader = "Error";
+
+                return Json(sessionModel);
+            }
+
+            HttpContext.Session.SetString("EndpointUrl", endpointUrl);
+
+            return View("Browse", sessionModel);
         }
 
         [HttpPost]
-        public ActionResult Disconnect()
+        public async Task<ActionResult> ConnectWithTrust(string endpointURL)
+        {
+            OpcSessionModel sessionModel = new OpcSessionModel { EndpointUrl = endpointURL };
+
+            // Check that there is a session already in our cache data
+            OpcSessionCacheData entry;
+            if (_helper.OpcSessionCache.TryGetValue(HttpContext.Session.Id, out entry))
+            {
+                if (string.Equals(entry.EndpointURL, endpointURL, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    OpcSessionCacheData newValue = new OpcSessionCacheData
+                    {
+                        CertThumbprint = entry.CertThumbprint,
+                        OPCSession = entry.OPCSession,
+                        EndpointURL = entry.EndpointURL,
+                        Trusted = true
+                    };
+                    _helper.OpcSessionCache.TryUpdate(HttpContext.Session.Id, newValue, entry);
+
+                    // connect with enforced trust
+                    return await Connect(endpointURL, true);
+                }
+            }
+
+            // Generate an error to be shown in the error view.
+            // Since we should only get here when folks are trying to hack the site,
+            // make the error generic so not to reveal too much about the internal workings of the site.
+            sessionModel.ErrorHeader = "Error";
+
+            return Json(sessionModel);
+        }
+
+        [HttpGet]
+        public ActionResult Disconnect(string backUrl)
+        {
+            return Disconnect(null, backUrl);
+        }
+
+        [HttpPost]
+        public ActionResult Disconnect(IFormCollection form, string backUrl)
         {
             try
             {
-                OpcSessionHelper.Instance.Disconnect(HttpContext.Session.Id);
+                _helper.Disconnect(HttpContext.Session.Id);
                 HttpContext.Session.SetString("EndpointUrl", string.Empty);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                Trace.TraceError(ex.Message);
+                // Trace an error and return to the connect view.
+                var errorMessage = string.Format("Error", exception.Message,
+                    exception.InnerException?.Message ?? "--", exception?.StackTrace ?? "--");
+                Trace.TraceError(errorMessage);
             }
 
-            UpdateStatus("Disconnected");
-
-            OpcSessionModel sessionModel = new OpcSessionModel
-            {
-                SessionId = HttpContext.Session.Id,
-                NodesetIDs = new SelectList(new List<string>())
-            };
-
+            OpcSessionModel sessionModel = new OpcSessionModel();
+            sessionModel.PrepopulatedEndpoints = new SelectList(_prepopulatedEndpoints, "Value", "Text");
             return View("Index", sessionModel);
         }
 
@@ -187,17 +183,17 @@ namespace UA.MQTT.Publisher.Controllers
             Byte[] continuationPoint;
             var jsonTree = new List<object>();
 
-            bool lastRetry = false;
+            bool retry = true;
             while (true)
             {
                 try
                 {
-                    Session session = await OpcSessionHelper.Instance.GetSessionAsync(_app.GetAppConfig(), HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                    Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl"));
 
                     session.Browse(
                         null,
                         null,
-                        ObjectIds.RootFolder,
+                        ObjectIds.ObjectsFolder,
                         0u,
                         BrowseDirection.Forward,
                         ReferenceTypeIds.HierarchicalReferences,
@@ -205,18 +201,18 @@ namespace UA.MQTT.Publisher.Controllers
                         0,
                         out continuationPoint,
                         out references);
-                    jsonTree.Add(new { id = ObjectIds.RootFolder.ToString(), text = "Root", children = (references?.Count != 0) });
+                    jsonTree.Add(new { id = ObjectIds.ObjectsFolder.ToString(), text = "Root", children = (references?.Count != 0) });
 
                     return Json(jsonTree);
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    OpcSessionHelper.Instance.Disconnect(HttpContext.Session.Id);
-                    if (lastRetry)
+                    _helper.Disconnect(HttpContext.Session.Id);
+                    if (!retry)
                     {
-                        return Content(CreateOpcExceptionActionString(ex));
+                        return Content(CreateOpcExceptionActionString(exception));
                     }
-                    lastRetry = true;
+                    retry = false;
                 }
             }
         }
@@ -224,9 +220,19 @@ namespace UA.MQTT.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> GetChildren(string jstreeNode)
         {
-            // This delimiter is used to allow the storing of the OPC UA parent node ID together with the OPC UA child node ID in jstree data structures and provide it as parameter to
+            // This delimiter is used to allow the storing of the OPC UA parent node ID together with the OPC UA child node ID in jstree data structures and provide it as parameter to 
             // Ajax calls.
-            var node = OpcSessionHelper.GetNodeIdFromJsTreeNode(jstreeNode);
+            string[] delimiter = { "__$__" };
+            string[] jstreeNodeSplit = jstreeNode.Split(delimiter, 3, StringSplitOptions.None);
+            string node;
+            if (jstreeNodeSplit.Length == 1)
+            {
+                node = jstreeNodeSplit[0];
+            }
+            else
+            {
+                node = jstreeNodeSplit[1];
+            }
 
             ReferenceDescriptionCollection references = null;
             Byte[] continuationPoint;
@@ -234,21 +240,23 @@ namespace UA.MQTT.Publisher.Controllers
 
             // read the currently published nodes
             Session session = null;
+            string[] publishedNodes = null;
             string endpointUrl = null;
             try
             {
-                UpdateStatus("Connecting to OPC Server");
-                session = await OpcSessionHelper.Instance.GetSessionAsync(_app.GetAppConfig(), HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl"));
                 endpointUrl = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 // do nothing, since we still want to show the tree
-                Trace.TraceError("Can not read published nodes for endpoint '{0}'.", endpointUrl);
-                Trace.TraceError(ex.Message);
+                Trace.TraceWarning("Can not read published nodes for endpoint '{0}'.", endpointUrl);
+                string errorMessage = string.Format("Error", e.Message,
+                    e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
+                Trace.TraceWarning(errorMessage);
             }
 
-            bool lastRetry = false;
+            bool retry = true;
             while (true)
             {
                 try
@@ -258,12 +266,6 @@ namespace UA.MQTT.Publisher.Controllers
 
                     try
                     {
-                        if (session.Disposed)
-                        {
-                            session.Reconnect();
-                        }
-
-                        UpdateStatus($"Browse OPC UA node {node}");
                         session.Browse(
                             null,
                             null,
@@ -276,10 +278,13 @@ namespace UA.MQTT.Publisher.Controllers
                             out continuationPoint,
                             out references);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
+                        // skip this node
                         Trace.TraceError("Can not browse node '{0}'", node);
-                        Trace.TraceError(ex.Message);
+                        string errorMessage = string.Format("Error", e.Message,
+                            e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
+                        Trace.TraceError(errorMessage);
                     }
 
                     Trace.TraceInformation("Browsing node '{0}' data took {0} ms", node.ToString(), stopwatch.ElapsedMilliseconds);
@@ -310,12 +315,6 @@ namespace UA.MQTT.Publisher.Controllers
                             INode currentNode = null;
                             try
                             {
-                                if (session.Disposed)
-                                {
-                                    session.Reconnect();
-                                }
-
-                                UpdateStatus($"Browse OPC UA node {ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)}");
                                 session.Browse(
                                     null,
                                     null,
@@ -328,15 +327,16 @@ namespace UA.MQTT.Publisher.Controllers
                                     out childContinuationPoint,
                                     out childReferences);
 
-                                UpdateStatus($"Read OPC UA node {ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)}");
                                 currentNode = session.ReadNode(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris));
                             }
-                            catch (Exception ex)
+                            catch (Exception e)
                             {
-                                Trace.TraceError("Can not browse or read node '{0}'", nodeReference.NodeId);
-                                Trace.TraceError(ex.Message);
-
                                 // skip this node
+                                Trace.TraceError("Can not browse or read node '{0}'", nodeReference.NodeId);
+                                string errorMessage = string.Format("Error", e.Message,
+                                    e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
+                                Trace.TraceError(errorMessage);
+
                                 continue;
                             }
 
@@ -368,16 +368,31 @@ namespace UA.MQTT.Publisher.Controllers
                                 currentNodeExecutable = methodNode.UserExecutable;
                             }
 
+                            var isPublished = false;
+                            if (publishedNodes != null)
+                            {
+                                Session stationSession = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl"));
+                                string urn = stationSession.ServerUris.GetString(0);
+                                foreach (var nodeId in publishedNodes)
+                                {
+                                    if (nodeId == nodeReference.NodeId.ToString())
+                                    {
+                                        isPublished = true;
+                                    }
+                                }
+                            }
+
                             jsonTree.Add(new
                             {
-                                id = ("__" + node + OpcSessionHelper.Delimiter + nodeReference.NodeId.ToString()),
-                                text = nodeReference.DisplayName.ToString() + " (ns=" + session.NamespaceUris.ToArray()[nodeReference.NodeId.NamespaceIndex] + ";" + nodeReference.NodeId.ToString() + ")",
+                                id = ("__" + node + delimiter[0] + nodeReference.NodeId.ToString()),
+                                text = nodeReference.DisplayName.ToString(),
                                 nodeClass = nodeReference.NodeClass.ToString(),
                                 accessLevel = currentNodeAccessLevel.ToString(),
                                 eventNotifier = currentNodeEventNotifier.ToString(),
                                 executable = currentNodeExecutable.ToString(),
                                 children = (childReferences.Count == 0) ? false : true,
-                                publishedNode = false
+                                publishedNode = isPublished,
+                                relevantNode = true
                             });
                             idList.Add(nodeReference.NodeId.ToString());
                         }
@@ -391,10 +406,11 @@ namespace UA.MQTT.Publisher.Controllers
                             {
                                 currentNode = session.ReadNode(new NodeId(node));
                             }
-                            catch (Exception ex)
+                            catch (Exception e)
                             {
-                                Trace.TraceError("Can not read node '{0}'", new NodeId(node));
-                                Trace.TraceError(ex.Message);
+                                string errorMessage = string.Format("Error", e.Message,
+                                    e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
+                                Trace.TraceError(errorMessage);
                             }
 
                             if (currentNode == null)
@@ -434,7 +450,7 @@ namespace UA.MQTT.Publisher.Controllers
                                 jsonTree.Add(new
                                 {
                                     id = jstreeNode,
-                                    text = currentNode.DisplayName.ToString() + " (ns=" + session.NamespaceUris.ToArray()[currentNode.NodeId.NamespaceIndex] + ";" + currentNode.NodeId.ToString() + ")",
+                                    text = currentNode.DisplayName.ToString(),
                                     nodeClass = currentNode.NodeClass.ToString(),
                                     accessLevel = currentNodeAccessLevel.ToString(),
                                     eventNotifier = currentNodeEventNotifier.ToString(),
@@ -446,18 +462,18 @@ namespace UA.MQTT.Publisher.Controllers
                     }
 
                     stopwatch.Stop();
-                    Trace.TraceInformation("Browsing all child infos of node '{0}' took {0} ms", node, stopwatch.ElapsedMilliseconds);
+                    Trace.TraceInformation("Browing all childeren info of node '{0}' took {0} ms", node, stopwatch.ElapsedMilliseconds);
 
                     return Json(jsonTree);
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    OpcSessionHelper.Instance.Disconnect(HttpContext.Session.Id);
-                    if (lastRetry)
+                    _helper.Disconnect(HttpContext.Session.Id);
+                    if (!retry)
                     {
-                        return Content(CreateOpcExceptionActionString(ex));
+                        return Content(CreateOpcExceptionActionString(exception));
                     }
-                    lastRetry = true;
+                    retry = false;
                 }
             }
         }
@@ -465,8 +481,21 @@ namespace UA.MQTT.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> VariableRead(string jstreeNode)
         {
-            var node = OpcSessionHelper.GetNodeIdFromJsTreeNode(jstreeNode);
-            bool lastRetry = false;
+            string[] delimiter = { "__$__" };
+            string[] jstreeNodeSplit = jstreeNode.Split(delimiter, 3, StringSplitOptions.None);
+            string node;
+            var actionResult = "";
+
+            if (jstreeNodeSplit.Length == 1)
+            {
+                node = jstreeNodeSplit[0];
+            }
+            else
+            {
+                node = jstreeNodeSplit[1];
+            }
+
+            bool retry = true;
             while (true)
             {
                 try
@@ -480,14 +509,10 @@ namespace UA.MQTT.Publisher.Controllers
                     valueId.IndexRange = null;
                     valueId.DataEncoding = null;
                     nodesToRead.Add(valueId);
-
-                    UpdateStatus($"Read OPC UA node: {valueId.NodeId}");
-
-                    Session session = await OpcSessionHelper.Instance.GetSessionAsync(_app.GetAppConfig(), HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                    Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl"));
                     ResponseHeader responseHeader = session.Read(null, 0, TimestampsToReturn.Both, nodesToRead, out values, out diagnosticInfos);
                     string value = "";
-                    string actionResult;
-                    if (values.Count > 0 && values[0].Value != null)
+                    if (values[0].Value != null)
                     {
                         if (values[0].WrappedValue.ToString().Length > 40)
                         {
@@ -498,256 +523,57 @@ namespace UA.MQTT.Publisher.Controllers
                         {
                             value = values[0].WrappedValue.ToString();
                         }
-
-                        actionResult = $"{{ \"value\": \"{value}\", \"status\": \"{values[0].StatusCode}\", \"sourceTimestamp\": \"{values[0].SourceTimestamp}\", \"serverTimestamp\": \"{values[0].ServerTimestamp}\" }}";
                     }
-                    else
-                    {
-                        actionResult = string.Empty;
-                    }
-
-
+                    // We return the HTML formatted content, which is shown in the context panel.
+                    actionResult = "Value: " + value + @"<br/>" +
+                                   "Status: " + values[0].StatusCode + @"<br/>" +
+                                   "Source Timestamp: " + values[0].SourceTimestamp + @"<br/>" +
+                                   "Server Timestamp: " + values[0].ServerTimestamp;
                     return Content(actionResult);
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    OpcSessionHelper.Instance.Disconnect(HttpContext.Session.Id);
-                    if (lastRetry)
+                    if (!retry)
                     {
-                        return Content(CreateOpcExceptionActionString(ex));
+                        return Content(CreateOpcExceptionActionString(exception));
                     }
-                    lastRetry = true;
+                    retry = false;
                 }
             }
         }
 
         [HttpPost]
-        public async Task<ActionResult> VariableWrite(string jstreeNode, string newValue)
-        {
-            Session session = await OpcSessionHelper.Instance.GetSessionAsync(_app.GetAppConfig(), HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
-
-            bool lastRetry = false;
-            while (true)
-            {
-                try
-                {
-                    string actionResult = string.Empty;
-                    var callResult = OpcSessionHelper.Instance.WriteOpcNode(jstreeNode, newValue, session);
-
-                    if (callResult.result != null && callResult.result.Count > 0 && Opc.Ua.StatusCode.IsGood(callResult.result[0]))
-                    {
-                        actionResult = $"{{ \"id\": \"{jstreeNode}\", \"status\": \"ok\"}}";
-                        UpdateStatus($"Updated value to {newValue}");
-                    }
-                    else
-                    {
-                        actionResult = $"{{ \"id\": \"{jstreeNode}\", \"status\": \"error\", \"StatusCode\": \"{callResult.result[0]}\", \"diagnosticInfo\": \"{callResult.diagInfo}\" }}";
-
-                        string errorMessage = $"Error writing value of opc variable";
-                        if (callResult.result != null && callResult.result.Count > 0)
-                        {
-                            errorMessage += $", StatusCode: {callResult.result[0]} ";
-                        }
-                        if(callResult.diagInfo != null)
-                        {
-                            foreach (var info in callResult.diagInfo)
-                            {
-                                errorMessage += " " + info.ToString();
-                            }
-                        }
-                        UpdateStatus(errorMessage);
-                    }
-
-                    return Content(actionResult);
-                }
-                catch (Exception ex)
-                {
-                    OpcSessionHelper.Instance.Disconnect(HttpContext.Session.Id);
-                    if (lastRetry)
-                    {
-                        return Content(CreateOpcExceptionActionString(ex));
-                    }
-                    lastRetry = true;
-                }
-            }
-        }
-
-        [HttpPost]
-        public async Task<ActionResult> MethodCallGetParameter(string jstreeNode)
-        {
-            var node = OpcSessionHelper.GetNodeIdFromJsTreeNode(jstreeNode);
-
-            var jsonParameter = new List<object>();
-            int parameterCount = 0;
-            bool lastRetry = false;
-            while (true)
-            {
-                try
-                {
-                    QualifiedName browseName = null;
-                    browseName = Opc.Ua.BrowseNames.InputArguments;
-
-                    ReferenceDescriptionCollection references = null;
-                    Byte[] continuationPoint;
-
-                    Session session = await OpcSessionHelper.Instance.GetSessionAsync(_app.GetAppConfig(), HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
-                    session.Browse(
-                            null,
-                            null,
-                            node,
-                            1u,
-                            BrowseDirection.Forward,
-                            ReferenceTypeIds.HasProperty,
-                            true,
-                            0,
-                            out continuationPoint,
-                            out references);
-                    if (references.Count == 1)
-                    {
-                        var nodeReference = references[0];
-                        VariableNode argumentsNode = session.ReadNode(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)) as VariableNode;
-                        DataValue value = session.ReadValue(argumentsNode.NodeId);
-
-                        ExtensionObject[] argumentsList = value.Value as ExtensionObject[];
-                        for (int ii = 0; ii < argumentsList.Length; ii++)
-                        {
-                            Argument argument = (Argument)argumentsList[ii].Body;
-                            NodeId nodeId = new NodeId(argument.DataType);
-                            Node dataTypeIdNode = session.ReadNode(nodeId);
-                            jsonParameter.Add(new { name = argument.Name, value = argument.Value, valuerank = argument.ValueRank, arraydimentions = argument.ArrayDimensions, description = argument.Description.Text, datatype = nodeId.Identifier, typename = dataTypeIdNode.DisplayName.Text });
-                        }
-                        parameterCount = argumentsList.Length;
-                    }
-                    else
-                    {
-                        parameterCount = 0;
-
-                    }
-
-                    UpdateStatus($"Loaded input arguments descrption, count: {parameterCount}");
-
-                    return Json(new { count = parameterCount, parameter = jsonParameter });
-                }
-                catch (Exception ex)
-                {
-                    OpcSessionHelper.Instance.Disconnect(HttpContext.Session.Id);
-                    if (lastRetry)
-                    {
-                        return Content(CreateOpcExceptionActionString(ex));
-                    }
-                    lastRetry = true;
-                }
-            }
-        }
-
-        [HttpPost]
-        public async Task<ActionResult> MethodCall(string jstreeNode, string parameterData, string parameterValues)
+        public ActionResult VariablePublishUnpublish(string jstreeNode, string method)
         {
             string[] delimiter = { "__$__" };
             string[] jstreeNodeSplit = jstreeNode.Split(delimiter, 3, StringSplitOptions.None);
             string node;
-            string parentNode = null;
+            string actionResult = "";
+            string publisherSessionId = Guid.NewGuid().ToString();
 
             if (jstreeNodeSplit.Length == 1)
             {
                 node = jstreeNodeSplit[0];
-                parentNode = null;
             }
             else
             {
                 node = jstreeNodeSplit[1];
-                parentNode = (jstreeNodeSplit[0].Replace(delimiter[0], "")).Replace("__", "");
             }
 
-            List<MethodCallParameterData> originalData = string.IsNullOrWhiteSpace(parameterData)
-                ? new List<MethodCallParameterData>()
-                : JsonConvert.DeserializeObject<List<MethodCallParameterData>>(parameterData);
-
-            List<Variant> values = JsonConvert.DeserializeObject<List<Variant>>(parameterValues);
-            int count = values.Count;
-            VariantCollection inputArguments = new VariantCollection();
-
-            bool lastRetry = false;
-            while (true)
+            try
             {
-                try
+                
+                return Content(actionResult);
+            }
+            catch (Exception exception)
+            {
+                return Content(CreateOpcExceptionActionString(exception));
+            }
+            finally
+            {
+                if (publisherSessionId != null)
                 {
-                    var session = await OpcSessionHelper.Instance.GetSessionAsync(_app.GetAppConfig(), HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
-
-
-                    for (int i = 0; i < count; i++)
-                    {
-                        Variant value = new Variant();
-                        NodeId dataTypeNodeId = "i=" + originalData[i].Datatype;
-                        string dataTypeName = originalData[i].TypeName;
-                        Int32 valueRank = Convert.ToInt32(originalData[i].ValueRank, CultureInfo.InvariantCulture);
-                        string newValue = values[i].Value.ToString();
-
-                        try
-                        {
-                            OpcSessionHelper.Instance.BuildDataValue(ref session, ref value, dataTypeNodeId, valueRank, newValue);
-                            inputArguments.Add(value);
-                        }
-                        catch (Exception ex)
-                        {
-                            UpdateStatus("Error convering input arguments of method: " + ex.Message);
-
-                            var diagCollection = new DiagnosticInfoCollection();
-                            diagCollection.Add(new DiagnosticInfo(ex, DiagnosticsMasks.All, false, new StringTable()));
-                            var errorResult = new
-                            {
-                                status = "error",
-                                statusCode = Microsoft.AspNetCore.Http.StatusCodes.Status500InternalServerError,
-                                numberOfDiagnosticInfo = diagCollection.Count,
-                                diagnosticInfo = diagCollection
-                            };
-                            return Json(errorResult);
-                        }
-                    }
-
-                    CallMethodRequestCollection requests = new CallMethodRequestCollection();
-                    CallMethodResultCollection results;
-                    DiagnosticInfoCollection diagnosticInfos = null;
-                    CallMethodRequest request = new CallMethodRequest();
-                    request.ObjectId = new NodeId(parentNode);
-                    request.MethodId = new NodeId(node);
-                    request.InputArguments = inputArguments;
-                    requests.Add(request);
-                    ResponseHeader responseHeader = session.Call(null, requests, out results, out diagnosticInfos);
-                    if (Opc.Ua.StatusCode.IsBad(results[0].StatusCode))
-                    {
-                        UpdateStatus($"Error calling method, StatusCode: {results[0].StatusCode}");
-
-                        var errorResult = new
-                        {
-                            status = "error",
-                            statusCode = results[0].StatusCode,
-                            numberOfDiagnosticInfo = diagnosticInfos.Count,
-                            diagnosticInfo = diagnosticInfos
-                        };
-                        return Json(errorResult);
-                    }
-                    else
-                    {
-                        UpdateStatus("Method Call Succeeded");
-
-                        var successResult = new {
-                            status = "ok",
-                            numberOfOutputArguments = results[0].OutputArguments.Count,
-                            outputArguments = results[0].OutputArguments
-                        };
-
-                        return Json(successResult);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    OpcSessionHelper.Instance.Disconnect(HttpContext.Session.Id);
-                    if (lastRetry)
-                    {
-                        return Content(CreateOpcExceptionActionString(ex));
-                    }
-                    lastRetry = true;
+                    _helper.Disconnect(publisherSessionId);
                 }
             }
         }
@@ -755,27 +581,17 @@ namespace UA.MQTT.Publisher.Controllers
         /// <summary>
         /// Writes an error message to the trace and generates an HTML encoded string to be sent to the client in case of an error.
         /// </summary>
-        private string CreateOpcExceptionActionString(Exception ex)
+        private string CreateOpcExceptionActionString(Exception exception)
         {
-            Trace.TraceError(ex.Message);
-
-            string actionResult = HttpUtility.HtmlEncode(ex.Message);
+            // Generate an error response, to be shown in the error view.
+            string errorMessage = string.Format("Error", exception.Message,
+                exception.InnerException?.Message ?? "--", exception?.StackTrace ?? "--");
+            Trace.TraceError(errorMessage);
+            errorMessage = "Error";
+            string actionResult = HttpUtility.HtmlEncode(errorMessage);
             Response.StatusCode = 1;
+
             return actionResult;
-        }
-
-        /// <summary>
-        /// Sends the message to all connected clients as status indication
-        /// </summary>
-        /// <param name="message">Text to show on web page</param>
-        private void UpdateStatus(string message)
-        {
-            if (string.IsNullOrWhiteSpace(message))
-            {
-                throw new ArgumentException(nameof(message));
-            }
-
-            _hubContext.Clients.All.SendAsync("addNewMessageToPage", HttpContext?.Session.Id, message).Wait();
         }
     }
 }

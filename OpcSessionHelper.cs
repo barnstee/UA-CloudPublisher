@@ -1,17 +1,21 @@
-﻿using Opc.Ua;
-using Opc.Ua.Client;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Web;
-using System.Xml;
-
+﻿
 namespace UA.MQTT.Publisher
 {
+    using Opc.Ua;
+    using Opc.Ua.Client;
+    using Opc.Ua.Configuration;
+    using System;
+    using System.Collections.Concurrent;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Globalization;
+    using System.Security.Cryptography.X509Certificates;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using System.Web;
+    using System.Xml;
+    using UA.MQTT.Publisher.Interfaces;
+
     public class OpcSessionCacheData
     {
         public bool Trusted { get; set; }
@@ -20,12 +24,12 @@ namespace UA.MQTT.Publisher
 
         public string CertThumbprint { get; set; }
 
-        public Uri EndpointURL { get; set; }
+        public string EndpointURL { get; set; }
 
         public OpcSessionCacheData()
         {
             Trusted = false;
-            EndpointURL = new Uri("opc.tcp://localhost:4840");
+            EndpointURL = string.Empty;
             CertThumbprint = string.Empty;
             OPCSession = null;
         }
@@ -34,40 +38,14 @@ namespace UA.MQTT.Publisher
     public class OpcSessionHelper
     {
         public ConcurrentDictionary<string, OpcSessionCacheData> OpcSessionCache = new ConcurrentDictionary<string, OpcSessionCacheData>();
+        
+        private readonly ApplicationConfiguration _configuration = null;
 
-        private static OpcSessionHelper _instance = null;
-        private static Object _instanceLock = new Object();
-
-        private static SemaphoreSlim _trustedSessionCertificateValidation = null;
-
-        private static string _trustedSessionId { get; set; } = null;
-
-        internal static string Delimiter { get; } = "__$__";
-
-        public static OpcSessionHelper Instance
+        public OpcSessionHelper(IUAApplication app)
         {
-            get
-            {
-                if (_instance == null)
-                {
-                    lock (_instanceLock)
-                    {
-                        if (_instance == null)
-                        {
-                            _instance = new OpcSessionHelper();
-                        }
-                    }
-                }
-
-                return _instance;
-            }
+            _configuration = app.GetAppConfig();
         }
-
-        public OpcSessionHelper()
-        {
-            _trustedSessionCertificateValidation = new SemaphoreSlim(1);
-        }
-
+        
         /// <summary>
         /// Action to disconnect from the currently connected OPC UA server.
         /// </summary>
@@ -83,7 +61,7 @@ namespace UA.MQTT.Publisher
                         entry.OPCSession.Close();
                     }
                 }
-                catch (Exception)
+                catch
                 {
                     // do nothing
                 }
@@ -110,7 +88,7 @@ namespace UA.MQTT.Publisher
         /// Checks if there is an active OPC UA session for the provided browser session. If the persisted OPC UA session does not exist,
         /// a new OPC UA session to the given endpoint URL is established.
         /// </summary>
-        public async Task<Session> GetSessionAsync(ApplicationConfiguration config, string sessionID, string endpointURL, bool enforceTrust = false)
+        public async Task<Session> GetSessionAsync(string sessionID, string endpointURL, bool enforceTrust = false)
         {
             if (string.IsNullOrEmpty(sessionID) || string.IsNullOrEmpty(endpointURL))
             {
@@ -131,179 +109,59 @@ namespace UA.MQTT.Publisher
                     {
                         entry.OPCSession.Close(500);
                     }
-                    catch (Exception)
+                    catch
                     {
-                        // do nothing
                     }
-
                     entry.OPCSession = null;
                 }
             }
             else
             {
                 // create a new entry
-                OpcSessionCacheData newEntry = new OpcSessionCacheData { EndpointURL = new Uri(endpointURL) };
+                OpcSessionCacheData newEntry = new OpcSessionCacheData { EndpointURL = endpointURL };
                 OpcSessionCache.TryAdd(sessionID, newEntry);
             }
 
             Uri endpointURI = new Uri(endpointURL);
-            EndpointDescriptionCollection endpointCollection = DiscoverEndpoints(config, endpointURI, 10);
+            EndpointDescriptionCollection endpointCollection = DiscoverEndpoints(_configuration, endpointURI, 10);
             EndpointDescription selectedEndpoint = SelectUaTcpEndpoint(endpointCollection);
-            EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create(config);
+            EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create(_configuration);
             ConfiguredEndpoint endpoint = new ConfiguredEndpoint(null, selectedEndpoint, endpointConfiguration);
 
-            Session session = null;
-            try
+            Session session = await Session.Create(
+                _configuration,
+                endpoint,
+                true,
+                false,
+                sessionID,
+                60000,
+                new UserIdentity(new AnonymousIdentityToken()),
+                null);
+
+            if (session != null)
             {
-                // lock the session creation for the enforced trust case
-                await _trustedSessionCertificateValidation.WaitAsync().ConfigureAwait(false);
+                session.KeepAlive += new KeepAliveEventHandler(StandardClient_KeepAlive);
 
-                if (enforceTrust)
+                // Update our cache data
+                if (OpcSessionCache.TryGetValue(sessionID, out entry))
                 {
-                    // enforce trust in the certificate validator by setting the trusted session id
-                    _trustedSessionId = sessionID;
-                }
-
-                session = await Session.Create(
-                    config,
-                    endpoint,
-                    true,
-                    false,
-                    sessionID,
-                    60000,
-                    new UserIdentity(new AnonymousIdentityToken()),
-                    null).ConfigureAwait(false);
-
-                if (session != null)
-                {
-                    session.KeepAlive += new KeepAliveEventHandler(StandardClient_KeepAlive);
-
-                    // Update our cache data
-                    if (OpcSessionCache.TryGetValue(sessionID, out entry))
+                    if (string.Equals(entry.EndpointURL, endpointURL, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        if (string.Equals(entry.EndpointURL.AbsoluteUri, endpointURL, StringComparison.InvariantCultureIgnoreCase))
+                        OpcSessionCacheData newValue = new OpcSessionCacheData
                         {
-                            OpcSessionCacheData newValue = new OpcSessionCacheData
-                            {
-                                CertThumbprint = entry.CertThumbprint,
-                                EndpointURL = entry.EndpointURL,
-                                Trusted = entry.Trusted,
-                                OPCSession = session
-                            };
-                            OpcSessionCache.TryUpdate(sessionID, newValue, entry);
-                        }
+                            CertThumbprint = entry.CertThumbprint,
+                            EndpointURL = entry.EndpointURL,
+                            Trusted = entry.Trusted,
+                            OPCSession = session
+                        };
+                        OpcSessionCache.TryUpdate(sessionID, newValue, entry);
                     }
                 }
             }
-            finally
-            {
-                _trustedSessionId = null;
-                _trustedSessionCertificateValidation.Release();
-            }
-
+            
             return session;
         }
 
-        /// <summary>
-        /// Write a given OPC node with the given value.
-        /// </summary>
-        public (StatusCodeCollection result, DiagnosticInfoCollection diagInfo) WriteOpcNode(string nodeID, string newValue, Session session)
-        {
-            if (string.IsNullOrEmpty(nodeID) || string.IsNullOrEmpty(newValue) || (session == null))
-            {
-                return (null, null);
-            }
-
-            var node = GetNodeIdFromJsTreeNode(nodeID);
-
-            // Read the variable
-            DataValueCollection values = null;
-            DiagnosticInfoCollection readDiagnosticInfos = null;
-            ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
-            foreach (uint attributeId in Attributes.GetIdentifiers())
-            {
-                ReadValueId valueId = new ReadValueId();
-                valueId.NodeId = new NodeId(node);
-                valueId.AttributeId = attributeId;
-                valueId.IndexRange = null;
-                valueId.DataEncoding = null;
-                nodesToRead.Add(valueId);
-            }
-
-            ResponseHeader responseHeader = session.Read(null, 0, TimestampsToReturn.Neither, nodesToRead,
-                out values, out readDiagnosticInfos);
-
-            // get DataType of the node
-            Node dataTypeIdNode = null;
-            NodeId dataTypeId = null;
-            int valueRank = 0;
-            for (int ii = 0; ii < nodesToRead.Count; ii++)
-            {
-                // check if node supports attribute
-                if (values[ii].StatusCode == StatusCodes.BadAttributeIdInvalid)
-                {
-                    continue;
-                }
-
-                switch (nodesToRead[ii].AttributeId)
-                {
-                    case Attributes.DataType:
-                        dataTypeId = values[ii].Value as NodeId;
-                        if (dataTypeId != null)
-                        {
-                            dataTypeIdNode = session.ReadNode(dataTypeId);
-                        }
-                        break;
-
-                    case Attributes.ValueRank:
-                        valueRank = (int)values[ii].Value;
-                        break;
-
-                    default:
-                        break;
-                }
-            }
-
-            var nodesToWrite = new WriteValueCollection();
-
-            WriteValue writeValue = new WriteValue();
-            writeValue.NodeId = new NodeId(node);
-            writeValue.AttributeId = Attributes.Value;
-            writeValue.IndexRange = null;
-
-            Variant value = new Variant();
-            BuildDataValue(ref session, ref value, dataTypeId, valueRank, newValue);
-            writeValue.Value.Value = value;
-            nodesToWrite.Add(writeValue);
-
-            StatusCodeCollection results;
-            DiagnosticInfoCollection writeDiagnosticInfos;
-            session.Write(null, nodesToWrite, out results, out writeDiagnosticInfos);
-
-            return (results, writeDiagnosticInfos);
-        }
-
-        /// <summary>
-        /// Parsing JSTreeNode to read OPC UA Node ID
-        /// </summary>
-        /// <param name="nodeID"></param>
-        /// <returns></returns>
-        internal static string GetNodeIdFromJsTreeNode(string nodeID)
-        {
-            string[] delimiter = { Delimiter };
-            string[] nodeIDSplit = nodeID.Split(delimiter, 3, StringSplitOptions.None);
-
-            string node;
-            if (nodeIDSplit.Length == 1)
-            {
-                node = nodeIDSplit[0];
-            }
-            else
-            {
-                node = nodeIDSplit[1];
-            }
-            return node;
-        }
         /// <summary>
         /// Builds a variant for the data value.
         /// </summary>
@@ -836,7 +694,7 @@ namespace UA.MQTT.Publisher
         }
 
         /// <summary>
-        /// Uses a discovery client to discover the endpoint description of a given server
+        /// Uses a discovery client to discover the endpoint description of a given server 
         /// </summary>
         private EndpointDescriptionCollection DiscoverEndpoints(ApplicationConfiguration config, Uri discoveryUrl, int timeout)
         {

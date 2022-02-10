@@ -1,7 +1,6 @@
-﻿
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace UANodesetWebViewer.Models
+namespace UA.MQTT.Publisher.Models
 {
     /// <summary>
     /// A view model for the Browser view.
@@ -14,23 +13,28 @@ namespace UANodesetWebViewer.Models
         public string SessionId { get; set; }
 
         /// <summary>
-        /// The OPC UA server IP address
+        /// The OPC UA server endpoint Url the session is connected to.
         /// </summary>
-        public string ServerIP { get; set; }
+        public string EndpointUrl { get; set; }
 
         /// <summary>
-        /// The OPC UA server port it is running on
+        /// List of prepopulated OPC UA server endpoints.
         /// </summary>
-        public string ServerPort { get; set; }
+        public SelectList PrepopulatedEndpoints { get; set; }
 
         /// <summary>
-        /// List of nodesetIds that can be selected
+        /// Header text of the error view.
         /// </summary>
-        public SelectList NodesetIDs { get; set; }
+        public string ErrorHeader { get; set; }
 
         /// <summary>
         /// Error text for the error view.
         /// </summary>
         public string ErrorMessage { get; set; }
+
+        /// <summary>
+        /// Url to come back when disconnect is invoked.
+        /// </summary>
+        public string BackUrl { get; set; }
     }
 }
