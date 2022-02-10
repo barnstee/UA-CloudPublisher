@@ -98,7 +98,7 @@ namespace UA.MQTT.Publisher
             uaApp.CreateAsync().GetAwaiter().GetResult();
 
             // kick off the task to show periodic diagnostic info
-            _ = Task.Run(() => diag.RunAsync());
+            //_ = Task.Run(() => diag.RunAsync());
 
             // run the telemetry engine
             _ = Task.Run(() => engine.Run());
