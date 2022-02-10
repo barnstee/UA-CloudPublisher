@@ -9,14 +9,8 @@
 <h1>@ViewData["Title"]</h1>
 
 <div class="container-fluid browser_browse_container">
-    <div class="row browser_container_header">
-        <div class="browser_container_header_text overflow">
-            <b>Connected to: @Model.EndpointUrl</b>
-        </div>
-    </div>
-    <p>
-    <div class="row browser_top_container">
-        <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+   <div class="row browser_top_container">
+        <div class="col">
             <div id="OpcNodeTree" class="browser_browse_nodetree_container">
                 <ul>
                     <li id="rootnode">
@@ -27,29 +21,27 @@
                     </li>
                 </ul>
             </div>
-            <p>
-            <div class="row browser_browse_disconnect_button">
-                @using (Html.BeginForm("Disconnect", "Browser"))
-                {
-                    @Html.HiddenFor(model => model.BackUrl, new { id = "hiddenBackUrl" })
-                    <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
-                }
+        </div>
+        <div class="col">
+            <div class="mt-4 invisible" id="variableReadContainer">
+                <div class="alert alert-dark" role="alert" id="variableReadHeader"></div>
+                <ul class="list-group">
+                    <li class="list-group-item" id="variableReadValue"></li>
+                    <li class="list-group-item" id="variableReadStatus"></li>
+                    <li class="list-group-item" id="variableReadSourceTimeStamp"></li>
+                    <li class="list-group-item" id="variableReadSourceServerStamp"></li>
+                </ul>
             </div>
         </div>
     </div>
-    <div class="row browser_browse_status_message_container">
-        <p id="message"> </p>
+    <div class="row browser_browse_status_message_container mt-2">
+        <p class="alert alert-light">Status: <div class="alert alert-light" id="message">Browsed OPC Server</div></p>
     </div>
-    <div class="col">
-        <div class="mt-4 invisible" id="variableReadContainer">
-            <div class="alert alert-dark" role="alert" id="variableReadHeader"/>
-            <ul class="list-group">
-                <li class="list-group-item" id="variableReadValue"></li>
-                <li class="list-group-item" id="variableReadStatus"></li>
-                <li class="list-group-item" id="variableReadSourceTimeStamp"></li>
-                <li class="list-group-item" id="variableReadSourceServerStamp"></li>
-            </ul>
-        </div>
+    <div class="row browser_browse_disconnect_button mt-2">
+        @using (Html.BeginForm("Disconnect", "Browser"))
+        {
+            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Close" />
+        }
     </div>
 </div>
 
@@ -118,6 +110,13 @@
             return decodedValue;
         }
 
+        function getRightLeftDiv(leftContent, rightContent) {
+            return "<div class=\"bg-light d-flex justify-content-between\">"
+                + "<div>" + leftContent + "</div>"
+                + "<div>" + rightContent + "</div>"
+                + "</div>";
+        }
+
         function VariableRead(obj, onSuccess) {
             $("#variableWriteContainer").addClass('invisible');
 
@@ -148,7 +147,6 @@
             });
         }
 
-        var linkRDXExplorer
         function VariablePublish(obj) {
             $.post({
                 url: "/Browser/VariablePublishUnpublish",
@@ -217,28 +215,6 @@
                 });
             }
 
-            if (node.original.nodeClass === "Variable" && node.original.publishedNode == true && node.original.relevantNode == false && (node.original.accessLevel & 0x01)) {
-                $.extend(result, {
-                    "UnPublish": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "Unpublish",
-                        "nodeId": node.id,
-                        "nodeName": node.text,
-                        "action": function (obj) {
-                            $("#variablePublishContextPanel").removeClass("overlay-close").addClass("overlay-right-open");
-                            $("#publishHeader").html('ContextPanelHeaderUnpublish');
-                            $("#publishBody").hide();
-                            $("#waitingForPublishing").html('ContextPanelUnPublishing');
-                            $("#waitingForPublishing").show();
-                            $("#connectLoader").show();
-                            $(".dashboard-cancel-icon").show();
-                            VariableUnpublish(obj);
-                        }
-                    }
-                });
-            }
-
             if (node.original.nodeClass === "Variable" && (node.original.accessLevel & 0x01)) {
                 $.extend(result, {
                     "Read": {
@@ -252,39 +228,6 @@
                         }
                     }
                 });
-            }
-
-            if (node.original.nodeClass === "Variable" && (node.original.accessLevel & 0x01)) {
-                $.extend(result, {
-                    "Write": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "Write",
-                        "nodeId": node.id,
-                        "nodeName": node.text,
-                        "action": function (obj) {
-                        VariableWrite(obj);
-                        }
-                    }
-                });
-            }
-
-            if (node.original.nodeClass === "Method") {
-                $.jstree.reference('#OpcNodeTree').refresh_node(node);
-                if (node.original.executable === "True") {
-                    $.extend(result, {
-                        "Call": {
-                            "separator_before": false,
-                            "separator_after": false,
-                            "label": "Call",
-                            "nodeId": node.id,
-                            "nodeName": node.text,
-                            "action": function (obj) {
-                                MethodCall(obj);
-                                }
-                            }
-                        });
-                    }
             }
 
             return result;

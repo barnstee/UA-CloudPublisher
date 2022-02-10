@@ -23,9 +23,12 @@ namespace UA.MQTT.Publisher.Controllers
 
         private readonly OpcSessionHelper _helper;
 
-        public BrowserController(OpcSessionHelper helper)
+        private IHubContext<StatusHub> _hubContext;
+
+        public BrowserController(OpcSessionHelper helper, IHubContext<StatusHub> hubContext)
         {
             _helper = helper;
+            _hubContext = hubContext;
         }
 
         private class MethodCallParameterData
@@ -484,8 +487,7 @@ namespace UA.MQTT.Publisher.Controllers
             string[] delimiter = { "__$__" };
             string[] jstreeNodeSplit = jstreeNode.Split(delimiter, 3, StringSplitOptions.None);
             string node;
-            var actionResult = "";
-
+           
             if (jstreeNodeSplit.Length == 1)
             {
                 node = jstreeNodeSplit[0];
@@ -499,7 +501,7 @@ namespace UA.MQTT.Publisher.Controllers
             while (true)
             {
                 try
-                {
+                { 
                     DataValueCollection values = null;
                     DiagnosticInfoCollection diagnosticInfos = null;
                     ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
@@ -509,10 +511,14 @@ namespace UA.MQTT.Publisher.Controllers
                     valueId.IndexRange = null;
                     valueId.DataEncoding = null;
                     nodesToRead.Add(valueId);
-                    Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl"));
+
+                    UpdateStatus($"Read OPC UA node: {valueId.NodeId}");
+
+                    Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
                     ResponseHeader responseHeader = session.Read(null, 0, TimestampsToReturn.Both, nodesToRead, out values, out diagnosticInfos);
                     string value = "";
-                    if (values[0].Value != null)
+                    string actionResult;
+                    if (values.Count > 0 && values[0].Value != null)
                     {
                         if (values[0].WrappedValue.ToString().Length > 40)
                         {
@@ -523,12 +529,15 @@ namespace UA.MQTT.Publisher.Controllers
                         {
                             value = values[0].WrappedValue.ToString();
                         }
+
+                        actionResult = $"{{ \"value\": \"{value}\", \"status\": \"{values[0].StatusCode}\", \"sourceTimestamp\": \"{values[0].SourceTimestamp}\", \"serverTimestamp\": \"{values[0].ServerTimestamp}\" }}";
                     }
-                    // We return the HTML formatted content, which is shown in the context panel.
-                    actionResult = "Value: " + value + @"<br/>" +
-                                   "Status: " + values[0].StatusCode + @"<br/>" +
-                                   "Source Timestamp: " + values[0].SourceTimestamp + @"<br/>" +
-                                   "Server Timestamp: " + values[0].ServerTimestamp;
+                    else
+                    {
+                        actionResult = string.Empty;
+                    }
+
+
                     return Content(actionResult);
                 }
                 catch (Exception exception)
@@ -592,6 +601,20 @@ namespace UA.MQTT.Publisher.Controllers
             Response.StatusCode = 1;
 
             return actionResult;
+        }
+
+        /// <summary>
+        /// Sends the message to all connected clients as status indication
+        /// </summary>
+        /// <param name="message">Text to show on web page</param>
+        private void UpdateStatus(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                throw new ArgumentException(nameof(message));
+            }
+
+            _hubContext.Clients.All.SendAsync("addNewMessageToPage", HttpContext?.Session.Id, message).Wait();
         }
     }
 }
