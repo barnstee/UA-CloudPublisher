@@ -16,9 +16,7 @@ namespace UA.MQTT.Publisher.Configuration
     using System.Globalization;
     using System.Linq;
     using System.Net;
-    using System.Net.Security;
     using System.Security.Cryptography;
-    using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -83,7 +81,7 @@ namespace UA.MQTT.Publisher.Configuration
             // setup disconnection handling
             _client.UseDisconnectedHandler(disconnectArgs =>
             {
-                _logger.LogWarning($"Disconnected: {disconnectArgs.Reason}");
+                _logger.LogWarning($"Disconnected from MQTT broker: {disconnectArgs.Reason}");
 
                 // simply reconnect again
                 Connect();
@@ -133,14 +131,6 @@ namespace UA.MQTT.Publisher.Configuration
                 .Build();
 
             _client.PublishAsync(message).GetAwaiter().GetResult();
-        }
-
-        private void ConnectionClosed(object sender, EventArgs e)
-        {
-            _logger.LogWarning("Disconnected from MQTT broker.");
-
-            // simply reconnect again
-            Connect();
         }
 
         private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)
