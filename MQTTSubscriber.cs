@@ -2,26 +2,34 @@
 namespace UA.MQTT.Publisher.Configuration
 {
     using Microsoft.Extensions.Logging;
+    using MQTTnet;
+    using MQTTnet.Adapter;
+    using MQTTnet.Client;
+    using MQTTnet.Client.Connecting;
+    using MQTTnet.Client.Options;
+    using MQTTnet.Client.Subscribing;
+    using MQTTnet.Packets;
+    using MQTTnet.Protocol;
     using Newtonsoft.Json;
-    using Opc.Ua;
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Linq;
     using System.Net;
     using System.Net.Security;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Web;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
-    using uPLibrary.Networking.M2Mqtt;
-    using uPLibrary.Networking.M2Mqtt.Messages;
     using DiagnosticInfo = Models.DiagnosticInfo;
 
     public class MQTTSubscriber : IMQTTSubscriber
     {
-        private MqttClient _mqttClient = null;
+        private IMqttClient _client = null;
         private string _clientName = Environment.GetEnvironmentVariable("MQTT_CLIENTNAME");
 
         private readonly ILogger _logger;
@@ -45,7 +53,6 @@ namespace UA.MQTT.Publisher.Configuration
             string userName = Environment.GetEnvironmentVariable("MQTT_USERNAME");
             string password = Environment.GetEnvironmentVariable("MQTT_PASSWORD");
             string topic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
-            _mqttClient = new MqttClient(brokerName, 8883, true, MqttSslProtocols.TLSv1_2, CertificateValidationCallback, null);
 
             if (Environment.GetEnvironmentVariable("CREATE_SAS_PASSWORD") != null)
             {
@@ -59,29 +66,73 @@ namespace UA.MQTT.Publisher.Configuration
                 password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(brokerName + "/devices/" + _clientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
             }
 
-            // register publish received and disconnect handler callbacks
-            _mqttClient.MqttMsgPublishReceived += MessageReceived;
-            _mqttClient.ConnectionClosed += ConnectionClosed;
+            // create MQTT client
+            _client = new MqttFactory().CreateMqttClient();
+            _client.UseApplicationMessageReceivedHandler(msg => HandleMessageAsync(msg));
+            var clientOptions = new MqttClientOptionsBuilder()
+                .WithTcpServer(opt => opt.NoDelay = true)
+                .WithClientId(_clientName)
+                .WithTcpServer(brokerName, 8883)
+                .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = true })
+                .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
+                .WithCommunicationTimeout(TimeSpan.FromSeconds(30))
+                .WithKeepAlivePeriod(TimeSpan.FromSeconds(300))
+                .WithCleanSession(false) // keep existing subscriptions 
+                .WithCredentials(userName, password);
 
-            // subscribe to all our topics
-            _mqttClient.Subscribe(new string[] { topic }, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
-
-            // connect to MQTT broker
-            byte returnCode = _mqttClient.Connect(_clientName, userName, password, false, 5);
-            if (returnCode != MqttMsgConnack.CONN_ACCEPTED)
+            // setup disconnection handling
+            _client.UseDisconnectedHandler(disconnectArgs =>
             {
-                _logger.LogError("Connection to MQTT broker failed with " + returnCode.ToString() + "!");
+                _logger.LogWarning($"Disconnected: {disconnectArgs.Reason}");
+
+                // simply reconnect again
+                Connect();
+            });
+
+            try
+            {
+                var connectResult = _client.ConnectAsync(clientOptions.Build(), CancellationToken.None).GetAwaiter().GetResult();
+                if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
+                {
+                    var status = GetStatus(connectResult.UserProperties)?.ToString("x4");
+                    throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
+                }
+
+                var subscribeResult = _client.SubscribeAsync(
+                    new MqttTopicFilter
+                    {
+                        Topic = topic,
+                        QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
+                    }).GetAwaiter().GetResult();
+
+                // make sure subscriptions were successful
+                if (subscribeResult.Items.Count != 1 || subscribeResult.Items[0].ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
+                {
+                    throw new ApplicationException("Failed to subscribe");
+                }
             }
-            else
+            catch (MqttConnectingFailedException ex)
             {
-                _logger.LogInformation("Connected to MQTT broker.");
+                _logger.LogCritical($"Failed to connect, reason code: {ex.ResultCode}");
+                if (ex.Result?.UserProperties != null)
+                {
+                    foreach (var prop in ex.Result.UserProperties)
+                    {
+                        _logger.LogCritical($"{prop.Name}: {prop.Value}");
+                    }
+                }
             }
         }
 
         public void Publish(byte[] payload)
         {
-            string topic = "devices/" + _clientName + "/messages/events/";
-            _mqttClient.Publish(topic, payload, MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE, false);
+            MqttApplicationMessage message = new MqttApplicationMessageBuilder()
+                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithTopic($"devices/{_clientName}/messages/events/")
+                .WithPayload(payload)
+                .Build();
+
+            _client.PublishAsync(message).GetAwaiter().GetResult();
         }
 
         private void ConnectionClosed(object sender, EventArgs e)
@@ -92,41 +143,66 @@ namespace UA.MQTT.Publisher.Configuration
             Connect();
         }
 
-        private void MessageReceived(object sender, MqttMsgPublishEventArgs e)
+        private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)
         {
-            string requestTopic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
             string responseTopic = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");
-            string requestID = e.Topic.Substring(e.Topic.IndexOf("?"));
+
+            return new MqttApplicationMessageBuilder()
+                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithTopic($"{responseTopic}/{status}/{id}")
+                .WithPayload(payload)
+                .Build();
+        }
+
+        // parses status from packet properties
+        private int? GetStatus(List<MqttUserProperty> properties)
+        {
+            var status = properties.FirstOrDefault(up => up.Name == "status");
+            if (status == null)
+            {
+                return null;
+            }
+
+            return int.Parse(status.Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        }
+
+        // handles all incoming messages
+        private async Task HandleMessageAsync(MqttApplicationMessageReceivedEventArgs args)
+        {
+            _logger.LogInformation($"Received method call with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
+
+            string requestTopic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
+            string requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
 
             try
             {
-                string requestPayload = Encoding.UTF8.GetString(e.Message);
+                string requestPayload = args.ApplicationMessage.ConvertPayloadToString();
                 byte[] responsePayload = null;
 
                 // route this to the right handler
-                if (e.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
+                if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
                 {
                     responsePayload = PublishNodes(requestPayload);
                 }
-                else if (e.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnPublishNodes"))
+                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnPublishNodes"))
                 {
                     responsePayload = UnpublishNodes(requestPayload);
                 }
-                else if (e.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnPublishAllNodes"))
+                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnPublishAllNodes"))
                 {
                     responsePayload = UnpublishAllNodes(requestPayload);
                 }
-                else if (e.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetDiagnosticInfo"))
+                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetDiagnosticInfo"))
                 {
                     responsePayload = GetDiagnosticInfo(requestPayload);
                 }
                 else
                 {
-                    _logger.LogError("Unknown command received: " + e.Topic);
+                    _logger.LogError("Unknown command received: " + args.ApplicationMessage.Topic);
                 }
 
                 // send reponse to MQTT broker
-                _mqttClient.Publish(responseTopic + "/200/" + requestID, responsePayload, MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE, false);
+                await _client.PublishAsync(BuildResponse("200", requestID, responsePayload)).ConfigureAwait(false);
 
             }
             catch (Exception ex)
@@ -134,19 +210,10 @@ namespace UA.MQTT.Publisher.Configuration
                 _logger.LogError(ex, "MQTTBrokerPublishReceived");
 
                 // send error to MQTT broker
-                _mqttClient.Publish(responseTopic + "/500/" + requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message)), MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE, false);
+                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(ex.Message))).ConfigureAwait(false);
             }
         }
 
-        private bool CertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-        {
-            // always trust the MQTT broker certificate
-            return true;
-        }
-
-        /// <summary>
-        /// Handle publish node method call.
-        /// </summary>
         public byte[] PublishNodes(string payload)
         {
             string logPrefix = "HandlePublishNodesMethodAsync:";
@@ -241,9 +308,6 @@ namespace UA.MQTT.Publisher.Configuration
             return BuildResponseAndCropStatus(logPrefix, statusResponse);
         }
 
-        /// <summary>
-        /// Handle unpublish node method call.
-        /// </summary>
         public byte[] UnpublishNodes(string payload)
         {
             string logPrefix = "HandleUnpublishNodesMethodAsync:";
@@ -323,9 +387,6 @@ namespace UA.MQTT.Publisher.Configuration
             return BuildResponseAndCropStatus(logPrefix, statusResponse);
         }
 
-        /// <summary>
-        /// Handle unpublish all nodes method call.
-        /// </summary>
         public byte[] UnpublishAllNodes(string payload)
         {
             string logPrefix = "HandleUnpublishAllNodesMethodAsync:";
@@ -370,9 +431,6 @@ namespace UA.MQTT.Publisher.Configuration
             return BuildResponseAndCropStatus(logPrefix, statusResponse);
         }
 
-        /// <summary>
-        /// Handle method call to get diagnostic information.
-        /// </summary>
         public byte[] GetDiagnosticInfo(string payload)
         {
             string logPrefix = "HandleGetDiagnosticInfoMethodAsync:";
