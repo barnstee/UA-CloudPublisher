@@ -46,7 +46,6 @@
 
 @section scripts {
     <script src="~/lib/jstree/jstree.min.js"></script>
-    <script src="/signalr/hubs"></script>
     <script>
         var title = "TitleBrowser";
 
@@ -93,27 +92,15 @@
 
         function VariablePublish(obj) {
             $.post({
-                url: "/Browser/VariablePublishUnpublish",
-                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: obj.item.nodeId, method: "publish" },
+                url: "/Browser/VariablePublish",
+                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: obj.item.nodeId },
                 success: function (data) {
-                    $("#variablePublish_variableData").html(data);
-                    $("#variablePublish_variableName").html(obj.item.nodeName);
-                    $("#connectLoader").hide();
-                    $("#waitingForPublishing").hide();
-                    $("#publishBody").show();
-                    if (data == htmlDecode('OpcMethodCallSucceeded')) {
-                        var jsonNode = $('#OpcNodeTree').jstree(true).get_node(obj.item.nodeId);
-                        $('#OpcNodeTree').jstree(true).set_type(jsonNode, "published");
-                        jsonNode.original.publishedNode = true;
-                        $("#rdxLink").show();
-                    }
+                    console.log("callback node name: " + obj.item.nodeName);
+                    console.log("callback got results: " + data);
+                    $("#message").html("Successfully published node: " + obj.item.nodeName);
                 },
                 error: function (response) {
-                    if (response.status == 403) {
-                        $('#browserErrorMessage').html('ErrorInsufficientPermissions');
-                    } else {
-                        $('#browserErrorMessage').html('ErrorUnknown');
-                    }
+                    console.log("Got error publishing node: %o", response);
                 }
             });
         }
@@ -130,14 +117,6 @@
                         "nodeId": node.id,
                         "nodeName": node.text,
                         "action": function (obj) {
-                            $("#variablePublishContextPanel").removeClass("overlay-close").addClass("overlay-right-open");
-                            $("#publishHeader").html('ContextPanelHeaderPublish');
-                            $("#publishBody").hide();
-                            $("#waitingForPublishing").html('ContextPanelPublishing');
-                            $("#rdxLink").hide();
-                            $("#waitingForPublishing").show();
-                            $("#connectLoader").show();
-                            $(".dashboard-cancel-icon").show();
                             VariablePublish(obj);
                         }
                     }
@@ -162,17 +141,6 @@
             return result;
         }
 
-        var back;
-        $(function ($) {
-            back = document.referrer;
-            $("#hiddenBackUrl").val(back);
-
-            $("#disconnectButton").attr("enabled", "enabled");
-            $('#OpcNodeTree').on(
-                "init.jstree", function () {
-                });
-        });
-
         $(function ($) {
             $('#OpcNodeTree').jstree({
                 "plugins": ["wholerow", "contextmenu", "types"],
@@ -196,11 +164,7 @@
                             return { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: node.id };
                         },
                         "error": function (xdr) {
-                            if (xdr.status == 403) {
-                                $('#browserErrorMessage').html('ErrorInsufficientPermissions');
-                            } else {
-                                $('#browserErrorMessage').html('ErrorUnknown');
-                            }
+                            console.log("Got error browsing opc variable: %o", xdr);
                         }
                     }
                 },
@@ -243,7 +207,6 @@
                     }
                 }
             });
-            jQuery('.scrollbar-macosx').scrollbar();
         });
     </script>
 }

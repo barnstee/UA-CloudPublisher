@@ -3,6 +3,7 @@ namespace UA.MQTT.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Client;
     using System;
@@ -375,14 +376,11 @@ namespace UA.MQTT.Publisher.Controllers
         }
 
         [HttpPost]
-        public ActionResult VariablePublish(string jstreeNode, string method)
+        public ActionResult VariablePublish(string jstreeNode)
         {
-            string actionResult = "";
-
             try
             {
-                
-                return Content(actionResult);
+                return Content(JsonConvert.SerializeObject(new NodeId(GetNodeIDFromJSTreeNode(jstreeNode))));
             }
             catch (Exception ex)
             {
