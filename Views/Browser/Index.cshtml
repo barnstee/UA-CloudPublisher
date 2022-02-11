@@ -15,98 +15,19 @@
     <div class="row browser_top_container">
         <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
             <div class="row browser_select_connect_container">
-                <form data-ajax="true" data-ajax-complete="onSuccess" data-ajax-failure="onFailure" asp-action="Connect" asp-controller="Browser">
-                    <p>
+                <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="Connect">
                         <div class="browser_connect_selection_textbox">
-                            @Html.TextBox("endpointUrl", null, new { style = "width:300%;" })
+                            <p>@Html.TextBox("endpointUrl", null, new { style = "width:300%;" })</p>
                         </div>
-                    <p>
+                        <div class="row browser_browse_status_message_container">
+                            <p class="alert alert-light"><div class="alert alert-light" id="message">@Model.StatusMessage</div></p>
+                        </div>
                         <div class="browser_browse_connect_button">
                             <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
                         </div>
+                    </p>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-    $(document).ready(function () {
-        $("#connectButton").prop("disabled", false);
-        // initialize all context panels to default state closed
-        $("#connectContextpanel").addClass("overlay-close").removeClass("overlay-right-open");
-        $("#errorContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
-    });
-
-    var disconnect = false;
-    var title = "Browser";
-
-    function onSuccess(sessionModel) {
-        $("#hiddenEndpointUrl").val(sessionModel.EndpointUrl);
-        $("#connectLoader").hide();
-
-        if (sessionModel.ErrorHeader == "Untrusted Certificate") {
-            $("#waitingForConnect").hide();
-            $("#connectBodyContextPanel").show();
-            $("#connectContextpanelHeader").html("Security Warning");
-            $("#errorContextPanel").hide();
-            $("#proceedButton").show();
-            $("#cancelButton").show();
-
-        } else if (sessionModel.ErrorHeader != null) {
-            $("#connectLoader").hide();
-            $("#waitingForConnect").hide();
-            $("#connectContextpanelHeader").html("Error");
-            $("#errorContextPanel").show();
-            $("#errorHeader").html(sessionModel.ErrorHeader);
-            $("#errorMessage").html(sessionModel.ErrorMessage);
-            disconnect = true;
-        }
-        else {
-            var baseUrl = '@Url.Content("~")';
-            window.location.href = baseUrl + "Browser/Index";
-        }
-    }
-
-    function onFailure(response) {
-        $("#connectLoader").hide();
-        $("#waitingForConnect").hide();
-        $("#connectContextpanelHeader").html("Error");
-        $("#errorContextPanel").show();
-        $("#errorHeader").html(sessionModel.ErrorHeader);
-        $("#errorMessage").html(sessionModel.ErrorMessage);
-        disconnect = true;
-    }
-
-    $('form').submit(function () {
-        $("#connectButton").prop("disabled", true);
-    })
-
-    function connecting() {
-        $("#connectContextpanelHeader").html("Connect");
-        $("#connectBodyContextPanel").hide();
-        $("#proceedButton").hide();
-        $("#cancelButton").hide();
-        $("#waitingForConnect").show();
-        $("#connectLoader").show();
-    }
-
-    function closeConnectContextPanel() {
-        $("#connectContextpanel").addClass("overlay-close").removeClass("overlay-right-open");
-
-        if (disconnect == true) {
-            $.post({
-                url: "/Browser/Disconnect",
-                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), backUrl: window.location.href },
-                success: function onSuccess(response) {
-                },
-                error: function (response) {
-                    console.error("error connecting to an OPC UA server: ", response.d, response.responseText);
-                }
-            });
-        }
-        $("#connectButton").prop("disabled", false);
-        disconnect = false;
-    }
-</script>
-

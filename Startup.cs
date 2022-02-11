@@ -91,7 +91,6 @@ namespace UA.MQTT.Publisher
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Browser}/{action=Index}/{id?}");
-                endpoints.MapHub<StatusHub>("/statushub");
             });
 
             // create our app

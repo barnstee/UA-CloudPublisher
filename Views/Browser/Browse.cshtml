@@ -27,20 +27,19 @@
                 <div class="alert alert-dark" role="alert" id="variableReadHeader"></div>
                 <ul class="list-group">
                     <li class="list-group-item" id="variableReadValue"></li>
-                    <li class="list-group-item" id="variableReadStatus"></li>
+                    <li class="list-group-item" id="variableReadNodeID"></li>
                     <li class="list-group-item" id="variableReadSourceTimeStamp"></li>
-                    <li class="list-group-item" id="variableReadSourceServerStamp"></li>
                 </ul>
             </div>
         </div>
     </div>
-    <div class="row browser_browse_status_message_container mt-2">
-        <p class="alert alert-light">Status: <div class="alert alert-light" id="message">Browsed OPC Server</div></p>
+    <div class="row browser_browse_status_message_container">
+        <p class="alert alert-light"><div class="alert alert-light" id="message">@Model.StatusMessage</div></p>
     </div>
-    <div class="row browser_browse_disconnect_button mt-2">
+    <div class="row browser_browse_disconnect_button">
         @using (Html.BeginForm("Disconnect", "Browser"))
         {
-            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Close" />
+            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
         }
     </div>
 </div>
@@ -50,60 +49,6 @@
     <script src="/signalr/hubs"></script>
     <script>
         var title = "TitleBrowser";
-
-        $(async function () {
-            //connection to SignalR hub
-            const connection = new signalR.HubConnectionBuilder()
-                .withUrl("/statusHub")
-                .configureLogging(signalR.LogLevel.Information)
-                .build();
-
-            // Create a function that the hub can call back to display messages
-            connection.on("addNewMessageToPage", (session, message) => {
-                $('#message').text(message);
-            });
-
-            // Start/continue the connection
-            async function establishSignalRConnection() {
-                try {
-                    await connection.start();
-                    console.log("connection to signalr hub successfull established");
-                } catch (err) {
-                    console.warn("Error creating SignalR connection, retry in 5 seconds %o", err);
-                    setTimeout(async () => { await establishSignalRConnection(); }, 5000);
-                }
-            };
-
-            connection.onclose(async () => { await establishSignalRConnection(); });
-
-            // Start the connection.
-            await establishSignalRConnection();
-        });
-
-        $(function () {
-            var status = $.connection.statusHub;
-
-            // Create a function that the hub can call back to display messages
-            status.client.addNewMessageToPage = function (session, message) {
-                if (session === '@Model.SessionId') {
-                    $('#message').replaceWith('<p id="message">CommunicationStatusMessageLabel' + ' ' + htmlEncode(message) + '</p>');
-                }
-            }
-
-            // Start/continue the connection
-            $.connection.hub.start().done(function () { });
-
-            // initialize all context panels to default state closed
-            $("#attributeReadContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
-            $("#variableReadContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
-            $("#variablePublishContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
-            $("#browserErrorContextPanel").addClass("overlay-close").removeClass("overlay-right-open");
-        });
-
-        function htmlEncode(value) {
-            var encodedValue = $('<div />').text(value).html();
-            return encodedValue;
-        }
 
         function htmlDecode(value) {
             decodedValue = $('<div>').html(value).text();
@@ -133,9 +78,8 @@
                     var dataContainer = JSON.parse(data);
 
                     $("#variableReadValue").html(getRightLeftDiv("<strong>Value:</strong>", dataContainer.value));
-                    $("#variableReadStatus").html(getRightLeftDiv("<strong>Status:</strong>", dataContainer.status));
+                    $("#variableReadNodeID").html(getRightLeftDiv("<strong>Expanded Node ID:</strong>", dataContainer.nodeid));
                     $("#variableReadSourceTimeStamp").html(getRightLeftDiv("<strong>Source Timestamp:</strong>", dataContainer.sourceTimestamp));
-                    $("#variableReadSourceServerStamp").html(getRightLeftDiv("<strong>Server Timestamp:</strong>", dataContainer.serverTimestamp));
 
                     if (typeof onSuccess !== "undefined" && onSuccess !== null) {
                         onSuccess();
@@ -165,7 +109,6 @@
                     }
                 },
                 error: function (response) {
-                    openErrorPanel();
                     if (response.status == 403) {
                         $('#browserErrorMessage').html('ErrorInsufficientPermissions');
                     } else {
@@ -173,20 +116,6 @@
                     }
                 }
             });
-        }
-
-        function openErrorPanel() {
-            $("#browserErrorContextPanel").removeClass("overlay-close").addClass("overlay-right-open");
-            $("#disconnectButton").attr("disabled", "disabled");
-            $(".dashboard-cancel-icon").show();
-        }
-
-        function closeErrorPanel() {
-            $('#browserErrorContextPanel').addClass('overlay-close').removeClass("overlay-right-open");
-            $("#disconnectButton").attr("enabled", "enabled");
-            if ($('#browserErrorMessage').html() == 'ErrorUnknown') {
-                window.location.href = "/Browser/Disconnect?backUrl=" + back;
-            }
         }
 
         function OpcServerMenu(node) {
@@ -267,7 +196,6 @@
                             return { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: node.id };
                         },
                         "error": function (xdr) {
-                            openErrorPanel();
                             if (xdr.status == 403) {
                                 $('#browserErrorMessage').html('ErrorInsufficientPermissions');
                             } else {
