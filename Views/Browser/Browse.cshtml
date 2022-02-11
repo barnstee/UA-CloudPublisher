@@ -61,7 +61,7 @@
                 + "</div>";
         }
 
-        function VariableRead(obj, onSuccess) {
+        function VariableRead(obj) {
             $("#variableWriteContainer").addClass('invisible');
 
             $.post({
@@ -80,12 +80,10 @@
                     $("#variableReadNodeID").html(getRightLeftDiv("<strong>Expanded Node ID:</strong>", dataContainer.nodeid));
                     $("#variableReadSourceTimeStamp").html(getRightLeftDiv("<strong>Source Timestamp:</strong>", dataContainer.sourceTimestamp));
 
-                    if (typeof onSuccess !== "undefined" && onSuccess !== null) {
-                        onSuccess();
-                    }
+                    $("#message").html("Successfully read node: " + obj.item.nodeName);
                 },
                 error: function (response) {
-                    console.log("Got error reading opc variable: %o", response);
+                    $("#message").html("Got error reading opc variable: %o", response);
                 }
             });
         }
@@ -100,7 +98,7 @@
                     $("#message").html("Successfully published node: " + obj.item.nodeName);
                 },
                 error: function (response) {
-                    console.log("Got error publishing node: %o", response);
+                    $("#message").html("Got error publishing node: %o", response);
                 }
             });
         }

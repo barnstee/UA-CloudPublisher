@@ -60,7 +60,7 @@ namespace UA.MQTT.Publisher.Configuration
             }
 
             // register publish received and disconnect handler callbacks
-            _mqttClient.MqttMsgPublishReceived += PublishReceived;
+            _mqttClient.MqttMsgPublishReceived += MessageReceived;
             _mqttClient.ConnectionClosed += ConnectionClosed;
 
             // subscribe to all our topics
@@ -92,7 +92,7 @@ namespace UA.MQTT.Publisher.Configuration
             Connect();
         }
 
-        private void PublishReceived(object sender, MqttMsgPublishEventArgs e)
+        private void MessageReceived(object sender, MqttMsgPublishEventArgs e)
         {
             string requestTopic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
             string responseTopic = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");

@@ -15,7 +15,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "UANodesetWebViewer": {
+    "UA-MQTT-Publisher": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

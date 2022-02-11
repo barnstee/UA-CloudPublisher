@@ -11,15 +11,18 @@ namespace UA.MQTT.Publisher.Controllers
     using System.Diagnostics;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher;
+    using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
     public class BrowserController : Controller
     {
         private readonly OpcSessionHelper _helper;
+        private readonly IUAClient _client;
 
-        public BrowserController(OpcSessionHelper helper)
+        public BrowserController(OpcSessionHelper helper, IUAClient client)
         {
             _helper = helper;
+            _client = client;
         }
 
         [HttpGet]
@@ -46,7 +49,7 @@ namespace UA.MQTT.Publisher.Controllers
 
             try
             {
-                await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl, true);
+                await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl, true).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -84,7 +87,7 @@ namespace UA.MQTT.Publisher.Controllers
 
             try
             {
-                Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl"));
+                Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
 
                 session.Browse(
                     null,
@@ -126,7 +129,7 @@ namespace UA.MQTT.Publisher.Controllers
 
                 try
                 {
-                    session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl"));
+                    session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
 
                     session.Browse(
                         null,
@@ -376,10 +379,27 @@ namespace UA.MQTT.Publisher.Controllers
         }
 
         [HttpPost]
-        public ActionResult VariablePublish(string jstreeNode)
+        public async Task<ActionResult> VariablePublish(string jstreeNode)
         {
             try
             {
+                NodeId nodeId = new NodeId(GetNodeIDFromJSTreeNode(jstreeNode));
+                string endpointUrl = HttpContext.Session.GetString("EndpointUrl");
+
+                Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl).ConfigureAwait(false);
+
+                EventPublishingModel node = new EventPublishingModel
+                {
+                    ExpandedNodeId = new ExpandedNodeId(nodeId, session.NamespaceUris.ToArray()[nodeId.NamespaceIndex]),
+                    EndpointUrl = endpointUrl,
+                    SkipFirst = false,
+                    UseSecurity = true,
+                    AuthCredential = null,
+                    OpcAuthenticationMode = OpcSessionUserAuthenticationMode.Anonymous
+                };
+
+                await _client.PublishNodeAsync(node).ConfigureAwait(false);
+
                 return Content(JsonConvert.SerializeObject(new NodeId(GetNodeIDFromJSTreeNode(jstreeNode))));
             }
             catch (Exception ex)
