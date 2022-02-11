@@ -12,7 +12,6 @@ namespace UA.MQTT.Publisher
     using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Configuration;
-    using UA.MQTT.Publisher.Controllers;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
@@ -64,12 +63,12 @@ namespace UA.MQTT.Publisher
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app,
-                                    IWebHostEnvironment env,
-                                    ILoggerFactory loggerFactory,
-                                    IUAApplication uaApp,
-                                    IMessageProcessingEngine engine,
-                                    IPeriodicDiagnosticsInfo diag,
-                                    IPublishedNodesFileHandler publishedNodesFileHandler)
+                              IWebHostEnvironment env,
+                              ILoggerFactory loggerFactory,
+                              IUAApplication uaApp,
+                              IMessageProcessingEngine engine,
+                              IPeriodicDiagnosticsInfo diag,
+                              IPublishedNodesFileHandler publishedNodesFileHandler)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
 

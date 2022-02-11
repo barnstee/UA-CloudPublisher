@@ -73,7 +73,7 @@ namespace UA.MQTT.Publisher.Models
             {
                 if (EncryptedAuthCredential == null)
                 {
-                    EncryptedAuthCredential = new EncryptedNetworkCredential(null, null);
+                    EncryptedAuthCredential = new EncryptedCredentials(null, null);
                 }
 
                 EncryptedAuthCredential.UserName = value;
@@ -94,7 +94,7 @@ namespace UA.MQTT.Publisher.Models
             {
                 if (EncryptedAuthCredential == null)
                 {
-                    EncryptedAuthCredential = new EncryptedNetworkCredential(null, null);
+                    EncryptedAuthCredential = new EncryptedCredentials(null, null);
                 }
 
                 EncryptedAuthCredential.Password = value;
@@ -105,7 +105,7 @@ namespace UA.MQTT.Publisher.Models
         /// Gets or sets the encrypted auth credential when OpcAuthenticationMode is set to UsernamePassword.
         /// </summary>
         [JsonIgnore]
-        public EncryptedNetworkCredential EncryptedAuthCredential { get; set; }
+        public EncryptedCredentials EncryptedAuthCredential { get; set; }
 
         /// <summary>
         /// Instead all nodes should be defined in this collection.

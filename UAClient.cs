@@ -25,7 +25,7 @@ namespace UA.MQTT.Publisher
         private IMessageSource _trigger;
 
         private List<Session> _sessions = new List<Session>();
-        private List<HeartBeatPublishing> _heartbeats = new List<HeartBeatPublishing>();
+        private List<PeriodicPublishing> _heartbeats = new List<PeriodicPublishing>();
         private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
         private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
 
@@ -186,7 +186,7 @@ namespace UA.MQTT.Publisher
             // loop through all sessions
             lock (_sessions)
             {
-                foreach (HeartBeatPublishing heartbeat in _heartbeats)
+                foreach (PeriodicPublishing heartbeat in _heartbeats)
                 {
                     heartbeat.Stop();
                     heartbeat.Dispose();
@@ -466,7 +466,7 @@ namespace UA.MQTT.Publisher
                 // create a heartbeat timer, if required
                 if (nodeToPublish.HeartbeatInterval > 0)
                 {
-                    HeartBeatPublishing heartbeat = new HeartBeatPublishing(
+                    PeriodicPublishing heartbeat = new PeriodicPublishing(
                         (uint)nodeToPublish.HeartbeatInterval,
                         session,
                         resolvedNodeId,
@@ -600,7 +600,7 @@ namespace UA.MQTT.Publisher
                     foreach (Session session in _sessions)
                     {
                         OpcSessionUserAuthenticationMode authenticationMode = OpcSessionUserAuthenticationMode.Anonymous;
-                        EncryptedNetworkCredential credentials = null;
+                        EncryptedCredentials credentials = null;
 
                         if (session.Identity.TokenType == UserTokenType.UserName)
                         {
@@ -609,7 +609,7 @@ namespace UA.MQTT.Publisher
                             UserNameIdentityToken token = (UserNameIdentityToken)session.Identity.GetIdentityToken();
                             string username = token.UserName;
                             string password = token.DecryptedPassword;
-                            credentials = new EncryptedNetworkCredential(privateKey, new NetworkCredential(username, password));
+                            credentials = new EncryptedCredentials(privateKey, new NetworkCredential(username, password));
                         }
 
                         ConfigurationFileEntryModel publisherConfigurationFileEntry = new ConfigurationFileEntryModel();
@@ -633,7 +633,7 @@ namespace UA.MQTT.Publisher
 
                                 lock (_heartbeats)
                                 {
-                                    foreach (HeartBeatPublishing heartbeat in _heartbeats)
+                                    foreach (PeriodicPublishing heartbeat in _heartbeats)
                                     {
                                         if ((heartbeat.HeartBeatSession == session) && (heartbeat.HeartBeatNodeId == monitoredItem.ResolvedNodeId))
                                         {

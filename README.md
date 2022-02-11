@@ -13,4 +13,5 @@ A cross-platform OPC UA cloud publisher leveraging OPC UA PubSub and MQTT, runni
 * UI for diaplaying diagnostic infomration
 * UI for configuration
 * Publishing from the cloud via a connected MQTT broker
+* Publishing on data changes or on regular intervals
 * Supports Microsoft OPC Publisher publishesnodes.json imput file format

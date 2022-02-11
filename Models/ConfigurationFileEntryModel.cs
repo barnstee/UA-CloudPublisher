@@ -65,7 +65,7 @@ namespace UA.MQTT.Publisher.Models
             {
                 if (EncryptedAuthCredential == null)
                 {
-                    EncryptedAuthCredential = new EncryptedNetworkCredential(null, null);
+                    EncryptedAuthCredential = new EncryptedCredentials(null, null);
                 }
 
                 EncryptedAuthCredential.UserName = value;
@@ -86,7 +86,7 @@ namespace UA.MQTT.Publisher.Models
             {
                 if (EncryptedAuthCredential == null)
                 {
-                    EncryptedAuthCredential = new EncryptedNetworkCredential(null, null);
+                    EncryptedAuthCredential = new EncryptedCredentials(null, null);
                 }
 
                 EncryptedAuthCredential.Password = value;
@@ -97,7 +97,7 @@ namespace UA.MQTT.Publisher.Models
         /// Gets or sets the encrpyted credential to authenticate against the OPC UA Server (when OpcAuthenticationMode is set to UsernamePassword.
         /// </summary>
         [JsonIgnore]
-        public EncryptedNetworkCredential EncryptedAuthCredential { get; set; }
+        public EncryptedCredentials EncryptedAuthCredential { get; set; }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<OpcNodeOnEndpointModel> OpcNodes { get; set; }
