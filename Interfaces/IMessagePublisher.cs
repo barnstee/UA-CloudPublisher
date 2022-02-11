@@ -1,7 +1,7 @@
 ﻿
 namespace UA.MQTT.Publisher.Interfaces
 {
-    public interface IMessageSink
+    public interface IMessagePublisher
     {
         void SendMessage(byte[] message);
     }

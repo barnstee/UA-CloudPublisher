@@ -13,31 +13,37 @@ namespace UA.MQTT.Publisher
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
-    using UA.MQTT.Publisher;
 
     public class UAClient : IUAClient
     {
-        /// <summary>
-        /// Constructor
-        /// </summary>
+        private readonly IUAApplication _app;
+        private readonly IPeriodicDiagnosticsInfo _diag;
+        private readonly ILogger _logger;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly Settings _settings;
+
+        private IMessageSource _trigger;
+
+        private List<Session> _sessions = new List<Session>();
+        private List<HeartBeatPublishing> _heartbeats = new List<HeartBeatPublishing>();
+        private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
+        private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
+
         public UAClient(
             IUAApplication app,
             IPeriodicDiagnosticsInfo diag,
             ILoggerFactory loggerFactory,
-            ISettingsConfiguration settingsConfiguration,
-            IMessageTrigger trigger)
+            Settings settings,
+            IMessageSource trigger)
         {
             _logger = loggerFactory.CreateLogger("UAClient");
             _loggerFactory = loggerFactory;
             _app = app;
             _diag = diag;
-            _settingsConfiguration = settingsConfiguration;
+            _settings = settings;
             _trigger = trigger;
         }
 
-        /// <summary>
-        /// IDisposable implementation
-        /// </summary>
         public void Dispose()
         {
             try
@@ -64,7 +70,7 @@ namespace UA.MQTT.Publisher
                     else
                     {
                         // use a discovery client to connect to the server and discover all its endpoints, then pick the one with the highest security
-                        selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, _settingsConfiguration.UseSecurity);
+                        selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, true);
 
                         // add to cache
                         _endpointDescriptionCache[endpointUrl] = selectedEndpoint;
@@ -114,14 +120,13 @@ namespace UA.MQTT.Publisher
                 return existingSession;
             }
 
-            EndpointDescription selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, _settingsConfiguration.UseSecurity);
+            EndpointDescription selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, true);
             ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create());
             _logger.LogInformation("Connecting session on endpoint {endpointUrl}.", configuredEndpoint.EndpointUrl);
 
             uint timeout = (uint)_app.GetAppConfig().ClientConfiguration.DefaultSessionTimeout;
 
-            _logger.LogInformation("Creating {securitySetting} session for endpoint {endpointUrl} with timeout of {timeout} ms.",
-                _settingsConfiguration.UseSecurity ? "secured" : "unsecured",
+            _logger.LogInformation("Creating session for endpoint {endpointUrl} with timeout of {timeout} ms.",
                 configuredEndpoint.EndpointUrl,
                 timeout);
 
@@ -324,7 +329,7 @@ namespace UA.MQTT.Publisher
             try
             {
                 // check if there is already a subscription with the same publishing interval, which can be used to monitor the node
-                int opcPublishingIntervalForNode = (nodeToPublish.OpcPublishingInterval == 0) ? _settingsConfiguration.DefaultOpcPublishingInterval : nodeToPublish.OpcPublishingInterval;
+                int opcPublishingIntervalForNode = (nodeToPublish.OpcPublishingInterval == 0) ? (int)_settings.DefaultOpcPublishingInterval : nodeToPublish.OpcPublishingInterval;
                 foreach (Subscription subscription in session.Subscriptions)
                 {
                     if (subscription.PublishingInterval == opcPublishingIntervalForNode)
@@ -427,7 +432,7 @@ namespace UA.MQTT.Publisher
                     }
                 }
 
-                int opcSamplingIntervalForNode = (nodeToPublish.OpcSamplingInterval == 0) ? _settingsConfiguration.DefaultOpcSamplingInterval : nodeToPublish.OpcSamplingInterval;
+                int opcSamplingIntervalForNode = (nodeToPublish.OpcSamplingInterval == 0) ? (int)_settings.DefaultOpcSamplingInterval : nodeToPublish.OpcSamplingInterval;
                 MonitoredItem newMonitoredItem = new MonitoredItem(opcSubscription.DefaultItem) {
                     StartNodeId = resolvedNodeId,
                     AttributeId = Attributes.Value,
@@ -466,7 +471,7 @@ namespace UA.MQTT.Publisher
                         session,
                         resolvedNodeId,
                         _loggerFactory,
-                        _settingsConfiguration
+                        _settings
                     );
 
                     lock (_heartbeats)
@@ -611,7 +616,7 @@ namespace UA.MQTT.Publisher
                         publisherConfigurationFileEntry.EndpointUrl = session.ConfiguredEndpoint.EndpointUrl;
                         publisherConfigurationFileEntry.OpcAuthenticationMode = authenticationMode;
                         publisherConfigurationFileEntry.EncryptedAuthCredential = credentials;
-                        publisherConfigurationFileEntry.UseSecurity = _settingsConfiguration.UseSecurity;
+                        publisherConfigurationFileEntry.UseSecurity = true;
                         publisherConfigurationFileEntry.OpcNodes = new List<OpcNodeOnEndpointModel>();
 
                         foreach (Subscription subscription in session.Subscriptions)
@@ -660,18 +665,5 @@ namespace UA.MQTT.Publisher
 
             return publisherConfigurationFileEntries;
         }
-
-        private readonly IUAApplication _app;
-        private readonly IPeriodicDiagnosticsInfo _diag;
-        private readonly ILogger _logger;
-        private readonly ILoggerFactory _loggerFactory;
-        private readonly ISettingsConfiguration _settingsConfiguration;
-
-        private IMessageTrigger _trigger;
-
-        private List<Session> _sessions = new List<Session>();
-        private List<HeartBeatPublishing> _heartbeats = new List<HeartBeatPublishing>();
-        private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
-        private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
     }
 }

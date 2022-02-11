@@ -28,40 +28,40 @@ namespace UA.MQTT.Publisher.Configuration
     public class MQTTSubscriber : IMQTTSubscriber
     {
         private IMqttClient _client = null;
-        private string _clientName = Environment.GetEnvironmentVariable("MQTT_CLIENTNAME");
+        private string _clientName = null;
 
         private readonly ILogger _logger;
         private readonly IUAClient _uaClient;
         private readonly IPeriodicDiagnosticsInfo _diag;
+        private readonly Settings _settings;
 
         public MQTTSubscriber(
             ILoggerFactory loggerFactory,
             IUAClient client,
-            IPeriodicDiagnosticsInfo diag)
+            IPeriodicDiagnosticsInfo diag,
+            Settings settings)
         {
             _logger = loggerFactory.CreateLogger("MQTTSubscriber");
             _uaClient = client;
             _diag = diag;
+            _settings = settings;
+            _clientName = settings.MQTTClientName;
         }
 
         public void Connect()
         {
             // create MQTT client
-            string brokerName = Environment.GetEnvironmentVariable("MQTT_BROKERNAME");
-            string userName = Environment.GetEnvironmentVariable("MQTT_USERNAME");
-            string password = Environment.GetEnvironmentVariable("MQTT_PASSWORD");
-            string topic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
-
-            if (Environment.GetEnvironmentVariable("CREATE_SAS_PASSWORD") != null)
+            string password = _settings.MQTTPassword;
+            if (_settings.CreateMQTTSASToken)
             {
                 // create SAS token as password
                 TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
                 int week = 60 * 60 * 24 * 7;
                 string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
-                string stringToSign = HttpUtility.UrlEncode(brokerName + "/devices/" + _clientName) + "\n" + expiry;
+                string stringToSign = HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _clientName) + "\n" + expiry;
                 HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
                 string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-                password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(brokerName + "/devices/" + _clientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
+                password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _clientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
             }
 
             // create MQTT client
@@ -70,13 +70,13 @@ namespace UA.MQTT.Publisher.Configuration
             var clientOptions = new MqttClientOptionsBuilder()
                 .WithTcpServer(opt => opt.NoDelay = true)
                 .WithClientId(_clientName)
-                .WithTcpServer(brokerName, 8883)
+                .WithTcpServer(_settings.MQTTBrokerName, 8883)
                 .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = true })
                 .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                 .WithCommunicationTimeout(TimeSpan.FromSeconds(30))
                 .WithKeepAlivePeriod(TimeSpan.FromSeconds(300))
                 .WithCleanSession(false) // keep existing subscriptions 
-                .WithCredentials(userName, password);
+                .WithCredentials(_settings.MQTTUsername, password);
 
             // setup disconnection handling
             _client.UseDisconnectedHandler(disconnectArgs =>
@@ -99,7 +99,7 @@ namespace UA.MQTT.Publisher.Configuration
                 var subscribeResult = _client.SubscribeAsync(
                     new MqttTopicFilter
                     {
-                        Topic = topic,
+                        Topic = _settings.MQTTTopic,
                         QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
                     }).GetAwaiter().GetResult();
 
@@ -135,7 +135,7 @@ namespace UA.MQTT.Publisher.Configuration
 
         private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)
         {
-            string responseTopic = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");
+            string responseTopic = _settings.MQTTResponseTopic;
 
             return new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
@@ -161,7 +161,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             _logger.LogInformation($"Received method call with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
 
-            string requestTopic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
+            string requestTopic = _settings.MQTTTopic;
             string requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
 
             try
@@ -465,7 +465,7 @@ namespace UA.MQTT.Publisher.Configuration
             while (true)
             {
                 result = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(statusResponse.GetRange(0, maxIndex)));
-                if (result.Length > SettingsConfiguration.MaxResponsePayloadLength)
+                if (result.Length > Settings.MaxResponsePayloadLength)
                 {
                     maxIndex /= 2;
                     continue;
@@ -488,10 +488,10 @@ namespace UA.MQTT.Publisher.Configuration
         {
             byte[] result = Encoding.UTF8.GetBytes(resultString);
 
-            if (result.Length > SettingsConfiguration.MaxResponsePayloadLength)
+            if (result.Length > Settings.MaxResponsePayloadLength)
             {
                 _logger.LogError($"{logPrefix} Response size is too long");
-                Array.Resize(ref result, result.Length > SettingsConfiguration.MaxResponsePayloadLength ? SettingsConfiguration.MaxResponsePayloadLength : result.Length);
+                Array.Resize(ref result, result.Length > Settings.MaxResponsePayloadLength ? Settings.MaxResponsePayloadLength : result.Length);
             }
 
             return result;

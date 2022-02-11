@@ -4,7 +4,7 @@ namespace UA.MQTT.Publisher.Interfaces
     using Opc.Ua.Client;
     using System.Collections.Generic;
 
-    public interface IMessageTrigger
+    public interface IMessageSource
     {
         /// <summary>
         /// Skip the first notification for a published node

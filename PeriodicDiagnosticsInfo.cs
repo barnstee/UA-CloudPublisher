@@ -14,10 +14,14 @@ namespace UA.MQTT.Publisher
     /// </summary>
     public class PeriodicDiagnosticsInfo : IPeriodicDiagnosticsInfo
     {
-        public PeriodicDiagnosticsInfo(ILoggerFactory loggerFactory, ISettingsConfiguration settingsConfiguration)
+        private readonly ILogger _logger;
+        private readonly Settings _settings;
+        private long _lastNumMessagesSent = 0;
+
+        public PeriodicDiagnosticsInfo(ILoggerFactory loggerFactory, Settings settings)
         {
             _logger = loggerFactory.CreateLogger("PeriodicDiagnosticsInfo");
-            _settingsConfiguration = settingsConfiguration;
+            _settings = settings;
         }
 
         /// <summary>
@@ -52,7 +56,7 @@ namespace UA.MQTT.Publisher
         /// </summary>
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            if ( _settingsConfiguration.DiagnosticsInterval == 0)
+            if ( _settings.DiagnosticsLoggingInterval == 0)
             {
                 // period diagnostics are disabled
                 return;
@@ -67,9 +71,9 @@ namespace UA.MQTT.Publisher
 
                 try
                 {
-                    await Task.Delay(_settingsConfiguration.DiagnosticsInterval * 1000, cancellationToken).ConfigureAwait(false);
+                    await Task.Delay((int)_settings.DiagnosticsLoggingInterval * 1000, cancellationToken).ConfigureAwait(false);
 
-                    float messagesPerSecond = ((float)(Info.SentMessages - _lastNumMessagesSent)) / _settingsConfiguration.DiagnosticsInterval;
+                    float messagesPerSecond = ((float)(Info.SentMessages - _lastNumMessagesSent)) / _settings.DiagnosticsLoggingInterval;
 
                     _logger.LogInformation("==========================================================================");
                     _logger.LogInformation($"UA-MQTT-Publisher status for {Info.AssetID} telemetry pipeline @ {DateTime.UtcNow} (started @ {Info.PublisherStartTime})");
@@ -78,7 +82,7 @@ namespace UA.MQTT.Publisher
                     _logger.LogInformation($"OPC UA subscriptions: {Info.NumberOfOpcSubscriptionsConnected}");
                     _logger.LogInformation($"OPC UA monitored items: {Info.NumberOfOpcMonitoredItemsMonitored}");
                     _logger.LogInformation("---------------------------------");
-                    _logger.LogInformation($"OPC UA monitored items queue capacity: {_settingsConfiguration.MonitoredItemsQueueCapacity}");
+                    _logger.LogInformation($"OPC UA monitored items queue capacity: {_settings.InternalQueueCapacity}");
                     _logger.LogInformation($"OPC UA monitored items queue current items: {Info.MonitoredItemsQueueCount}");
                     _logger.LogInformation($"OPC UA monitored item notifications enqueued: {Info.EnqueueCount}");
                     _logger.LogInformation($"OPC UA monitored item notifications enqueue failure: {Info.EnqueueFailureCount}");
@@ -97,8 +101,8 @@ namespace UA.MQTT.Publisher
                     _logger.LogInformation($"Number of OPC UA notifications encoded: {Info.NumberOfEvents}");
                     _logger.LogInformation("---------------------------------");
                     _logger.LogInformation($"Current working set in MB: {Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)}");
-                    _logger.LogInformation($"IoT Hub send interval setting: {_settingsConfiguration.DefaultSendIntervalSeconds}");
-                    _logger.LogInformation($"IoT Hub message size setting: {_settingsConfiguration.HubMessageSize}");
+                    _logger.LogInformation($"IoT Hub send interval setting: {_settings.DefaultSendIntervalSeconds}");
+                    _logger.LogInformation($"IoT Hub message size setting: {_settings.MQTTMessageSize}");
                     _logger.LogInformation($"IoT Hub protocol setting: {Info.HubProtocol}");
                     _logger.LogInformation("==========================================================================");
 
@@ -110,9 +114,5 @@ namespace UA.MQTT.Publisher
                 }
             }
         }
-
-        private readonly ILogger _logger;
-        private readonly ISettingsConfiguration _settingsConfiguration;
-        private long _lastNumMessagesSent = 0;
     }
 }

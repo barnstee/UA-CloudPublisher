@@ -7,7 +7,7 @@ namespace UA.MQTT.Publisher
     using System.Diagnostics;
     using UA.MQTT.Publisher.Interfaces;
 
-    public class MQTTMessageSink : IMessageSink
+    public class MQTTPublisher : IMessagePublisher
     {
         private IMQTTSubscriber _client;
 
@@ -16,7 +16,7 @@ namespace UA.MQTT.Publisher
 
         private Queue<long> _lastMessageLatencies = new Queue<long>();
 
-        public MQTTMessageSink(IPeriodicDiagnosticsInfo diag,
+        public MQTTPublisher(IPeriodicDiagnosticsInfo diag,
                                ILoggerFactory loggerFactory,
                                IMQTTSubscriber subscriber)
         {

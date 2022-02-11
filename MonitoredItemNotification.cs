@@ -13,19 +13,19 @@ namespace UA.MQTT.Publisher
     /// <summary>
     /// Wrapper for the OPC UA monitored item, which monitored a nodes we need to publish.
     /// </summary>
-    public class MonitoredItemNotificationTrigger : IMessageTrigger
+    public class MonitoredItemNotification : IMessageSource
     {
-        /// <summary>
-        /// Skip first notification dictionary
-        /// </summary>
+        private readonly ILogger _logger;
+        private readonly Settings _settings;
+
         public Dictionary<string, bool> SkipFirst { get; set; } = new Dictionary<string, bool>();
 
-        public MonitoredItemNotificationTrigger(
+        public MonitoredItemNotification(
             ILoggerFactory loggerFactory,
-            ISettingsConfiguration settingsConfiguration)
+            Settings settings)
         {
             _logger = loggerFactory.CreateLogger("MonitoredItemNotificationTrigger");
-            _settingsConfiguration = settingsConfiguration;
+            _settings = settings;
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace UA.MQTT.Publisher
 
                 EventMessageDataModel eventMessageData = new EventMessageDataModel();
                 eventMessageData.EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                eventMessageData.ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + _settingsConfiguration.PublisherSite;
+                eventMessageData.ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri;
                 eventMessageData.DisplayName = monitoredItem.DisplayName;
                 eventMessageData.ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString();
                 eventMessageData.DataSetWriterId = eventMessageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
@@ -140,16 +140,16 @@ namespace UA.MQTT.Publisher
                     return;
                 }
 
-                // filter out configured suppression status codes
-                if (_settingsConfiguration.SuppressedOpcStatusCodes != null && _settingsConfiguration.SuppressedOpcStatusCodes.Contains(notification.Value.StatusCode.Code))
+                // filter out messages with bad status
+                if (StatusCode.IsBad(notification.Value.StatusCode.Code))
                 {
-                    _logger.LogDebug($"Filtered notification with status code '{notification.Value.StatusCode.Code}'");
+                    _logger.LogWarning($"Filtered notification with bad status code '{notification.Value.StatusCode.Code}'");
                     return;
                 }
 
                 MessageDataModel messageData = new MessageDataModel();
                 messageData.EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                messageData.ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + _settingsConfiguration.PublisherSite;
+                messageData.ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri;
                 messageData.DisplayName = monitoredItem.DisplayName;
                 messageData.ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString();
                 messageData.DataSetWriterId = messageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
@@ -188,8 +188,5 @@ namespace UA.MQTT.Publisher
                 _logger.LogError(ex, "Error processing monitored item notification");
             }
         }
-
-        private readonly ILogger _logger;
-        private readonly ISettingsConfiguration _settingsConfiguration;
     }
 }

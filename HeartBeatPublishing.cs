@@ -6,40 +6,32 @@ namespace UA.MQTT.Publisher
     using Opc.Ua.Client;
     using System;
     using System.Threading;
-    using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
     public class HeartBeatPublishing: IDisposable
     {
-        /// <summary>
-        /// Retrieves the session containing the heartbeat
-        /// </summary>
+
+        private readonly ILogger _logger;
+        private readonly Timer _timer;
+        private readonly Settings _settings;
+        private string _displayName;
+
         public Session HeartBeatSession { get; }
 
-        /// <summary>
-        /// Retrieves the node Id for the heartbeat
-        /// </summary>
         public NodeId HeartBeatNodeId { get; }
 
-        /// <summary>
-        /// Retrieves the heartbeat interval
-        /// </summary>
         public uint HeartBeatInterval { get; }
 
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        /// TODO: Possibly reimplement this class using OPC UA key frames instead
         public HeartBeatPublishing(
             uint heartbeatInterval,
             Session session,
             NodeId nodeId,
             ILoggerFactory loggerFactory,
-            ISettingsConfiguration settingsConfiguration
+            Settings settings
         )
         {
             _logger = loggerFactory.CreateLogger("HeartBeatPublishing");
-            _settingsConfiguration = settingsConfiguration;
+            _settings = settings;
 
             HeartBeatSession = session;
             HeartBeatNodeId = nodeId;
@@ -76,7 +68,7 @@ namespace UA.MQTT.Publisher
             {
                 MessageDataModel messageData = new MessageDataModel();
                 messageData.EndpointUrl = HeartBeatSession.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                messageData.ApplicationUri = HeartBeatSession.Endpoint.Server.ApplicationUri + _settingsConfiguration.PublisherSite;
+                messageData.ApplicationUri = HeartBeatSession.Endpoint.Server.ApplicationUri;
                 messageData.ExpandedNodeId = NodeId.ToExpandedNodeId(HeartBeatNodeId, HeartBeatSession.NamespaceUris).ToString();
                 messageData.DataSetWriterId = messageData.ApplicationUri + ":" + (HeartBeatInterval * 1000).ToString();
                 messageData.MessageContext = HeartBeatSession.MessageContext;
@@ -107,10 +99,5 @@ namespace UA.MQTT.Publisher
                 _logger.LogError($"Message for heartbeat failed with {ex.Message}'.");
             }
         }
-
-        private readonly ILogger _logger;
-        private readonly Timer _timer;
-        private readonly ISettingsConfiguration _settingsConfiguration;
-        private string _displayName;
     }
 }

@@ -14,6 +14,7 @@ namespace UA.MQTT.Publisher
     using UA.MQTT.Publisher.Configuration;
     using UA.MQTT.Publisher.Controllers;
     using UA.MQTT.Publisher.Interfaces;
+    using UA.MQTT.Publisher.Models;
 
     public class Startup
     {
@@ -35,9 +36,14 @@ namespace UA.MQTT.Publisher
 
             services.AddSignalR();
 
+            string logFilePath = Configuration["LOG_FILE_PATH"];
+            if (string.IsNullOrEmpty(logFilePath))
+            {
+                logFilePath = "Logs/UA-MQTT-Publisher.log";
+            }
             services.AddLogging(logging =>
             {
-                logging.AddFile("Logs/UA-MQTT-Publisher.log");
+                logging.AddFile(logFilePath);
             });
 
             // add our singletons
@@ -45,15 +51,15 @@ namespace UA.MQTT.Publisher
             services.AddSingleton<IUAClient, UAClient>();
             services.AddSingleton<IMQTTSubscriber, MQTTSubscriber>();
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
-            services.AddSingleton<ISettingsConfiguration, SettingsConfiguration>();
+            services.AddSingleton<Settings>();
             services.AddSingleton<IPeriodicDiagnosticsInfo, PeriodicDiagnosticsInfo>();
             services.AddSingleton<OpcSessionHelper>();
 
             // add our message processing engine
             services.AddSingleton<IMessageProcessingEngine, MessageProcessingEngine>();
-            services.AddSingleton<IMessageTrigger, MonitoredItemNotificationTrigger>();
+            services.AddSingleton<IMessageSource, MonitoredItemNotification>();
             services.AddSingleton<IMessageEncoder, PubSubTelemetryEncoder>();
-            services.AddSingleton<IMessageSink, MQTTMessageSink>();
+            services.AddSingleton<IMessagePublisher, MQTTPublisher>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -63,9 +69,10 @@ namespace UA.MQTT.Publisher
                                     IUAApplication uaApp,
                                     IMessageProcessingEngine engine,
                                     IPeriodicDiagnosticsInfo diag,
-                                    ISettingsConfiguration settingsConfiguration,
                                     IPublishedNodesFileHandler publishedNodesFileHandler)
         {
+            ILogger logger = loggerFactory.CreateLogger("Statup");
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -97,31 +104,18 @@ namespace UA.MQTT.Publisher
             uaApp.CreateAsync().GetAwaiter().GetResult();
 
             // kick off the task to show periodic diagnostic info
-            //_ = Task.Run(() => diag.RunAsync());
+            _ = Task.Run(() => diag.RunAsync());
 
             // run the telemetry engine
             _ = Task.Run(() => engine.Run());
 
             // load publishednodes.json file, if available
-            // publishednodes.json wins over pn.json
-            string publishedNodesJSONFilePath1 = settingsConfiguration.AppDataPath + "publishednodes.json";
-            string publishedNodesJSONFilePath2 = settingsConfiguration.AppDataPath + "pn.json";
-            string pathToUse;
-            if (File.Exists(publishedNodesJSONFilePath1))
+            string publishedNodesJSONFilePath = "publishednodes.json";
+            if (File.Exists(publishedNodesJSONFilePath))
             {
-                pathToUse = publishedNodesJSONFilePath1;
-            }
-            else
-            {
-                pathToUse = publishedNodesJSONFilePath2;
-            }
-
-            ILogger logger = loggerFactory.CreateLogger("Statup");
-            if (File.Exists(pathToUse))
-            {
-                logger.LogInformation($"Loading published nodes JSON file from {pathToUse}...");
+                logger.LogInformation($"Loading published nodes JSON file from {publishedNodesJSONFilePath}...");
                 X509Certificate2 certWithPrivateKey = uaApp.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
-                if (!publishedNodesFileHandler.ParseFile(pathToUse, certWithPrivateKey))
+                if (!publishedNodesFileHandler.ParseFile(publishedNodesJSONFilePath, certWithPrivateKey))
                 {
                     logger.LogInformation("Could not load and parse published nodes JSON file!");
                 }
@@ -132,7 +126,7 @@ namespace UA.MQTT.Publisher
             }
             else
             {
-                logger.LogInformation($"Published nodes JSON file not found in {pathToUse}.");
+                logger.LogInformation($"Published nodes JSON file not found in {publishedNodesJSONFilePath}.");
             }
         }
     }

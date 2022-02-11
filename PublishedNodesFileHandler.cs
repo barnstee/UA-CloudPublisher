@@ -15,16 +15,13 @@ namespace UA.MQTT.Publisher.Configuration
     public class PublishedNodesFileHandler : IPublishedNodesFileHandler
     {
         private readonly ILogger _logger;
-        private readonly ISettingsConfiguration _settingsConfiguration;
         private readonly IUAClient _uaClient;
 
         public PublishedNodesFileHandler(
             ILoggerFactory loggerFactory,
-            ISettingsConfiguration settingsConfiguration,
             IUAClient client)
         {
             _logger = loggerFactory.CreateLogger("PublishedNodesFileHandler");
-            _settingsConfiguration = settingsConfiguration;
             _uaClient = client;
         }
 

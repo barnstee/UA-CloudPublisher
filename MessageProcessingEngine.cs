@@ -9,27 +9,41 @@ namespace UA.MQTT.Publisher
     using System.IO;
     using System.Text;
     using System.Threading;
-    using UA.MQTT.Publisher.Configuration;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
     public class MessageProcessingEngine : IMessageProcessingEngine
     {
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        /// <returns></returns>
+        private static ulong _messageID = 0;
+        private bool _batchEmpty = true;
+        private bool _singleMessageSend = false;
+        private int _messageClosingParenthesisSize = 1;
+        DateTime _nextSendTime = DateTime.UtcNow;
+
+        private Queue<long> _lastNotificationInBatch = new Queue<long>();
+        private int _notificationsInBatch = 0;
+
+        MemoryStream _batchBuffer = new MemoryStream(); // turn this into a FileStream to persist the batch cache
+        private static BlockingCollection<MessageDataModel> _monitoredItemsDataQueue;
+        private bool _isRunning = false;
+
+        private static ILogger _logger;
+        private static IPeriodicDiagnosticsInfo _diag;
+        private readonly IMessageEncoder _encoder;
+        private readonly Settings _settings;
+        private readonly IMessagePublisher _sink;
+
         public MessageProcessingEngine(
             IPeriodicDiagnosticsInfo diag,
             IMessageEncoder encoder,
             ILoggerFactory loggerFactory,
-            ISettingsConfiguration settingsConfiguration,
-            IMessageSink sink)
+            Settings settings,
+            IMessagePublisher sink)
         {
             _logger = loggerFactory.CreateLogger("MessageProcessingEngine");
             _diag = diag;
             _encoder = encoder;
-            _settingsConfiguration = settingsConfiguration;
+            _settings = settings;
             _sink = sink;
         }
 
@@ -115,8 +129,8 @@ namespace UA.MQTT.Publisher
                             else
                             {
                                 // nothing to send, reset the clock and keep waiting
-                                _logger.LogTrace("Adding {seconds} seconds to current nextSendTime {nextSendTime}...", _settingsConfiguration.DefaultSendIntervalSeconds, _nextSendTime);
-                                _nextSendTime += TimeSpan.FromSeconds(_settingsConfiguration.DefaultSendIntervalSeconds);
+                                _logger.LogTrace("Adding {seconds} seconds to current nextSendTime {nextSendTime}...", _settings.DefaultSendIntervalSeconds, _nextSendTime);
+                                _nextSendTime += TimeSpan.FromSeconds(_settings.DefaultSendIntervalSeconds);
                                 continue;
                             }
                         }
@@ -137,7 +151,7 @@ namespace UA.MQTT.Publisher
                         // batch message instead
                         string jsonMessage = JsonEncodeMessage(messageData);
                         int jsonMessageSize = Encoding.UTF8.GetByteCount(jsonMessage);
-                        uint hubMessageBufferSize = _settingsConfiguration.HubMessageSize > 0 ? _settingsConfiguration.HubMessageSize : SettingsConfiguration.HubMessageSizeMax;
+                        uint hubMessageBufferSize = _settings.MQTTMessageSize > 0 ? _settings.MQTTMessageSize : Settings.HubMessageSizeMax;
 
                         // TODO: Try to get the size occupied by the encoded message properties reliably from the IoT Hub client
                         int encodedMessagePropertiesLengthMax = 512;
@@ -181,19 +195,19 @@ namespace UA.MQTT.Publisher
 
         private void Init()
         {
-            _logger.LogInformation($"Message processing configured with a send interval of {_settingsConfiguration.DefaultSendIntervalSeconds} sec and a message buffer size of {_settingsConfiguration.HubMessageSize} bytes.");
+            _logger.LogInformation($"Message processing configured with a send interval of {_settings.DefaultSendIntervalSeconds} sec and a message buffer size of {_settings.MQTTMessageSize} bytes.");
 
             // create the queue for monitored items
-            _monitoredItemsDataQueue = new BlockingCollection<MessageDataModel>(_settingsConfiguration.MonitoredItemsQueueCapacity);
+            _monitoredItemsDataQueue = new BlockingCollection<MessageDataModel>((int)_settings.InternalQueueCapacity);
 
-            _singleMessageSend = _settingsConfiguration.DefaultSendIntervalSeconds == 0 && _settingsConfiguration.HubMessageSize == 0;
+            _singleMessageSend = _settings.DefaultSendIntervalSeconds == 0 && _settings.MQTTMessageSize == 0;
 
             _messageClosingParenthesisSize = 2;
             
             InitBatch();
 
             // init our send time
-            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(_settingsConfiguration.DefaultSendIntervalSeconds);
+            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(_settings.DefaultSendIntervalSeconds);
         }
 
         private void BatchMessage(string jsonMessage)
@@ -244,7 +258,7 @@ namespace UA.MQTT.Publisher
             InitBatch();
 
             // reset our send time
-            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(_settingsConfiguration.DefaultSendIntervalSeconds);
+            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(_settings.DefaultSendIntervalSeconds);
         }
 
         private string JsonEncodeMessage(MessageDataModel messageData)
@@ -282,7 +296,7 @@ namespace UA.MQTT.Publisher
             int timeout;
 
             // sanity check the send interval
-            if (_settingsConfiguration.DefaultSendIntervalSeconds > 0)
+            if (_settings.DefaultSendIntervalSeconds > 0)
             {
                 TimeSpan timeTillNextSend = _nextSendTime.Subtract(DateTime.UtcNow);
                 if (timeTillNextSend < TimeSpan.Zero)
@@ -321,11 +335,11 @@ namespace UA.MQTT.Publisher
 
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
             // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
-            JsonEncoder encoder = new JsonEncoder(new ServiceMessageContext(), _settingsConfiguration.ReversiblePubSubEncoding);
+            JsonEncoder encoder = new JsonEncoder(new ServiceMessageContext(), _settings.ReversiblePubSubEncoding);
 
             encoder.WriteString("MessageId", _messageID++.ToString());
             encoder.WriteString("MessageType", "ua-data");
-            encoder.WriteString("PublisherId", _settingsConfiguration.PublisherName);
+            encoder.WriteString("PublisherId", _settings.PublisherName);
             encoder.PushArray("Messages");
 
             // remove the closing bracket as we will add this later
@@ -333,24 +347,5 @@ namespace UA.MQTT.Publisher
 
             _batchBuffer.Write(Encoding.UTF8.GetBytes(pubSubJSONNetworkMessageHeader));
         }
-
-        private static ulong _messageID = 0;
-        private bool _batchEmpty = true;
-        private bool _singleMessageSend = false;
-        private int _messageClosingParenthesisSize = 1;
-        DateTime _nextSendTime = DateTime.UtcNow;
-
-        private Queue<long> _lastNotificationInBatch = new Queue<long>();
-        private int _notificationsInBatch = 0;
-
-        MemoryStream _batchBuffer = new MemoryStream(); // turn this into a FileStream to persist the batch cache
-        private static BlockingCollection<MessageDataModel> _monitoredItemsDataQueue;
-        private bool _isRunning = false;
-
-        private static ILogger _logger;
-        private static IPeriodicDiagnosticsInfo _diag;
-        private readonly IMessageEncoder _encoder;
-        private readonly ISettingsConfiguration _settingsConfiguration;
-        private readonly IMessageSink _sink;
     }
 }

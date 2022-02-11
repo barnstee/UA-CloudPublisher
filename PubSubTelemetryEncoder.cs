@@ -9,10 +9,13 @@ namespace UA.MQTT.Publisher
 
     public class PubSubTelemetryEncoder : IMessageEncoder
     {
-        public PubSubTelemetryEncoder(ILoggerFactory loggerFactory, ISettingsConfiguration settingsConfiguration)
+        private readonly ILogger _logger;
+        private readonly Settings _settings;
+
+        public PubSubTelemetryEncoder(ILoggerFactory loggerFactory, Settings settings)
         {
             _logger = loggerFactory.CreateLogger("PubSubTelemetryEncoder");
-            _settingsConfiguration = settingsConfiguration;
+            _settings = settings;
         }
         /// <summary>
         /// Creates a JSON message to be sent to IoT Hub, based on the telemetry configuration for the endpoint.
@@ -21,7 +24,7 @@ namespace UA.MQTT.Publisher
         {
             try
             {
-                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, _settingsConfiguration.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, _settings.ReversiblePubSubEncoding);
 
                 encoder.WriteString("DataSetWriterId", messageData.DataSetWriterId);
 
@@ -48,7 +51,7 @@ namespace UA.MQTT.Publisher
         {
             try
             {
-                JsonEncoder encoder = new JsonEncoder(eventData.MessageContext, _settingsConfiguration.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new JsonEncoder(eventData.MessageContext, _settings.ReversiblePubSubEncoding);
 
                 encoder.WriteString("DataSetWriterId", eventData.DataSetWriterId);
 
@@ -74,8 +77,5 @@ namespace UA.MQTT.Publisher
 
             return string.Empty;
         }
-
-        private readonly ILogger _logger;
-        private readonly ISettingsConfiguration _settingsConfiguration;
     }
 }
