@@ -15,7 +15,7 @@ namespace UA.MQTT.Publisher.Controllers
 
         public IActionResult Index()
         {
-            return View();
+            return View("Index", _settings);
         }
 
         public IActionResult Update(Settings settings)
@@ -25,7 +25,7 @@ namespace UA.MQTT.Publisher.Controllers
                 _settings = settings;
             }
 
-            return View();
+            return View("Index", _settings);
         }
     }
 }
