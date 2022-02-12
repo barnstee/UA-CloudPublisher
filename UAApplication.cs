@@ -37,10 +37,9 @@ namespace UA.MQTT.Publisher
             };
 
             await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
-
-            _settings.UAStackTraceMask = _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks;
+            _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = _settings.UAStackTraceMask;
             Opc.Ua.Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
-            _logger.LogInformation($"opcstacktracemask set to: 0x{_settings.UAStackTraceMask:X}");
+            _logger.LogInformation($"OPC UA stack trace mask set to: 0x{_settings.UAStackTraceMask:X}");
 
             // check the application certificate.
             bool certOK = await _uaApplicationInstance.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);

@@ -1,45 +1,131 @@
 ﻿
 namespace UA.MQTT.Publisher.Models
 {
+    using Microsoft.Extensions.Logging;
     using System;
 
     public class Settings
     {
-        public string MQTTClientName { get; set; } = Environment.GetEnvironmentVariable("MQTT_CLIENTNAME");
+        private readonly ILogger _logger;
 
-        public string MQTTBrokerName { get; set; } = Environment.GetEnvironmentVariable("MQTT_BROKERNAME");
+        public Settings()
+        {
+            // default constructor needed for serialization
+        }
 
-        public string MQTTUsername { get; set; } = Environment.GetEnvironmentVariable("MQTT_USERNAME");
+        public Settings(ILoggerFactory loggerFactory)
+        {
+            _logger = loggerFactory.CreateLogger("Settings");
+        }
 
-        public string MQTTPassword { get; set; } = Environment.GetEnvironmentVariable("MQTT_PASSWORD");
+        public string MQTTClientName { get; set; }
 
-        public string MQTTTopic { get; set; } = Environment.GetEnvironmentVariable("MQTT_TOPIC");
+        public string MQTTBrokerName { get; set; }
 
-        public string MQTTResponseTopic { get; set; } = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");
+        public string MQTTUsername { get; set; }
 
-        public uint MQTTMessageSize { get; set; } = uint.Parse(Environment.GetEnvironmentVariable("MQTT_MESSAGE_NAME"));
+        public string MQTTPassword { get; set; }
 
-        public bool CreateMQTTSASToken { get; set; } = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CREATE_SAS_PASSWORD"));
+        public string MQTTTopic { get; set; }
 
-        public string LogFilePath { get; set; } = Environment.GetEnvironmentVariable("LOG_FILE_PATH");
+        public string MQTTResponseTopic { get; set; }
 
-        public string PublisherName { get; set; } = Environment.GetEnvironmentVariable("PUBLISHER_NAME");
+        public uint MQTTMessageSize { get; set; }
 
-        public uint InternalQueueCapacity { get; set; } = uint.Parse(Environment.GetEnvironmentVariable("INTERNAL_QUEUE_CAPACITY"));
+        public bool CreateMQTTSASToken { get; set; }
 
-        public uint DefaultSendIntervalSeconds { get; set; } = uint.Parse(Environment.GetEnvironmentVariable("DEFAULT_SEND_INTERVAL_SECS"));
+        public string PublisherName { get; set; } = "UA-MQTT-Publisher";
 
-        public uint DiagnosticsLoggingInterval { get; set; } = uint.Parse(Environment.GetEnvironmentVariable("DIAGNOSTICS_LOGGING_INTERVAL"));
+        public uint InternalQueueCapacity { get; set; } = 1000; // records
 
-        public uint DefaultOpcSamplingInterval { get; set; } = uint.Parse(Environment.GetEnvironmentVariable("DEFAULT_UA_SAMPLING_INTERVAL"));
+        public uint DefaultSendIntervalSeconds { get; set; } = 1;
 
-        public uint DefaultOpcPublishingInterval { get; set; } = uint.Parse(Environment.GetEnvironmentVariable("DEFAULT_UA_PUBLISHING_INTERVAL"));
+        public uint DiagnosticsLoggingInterval { get; set; } = 30; // seconds
 
-        public int UAStackTraceMask { get; set; } = int.Parse(Environment.GetEnvironmentVariable("UA_STACK_TRACE_MASK"));
+        public uint DefaultOpcSamplingInterval { get; set; } = 500;
 
-        public bool ReversiblePubSubEncoding { get; set; } = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("USE_UA_PUBSUB_REVERSIBLE_ENCODING"));
+        public uint DefaultOpcPublishingInterval { get; set; } = 1000;
+
+        public int UAStackTraceMask { get; set; } = 645; // Error, Trace, StartStop, Security
+
+        public bool ReversiblePubSubEncoding { get; set; } = false;
 
         public const int MaxResponsePayloadLength = (128 * 1024) - 256;
         public const uint HubMessageSizeMax = 256 * 1024;
+
+        public void LoadRequiredSettingsFromEnvironment()
+        {
+            try
+            {
+                MQTTClientName = Environment.GetEnvironmentVariable("MQTT_CLIENTNAME");
+
+                MQTTBrokerName = Environment.GetEnvironmentVariable("MQTT_BROKERNAME");
+
+                MQTTUsername = Environment.GetEnvironmentVariable("MQTT_USERNAME");
+
+                MQTTPassword = Environment.GetEnvironmentVariable("MQTT_PASSWORD");
+
+                MQTTTopic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
+
+                MQTTResponseTopic = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");
+            }
+            catch(Exception)
+            {
+                _logger.LogCritical("Please specify environment variables: MQTT_CLIENTNAME, MQTT_BROKERNAME, MQTT_USERNAME, MQTT_PASSWORD, MQTT_TOPIC and MQTT_RESPONSE_TOPIC");
+            }
+        }
+
+        public void LoadOptionalSettingsFromEnvironment()
+        {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MQTT_MESSAGE_NAME")))
+            {
+                MQTTMessageSize = uint.Parse(Environment.GetEnvironmentVariable("MQTT_MESSAGE_NAME"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CREATE_SAS_PASSWORD")))
+            {
+                CreateMQTTSASToken = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CREATE_SAS_PASSWORD"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PUBLISHER_NAME")))
+            {
+                PublisherName = Environment.GetEnvironmentVariable("PUBLISHER_NAME");
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("INTERNAL_QUEUE_CAPACITY")))
+            {
+                InternalQueueCapacity = uint.Parse(Environment.GetEnvironmentVariable("INTERNAL_QUEUE_CAPACITY"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DEFAULT_SEND_INTERVAL_SECS")))
+            {
+                DefaultSendIntervalSeconds = uint.Parse(Environment.GetEnvironmentVariable("DEFAULT_SEND_INTERVAL_SECS"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DIAGNOSTICS_LOGGING_INTERVAL")))
+            {
+                DiagnosticsLoggingInterval = uint.Parse(Environment.GetEnvironmentVariable("DIAGNOSTICS_LOGGING_INTERVAL"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DEFAULT_UA_SAMPLING_INTERVAL")))
+            {
+                DefaultOpcSamplingInterval = uint.Parse(Environment.GetEnvironmentVariable("DEFAULT_UA_SAMPLING_INTERVAL"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DEFAULT_UA_PUBLISHING_INTERVAL")))
+            {
+                DefaultOpcPublishingInterval = uint.Parse(Environment.GetEnvironmentVariable("DEFAULT_UA_PUBLISHING_INTERVAL"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("UA_STACK_TRACE_MASK")))
+            {
+                UAStackTraceMask = int.Parse(Environment.GetEnvironmentVariable("UA_STACK_TRACE_MASK"));
+            }
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("USE_UA_PUBSUB_REVERSIBLE_ENCODING")))
+            {
+                ReversiblePubSubEncoding = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("USE_UA_PUBSUB_REVERSIBLE_ENCODING"));
+            }
+        }
     }
 }

@@ -1,7 +1,25 @@
 ﻿@using UA.MQTT.Publisher.Models
 
+@Model Settings
+
 @{
     ViewData["Title"] = "Configuration";
 }
 
 <h1>@ViewData["Title"]</h1>
+ 
+<form action="/Config/Index" method="post">
+    <label for="MQTTClientName">MQTT Client Name</label>
+    <input type="text" name="MQTTClientName" />
+    <br />
+    <br />
+    <label for="MQTTBrokerName">MQTT Broker Name</label>
+    <input type="text" name="MQTTBrokerName" />
+    <br />
+    <br />
+    <label for="MQTTUsername">MQTT Username</label>
+    <input type="text" name="MQTTUsername" />
+    <br />
+    <br />
+    <input type="submit" name="Update" />
+</form>

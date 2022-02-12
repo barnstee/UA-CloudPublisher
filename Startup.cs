@@ -38,7 +38,7 @@ namespace UA.MQTT.Publisher
             string logFilePath = Configuration["LOG_FILE_PATH"];
             if (string.IsNullOrEmpty(logFilePath))
             {
-                logFilePath = "Logs/UA-MQTT-Publisher.log";
+                logFilePath = "./Logs/UA-MQTT-Publisher.log";
             }
             services.AddLogging(logging =>
             {
@@ -68,9 +68,13 @@ namespace UA.MQTT.Publisher
                               IUAApplication uaApp,
                               IMessageProcessingEngine engine,
                               IPeriodicDiagnosticsInfo diag,
-                              IPublishedNodesFileHandler publishedNodesFileHandler)
+                              IPublishedNodesFileHandler publishedNodesFileHandler,
+                              Settings settings)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
+
+            settings.LoadRequiredSettingsFromEnvironment();
+            settings.LoadOptionalSettingsFromEnvironment();
 
             if (env.IsDevelopment())
             {
