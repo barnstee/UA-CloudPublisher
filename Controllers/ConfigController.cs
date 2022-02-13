@@ -18,6 +18,7 @@ namespace UA.MQTT.Publisher.Controllers
             return View("Index", _settings);
         }
 
+        [HttpPost]
         public IActionResult Update(Settings settings)
         {
             if (ModelState.IsValid)

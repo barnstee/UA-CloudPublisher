@@ -57,19 +57,62 @@ namespace UA.MQTT.Publisher.Models
         {
             try
             {
-                MQTTClientName = Environment.GetEnvironmentVariable("MQTT_CLIENTNAME");
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MQTT_CLIENTNAME")))
+                {
+                    throw new ArgumentException("MQTT_CLIENTNAME");
+                }
+                else
+                {
+                    MQTTClientName = Environment.GetEnvironmentVariable("MQTT_CLIENTNAME");
+                }
 
-                MQTTBrokerName = Environment.GetEnvironmentVariable("MQTT_BROKERNAME");
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MQTT_BROKERNAME")))
+                {
+                    throw new ArgumentException("MQTT_BROKERNAME");
+                }
+                else
+                {
+                    MQTTBrokerName = Environment.GetEnvironmentVariable("MQTT_BROKERNAME");
+                }
 
-                MQTTUsername = Environment.GetEnvironmentVariable("MQTT_USERNAME");
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MQTT_USERNAME")))
+                {
+                    throw new ArgumentException("MQTT_USERNAME");
+                }
+                else
+                {
+                    MQTTUsername = Environment.GetEnvironmentVariable("MQTT_USERNAME");
+                }
 
-                MQTTPassword = Environment.GetEnvironmentVariable("MQTT_PASSWORD");
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MQTT_PASSWORD")))
+                {
+                    throw new ArgumentException("MQTT_PASSWORD");
+                }
+                else
+                {
+                    MQTTPassword = Environment.GetEnvironmentVariable("MQTT_PASSWORD");
+                }
 
-                MQTTTopic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MQTT_TOPIC")))
+                {
+                    throw new ArgumentException("MQTT_TOPIC");
+                }
+                else
+                {
+                    MQTTTopic = Environment.GetEnvironmentVariable("MQTT_TOPIC");
+                }
 
-                MQTTResponseTopic = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC")))
+                {
+                    throw new ArgumentException("MQTT_RESPONSE_TOPIC");
+                }
+                else
+                {
+                    MQTTResponseTopic = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");
+
+                }
             }
-            catch(Exception)
+            catch (Exception)
             {
                 _logger.LogCritical("Please specify environment variables: MQTT_CLIENTNAME, MQTT_BROKERNAME, MQTT_USERNAME, MQTT_PASSWORD, MQTT_TOPIC and MQTT_RESPONSE_TOPIC");
             }

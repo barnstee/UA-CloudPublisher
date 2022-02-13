@@ -1,6 +1,6 @@
 ﻿@using UA.MQTT.Publisher.Models
 
-@Model Settings
+@model Settings
 
 @{
     ViewData["Title"] = "Configuration";
@@ -8,18 +8,57 @@
 
 <h1>@ViewData["Title"]</h1>
  
-<form action="/Config/Index" method="post">
-    <label for="MQTTClientName">MQTT Client Name</label>
-    <input type="text" name="MQTTClientName"/>
+<form action="/Config/Update" method="post">
+    <label for="MQTTClientName">MQTT Client Name</label><br />
+    <input type="text" name="MQTTClientName" /><br />
     <br />
+    <label for="MQTTBrokerName">MQTT Broker Name</label><br />
+    <input type="text" name="MQTTBrokerName" /><br />
     <br />
-    <label for="MQTTBrokerName">MQTT Broker Name</label>
-    <input type="text" name="MQTTBrokerName" />
+    <label for="MQTTUsername">MQTT Username</label><br />
+    <input type="text" name="MQTTUsername" value=@Model.MQTTUsername /><br />
     <br />
+    <label for="MQTTPassword">MQTT Password</label><br />
+    <input type="text" name="MQTTPassword" value=@Model.MQTTPassword /><br />
     <br />
-    <label for="MQTTUsername">MQTT Username</label>
-    <input type="text" name="MQTTUsername" />
+    <label for="MQTTTopic">MQTT Topic</label><br />
+    <input type="text" name="MQTTTopic" value=@Model.MQTTTopic /><br />
     <br />
+    <label for="MQTTResponseTopic">MQTT Response Topic</label><br />
+    <input type="text" name="MQTTResponseTopic" value=@Model.MQTTResponseTopic /><br />
     <br />
-    <input type="submit" name="Update" />
+    <label for="MQTTResponseTopic">MQTT Response Topic</label><br />
+    <input type="text" name="MQTTResponseTopic" value=@Model.MQTTResponseTopic /><br />
+    <br />
+    <label for="MQTTMessageSize">MQTT Message Size</label><br />
+    <input type="text" name="MQTTMessageSize" value=@Model.MQTTMessageSize /><br />
+    <br />
+    <label for="CreateMQTTSASToken">Create MQTT SAS Token</label><br />
+    <input type="checkbox" name="CreateMQTTSASToken" value=@Model.CreateMQTTSASToken /><br />
+    <br />
+    <label for="PublisherName">Publisher Name</label><br />
+    <input type="text" name="PublisherName" value=@Model.PublisherName /><br />
+    <br />
+    <label for="InternalQueueCapacity">Internal Queue Capacity</label><br />
+    <input type="text" name="InternalQueueCapacity" value=@Model.InternalQueueCapacity /><br />
+    <br />
+    <label for="DefaultSendIntervalSeconds">Default Send Interval in Seconds</label><br />
+    <input type="text" name="DefaultSendIntervalSeconds" value=@Model.DefaultSendIntervalSeconds /><br />
+    <br />
+    <label for="DiagnosticsLoggingInterval">Diagnostics Logging Interval</label><br />
+    <input type="text" name="DiagnosticsLoggingInterval" value=@Model.DiagnosticsLoggingInterval /><br />
+    <br />
+    <label for="DefaultOpcSamplingInterval">Default OPC UA Sampling Interval</label><br />
+    <input type="text" name="DefaultOpcSamplingInterval" value=@Model.DefaultOpcSamplingInterval /><br />
+    <br />
+    <label for="DefaultOpcPublishingInterval">Default OPC UA Publishing Interval</label><br />
+    <input type="text" name="DefaultOpcPublishingInterval" value=@Model.DefaultOpcPublishingInterval /><br />
+    <br />
+    <label for="UAStackTraceMask">OPC UA Stack Trace Mask</label><br />
+    <input type="text" name="UAStackTraceMask" value=@Model.UAStackTraceMask /><br />
+    <br />
+    <label for="ReversiblePubSubEncoding">Reversible PubSub Encoding</label><br />
+    <input type="checkbox" name="ReversiblePubSubEncoding" value=@Model.ReversiblePubSubEncoding /><br />
+    <br />
+    <input type="submit" name="Update" value="Update" />
 </form>
