@@ -1,7 +1,160 @@
 ﻿@using UA.MQTT.Publisher.Models
 
 @{
-    ViewData["Title"] = "Diagnostic Information";
+    ViewData["Title"] = "Diagnostics";
 }
 
 <h1>@ViewData["Title"]</h1>
+
+<p>
+    <div class="chart-container" width="600" height="400">
+        <canvas id="myChart"></canvas>
+    </div>
+</p>
+<p>
+    <div id="table" width="600">Please wait while we collect diagnostics data...</div>
+</p>
+
+@section scripts {
+    <script src="~/lib/Chart.js/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function ()
+        {
+            const config = {
+                type: 'line',
+                options: {
+                    spanGaps: true,
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: 'top',
+                      },
+                      title: {
+                        display: true,
+                        text: 'Diagnostics'
+                      }
+                },
+                scales: {
+                     xAxis: [{
+                        type: 'timeseries'
+                    }],
+                    yAxis: [{
+                        ticks:
+                        {
+                            beginAtZero: true
+                        }
+                    }]
+                }
+              }
+            };
+
+            var myChart = new Chart(document.getElementById('myChart'), config);
+
+            // connection to SignalR hub
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/statusHub")
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            const CHART_COLORS = {
+                red: 'rgb(255, 0, 0)',
+                magenta: 'rgb(255, 0, 255)',
+                yellow: 'rgb(255, 255, 0)',
+                green: 'rgb(0, 128, 0)',
+                blue: 'rgb(0, 0, 255)',
+                cyan: 'rgb(0, 255, 255)',
+                grey: 'rgb(128, 128, 128)',
+                black: 'rgb(0, 0, 0)',
+                silver: 'rgb(192, 192, 192)',
+                lime: 'rgb(0, 255, 0)',
+                maroon: 'rgb(128, 0, 0)',
+                olive: 'rgb(128, 128, 0)',
+                purple: 'rbg(128, 0, 128)',
+                teal: 'rgb(0, 128, 128)',
+                navy: 'rgb(0, 0, 128)'
+            };
+
+            const NAMED_COLORS = [
+                CHART_COLORS.red,
+                CHART_COLORS.magenta,
+                CHART_COLORS.yellow,
+                CHART_COLORS.green,
+                CHART_COLORS.blue,
+                CHART_COLORS.cyan,
+                CHART_COLORS.grey,
+                CHART_COLORS.black,
+                CHART_COLORS.silver,
+                CHART_COLORS.lime,
+                CHART_COLORS.maroon,
+                CHART_COLORS.olive,
+                CHART_COLORS.purple,
+                CHART_COLORS.teal,
+                CHART_COLORS.navy
+            ];
+
+            function namedColor(index) {
+                return NAMED_COLORS[index % NAMED_COLORS.length];
+            }
+
+            // add dataset function
+            connection.on("addDatasetToChart", function(name)
+            {
+                var found = false;
+                for (var j = 0; j < myChart.data.datasets.length; j++)
+                {
+                    if (myChart.data.datasets[j].label == name)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    const dsColor = namedColor(myChart.data.datasets.length);
+                    const newDataset = {
+                        label: name,
+                        borderColor: dsColor,
+                        cubicInterpolationMode: 'monotone',
+                        tension: 0.5,
+                        borderwidth: 3
+                    };
+                    myChart.data.datasets.push(newDataset);
+
+                    myChart.update();
+                }
+            });
+
+            // add data function
+            connection.on("addDataToChart", function(timestamp, values)
+            {
+                myChart.data.labels.push(timestamp);
+                if (myChart.data.labels.length > 100)
+                {
+                    myChart.data.labels.shift();
+                }
+
+                for (var j = 0; j < myChart.data.datasets.length; j++)
+                {
+                    var value = parseFloat(values[j].replace(',', '.'));
+                    myChart.data.datasets[j].data.push(value);
+                    if (myChart.data.datasets[j].data.length > 100)
+                    {
+                        myChart.data.datasets[j].data.shift();
+                    }
+                }
+
+                myChart.update();
+            });
+
+            // add table function
+            connection.on("addTable", function(html)
+            {
+                $('#table').html(html);
+            });
+
+            connection.start();
+
+        });
+    </script>
+}

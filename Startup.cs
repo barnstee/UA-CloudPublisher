@@ -8,8 +8,6 @@ namespace UA.MQTT.Publisher
     using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;
     using System;
-    using System.IO;
-    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Configuration;
     using UA.MQTT.Publisher.Interfaces;
@@ -53,6 +51,7 @@ namespace UA.MQTT.Publisher
             services.AddSingleton<Settings>();
             services.AddSingleton<IPeriodicDiagnosticsInfo, PeriodicDiagnosticsInfo>();
             services.AddSingleton<OpcSessionHelper>();
+            services.AddSingleton<StatusHub>();
 
             // add our message processing engine
             services.AddSingleton<IMessageProcessingEngine, MessageProcessingEngine>();
@@ -68,7 +67,6 @@ namespace UA.MQTT.Publisher
                               IUAApplication uaApp,
                               IMessageProcessingEngine engine,
                               IPeriodicDiagnosticsInfo diag,
-                              IPublishedNodesFileHandler publishedNodesFileHandler,
                               Settings settings)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
@@ -101,6 +99,7 @@ namespace UA.MQTT.Publisher
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Browser}/{action=Index}/{id?}");
+                endpoints.MapHub<StatusHub>("/statushub");
             });
 
             // create our app
@@ -111,26 +110,6 @@ namespace UA.MQTT.Publisher
 
             // run the telemetry engine
             _ = Task.Run(() => engine.Run());
-
-            // load publishednodes.json file, if available
-            string publishedNodesJSONFilePath = "publishednodes.json";
-            if (File.Exists(publishedNodesJSONFilePath))
-            {
-                logger.LogInformation($"Loading published nodes JSON file from {publishedNodesJSONFilePath}...");
-                X509Certificate2 certWithPrivateKey = uaApp.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
-                if (!publishedNodesFileHandler.ParseFile(publishedNodesJSONFilePath, certWithPrivateKey))
-                {
-                    logger.LogInformation("Could not load and parse published nodes JSON file!");
-                }
-                else
-                {
-                    logger.LogInformation("Published nodes JSON file parsed successfully.");
-                }
-            }
-            else
-            {
-                logger.LogInformation($"Published nodes JSON file not found in {publishedNodesJSONFilePath}.");
-            }
         }
     }
 }

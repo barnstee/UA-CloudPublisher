@@ -3,6 +3,7 @@ namespace UA.MQTT.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Client;
@@ -18,11 +19,13 @@ namespace UA.MQTT.Publisher.Controllers
     {
         private readonly OpcSessionHelper _helper;
         private readonly IUAClient _client;
+        private readonly ILogger _logger;
 
-        public BrowserController(OpcSessionHelper helper, IUAClient client)
+        public BrowserController(OpcSessionHelper helper, IUAClient client, ILoggerFactory loggerFactory)
         {
             _helper = helper;
             _client = client;
+            _logger = loggerFactory.CreateLogger("BrowserController");
         }
 
         [HttpGet]
@@ -146,13 +149,13 @@ namespace UA.MQTT.Publisher.Controllers
                 catch (Exception e)
                 {
                     // skip this node
-                    Trace.TraceError("Can not browse node '{0}'", GetNodeIDFromJSTreeNode(jstreeNode));
+                    _logger.LogError("Can not browse node '{0}'", GetNodeIDFromJSTreeNode(jstreeNode));
                     string errorMessage = string.Format("Error", e.Message,
                         e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
-                    Trace.TraceError(errorMessage);
+                    _logger.LogError(errorMessage);
                 }
 
-                Trace.TraceInformation("Browsing node '{0}' data took {0} ms", GetNodeIDFromJSTreeNode(jstreeNode), stopwatch.ElapsedMilliseconds);
+                _logger.LogInformation("Browsing node '{0}' data took {0} ms", GetNodeIDFromJSTreeNode(jstreeNode), stopwatch.ElapsedMilliseconds);
 
                 if (references != null)
                 {
@@ -175,7 +178,7 @@ namespace UA.MQTT.Publisher.Controllers
                         ReferenceDescriptionCollection childReferences = null;
                         byte[] childContinuationPoint;
 
-                        Trace.TraceInformation("Browse '{0}' count: {1}", nodeReference.NodeId, jsonTree.Count);
+                        _logger.LogInformation("Browse '{0}' count: {1}", nodeReference.NodeId, jsonTree.Count);
 
                         INode currentNode = null;
                         try
@@ -197,10 +200,10 @@ namespace UA.MQTT.Publisher.Controllers
                         catch (Exception e)
                         {
                             // skip this node
-                            Trace.TraceError("Can not browse or read node '{0}'", nodeReference.NodeId);
+                            _logger.LogError("Can not browse or read node '{0}'", nodeReference.NodeId);
                             string errorMessage = string.Format("Error", e.Message,
                                 e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
-                            Trace.TraceError(errorMessage);
+                            _logger.LogError(errorMessage);
 
                             continue;
                         }
@@ -261,7 +264,7 @@ namespace UA.MQTT.Publisher.Controllers
                         {
                             string errorMessage = string.Format("Error", e.Message,
                                 e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
-                            Trace.TraceError(errorMessage);
+                            _logger.LogError(errorMessage);
                         }
 
                         if (currentNode == null)
@@ -313,7 +316,7 @@ namespace UA.MQTT.Publisher.Controllers
                 }
 
                 stopwatch.Stop();
-                Trace.TraceInformation("Browing all childeren info of node '{0}' took {0} ms", GetNodeIDFromJSTreeNode(jstreeNode), stopwatch.ElapsedMilliseconds);
+                _logger.LogInformation("Browing all childeren info of node '{0}' took {0} ms", GetNodeIDFromJSTreeNode(jstreeNode), stopwatch.ElapsedMilliseconds);
 
                 return Json(jsonTree);
             }

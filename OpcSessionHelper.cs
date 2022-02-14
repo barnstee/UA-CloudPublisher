@@ -139,17 +139,8 @@ namespace UA.MQTT.Publisher
                 discoveryUrl,
                 EndpointConfiguration.Create(config)))
             {
-                try
-                {
-                    EndpointDescriptionCollection endpoints = client.GetEndpoints(null);
-                    return ReplaceLocalHostWithRemoteHost(endpoints, discoveryUrl);
-                }
-                catch (Exception e)
-                {
-                    Trace.TraceError("Can not fetch endpoints from url: {0}", discoveryUrl);
-                    Trace.TraceError("Reason = {0}", e.Message);
-                    throw;
-                }
+                EndpointDescriptionCollection endpoints = client.GetEndpoints(null);
+                return ReplaceLocalHostWithRemoteHost(endpoints, discoveryUrl);
             }
         }
 

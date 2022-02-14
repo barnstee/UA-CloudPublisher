@@ -30,9 +30,9 @@ namespace UA.MQTT.Publisher.Models
 
         public string MQTTResponseTopic { get; set; }
 
-        public uint MQTTMessageSize { get; set; }
+        public uint MQTTMessageSize { get; set; } = HubMessageSizeMax;
 
-        public bool CreateMQTTSASToken { get; set; }
+        public bool CreateMQTTSASToken { get; set; } = true;
 
         public string PublisherName { get; set; } = "UA-MQTT-Publisher";
 

@@ -5,3 +5,20 @@
 }
 
 <h1>@ViewData["Title"]</h1>
+
+<form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Load">
+    <div class="container-fluid browser_connect_container">
+        <br/>
+        <hr />
+        <br />
+        <p>
+            <h2>Open a local publishednodes.json file</h2>
+        </p>
+        <p>
+            <input class="btn btn-primary" type="file" name="file">
+        </p>
+        <p>
+            <input class="btn btn-primary" type="submit" value="Open">
+        </p>
+    </div>
+</form>
