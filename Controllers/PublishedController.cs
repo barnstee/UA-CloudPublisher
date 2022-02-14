@@ -37,7 +37,7 @@ namespace UA.MQTT.Publisher.Controllers
                     throw new ArgumentException("No files specified!");
                 }
                 
-                if ((file.Length == 0) || (file.ContentType != "text/xml"))
+                if ((file.Length == 0) || (file.ContentType != "application/json"))
                 {
                     throw new ArgumentException("Invalid file specified!");
                 }
@@ -45,8 +45,15 @@ namespace UA.MQTT.Publisher.Controllers
                 // file name validation
                 new FileInfo(file.FileName);
 
+                // create seperate directory
+                string pathToPublishedNodes = Path.Combine(Directory.GetCurrentDirectory(), "PublishedNodes");
+                if (!Directory.Exists(pathToPublishedNodes))
+                {
+                    Directory.CreateDirectory(pathToPublishedNodes);
+                }
+
                 // store the file on the webserver
-                string filePath = Path.Combine(Directory.GetCurrentDirectory(), "PublishedNodes", file.FileName);
+                string filePath = Path.Combine(pathToPublishedNodes, file.FileName);
                 using (FileStream stream = new FileStream(filePath, FileMode.Create))
                 {
                     file.CopyTo(stream);

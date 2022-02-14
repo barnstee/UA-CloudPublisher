@@ -9,6 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Logs\**" />
+    <Compile Remove="PublishedNodes\**" />
+    <Content Remove="Logs\**" />
+    <Content Remove="PublishedNodes\**" />
+    <EmbeddedResource Remove="Logs\**" />
+    <EmbeddedResource Remove="PublishedNodes\**" />
+    <None Remove="Logs\**" />
+    <None Remove="PublishedNodes\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="UA-MQTT-Publisher.Config.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

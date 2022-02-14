@@ -67,7 +67,8 @@ namespace UA.MQTT.Publisher
                               IUAApplication uaApp,
                               IMessageProcessingEngine engine,
                               IPeriodicDiagnosticsInfo diag,
-                              Settings settings)
+                              Settings settings,
+                              IMQTTSubscriber subscriber)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
 
@@ -98,7 +99,7 @@ namespace UA.MQTT.Publisher
             {
                 endpoints.MapControllerRoute(
                     name: "default",
-                    pattern: "{controller=Browser}/{action=Index}/{id?}");
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
                 endpoints.MapHub<StatusHub>("/statushub");
             });
 
@@ -107,6 +108,9 @@ namespace UA.MQTT.Publisher
 
             // kick off the task to show periodic diagnostic info
             _ = Task.Run(() => diag.RunAsync());
+
+            // connect to MQTT broker
+            subscriber.Connect();
 
             // run the telemetry engine
             _ = Task.Run(() => engine.Run());

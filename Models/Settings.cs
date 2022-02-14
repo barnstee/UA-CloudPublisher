@@ -109,7 +109,6 @@ namespace UA.MQTT.Publisher.Models
                 else
                 {
                     MQTTResponseTopic = Environment.GetEnvironmentVariable("MQTT_RESPONSE_TOPIC");
-
                 }
             }
             catch (Exception)

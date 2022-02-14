@@ -28,7 +28,6 @@ namespace UA.MQTT.Publisher.Configuration
     public class MQTTSubscriber : IMQTTSubscriber
     {
         private IMqttClient _client = null;
-        private string _clientName = null;
 
         private readonly ILogger _logger;
         private readonly IUAClient _uaClient;
@@ -45,7 +44,6 @@ namespace UA.MQTT.Publisher.Configuration
             _uaClient = client;
             _diag = diag;
             _settings = settings;
-            _clientName = settings.MQTTClientName;
         }
 
         public void Connect()
@@ -58,10 +56,10 @@ namespace UA.MQTT.Publisher.Configuration
                 TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
                 int week = 60 * 60 * 24 * 7;
                 string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
-                string stringToSign = HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _clientName) + "\n" + expiry;
+                string stringToSign = HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _settings.MQTTClientName) + "\n" + expiry;
                 HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
                 string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-                password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _clientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
+                password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _settings.MQTTClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
             }
 
             // create MQTT client
@@ -69,7 +67,7 @@ namespace UA.MQTT.Publisher.Configuration
             _client.UseApplicationMessageReceivedHandler(msg => HandleMessageAsync(msg));
             var clientOptions = new MqttClientOptionsBuilder()
                 .WithTcpServer(opt => opt.NoDelay = true)
-                .WithClientId(_clientName)
+                .WithClientId(_settings.MQTTClientName)
                 .WithTcpServer(_settings.MQTTBrokerName, 8883)
                 .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = true })
                 .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
@@ -111,7 +109,7 @@ namespace UA.MQTT.Publisher.Configuration
             }
             catch (MqttConnectingFailedException ex)
             {
-                _logger.LogCritical($"Failed to connect, reason code: {ex.ResultCode}");
+                _logger.LogCritical($"Failed to connect with reason {ex.ResultCode} and message: {ex.Message}");
                 if (ex.Result?.UserProperties != null)
                 {
                     foreach (var prop in ex.Result.UserProperties)
@@ -126,7 +124,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .WithTopic($"devices/{_clientName}/messages/events/")
+                .WithTopic($"devices/{_settings.MQTTClientName}/messages/events/")
                 .WithPayload(payload)
                 .Build();
 
