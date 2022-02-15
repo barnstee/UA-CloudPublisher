@@ -11,12 +11,16 @@
   <ItemGroup>
     <Compile Remove="Logs\**" />
     <Compile Remove="PublishedNodes\**" />
+    <Compile Remove="Settings\**" />
     <Content Remove="Logs\**" />
     <Content Remove="PublishedNodes\**" />
+    <Content Remove="Settings\**" />
     <EmbeddedResource Remove="Logs\**" />
     <EmbeddedResource Remove="PublishedNodes\**" />
+    <EmbeddedResource Remove="Settings\**" />
     <None Remove="Logs\**" />
     <None Remove="PublishedNodes\**" />
+    <None Remove="Settings\**" />
   </ItemGroup>
 
   <ItemGroup>

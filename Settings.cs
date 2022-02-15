@@ -45,7 +45,7 @@ namespace UA.MQTT.Publisher.Models
         {
             try
             {
-                return JsonConvert.DeserializeObject<Settings>(File.ReadAllText("settings.json"));
+                return JsonConvert.DeserializeObject<Settings>(File.ReadAllText("./Settings/settings.json"));
             }
             catch (Exception ex)
             {
@@ -59,7 +59,7 @@ namespace UA.MQTT.Publisher.Models
 
         public void Save()
         {
-            File.WriteAllText("settings.json", JsonConvert.SerializeObject(this, Formatting.Indented));
+            File.WriteAllText("./Settings/settings.json", JsonConvert.SerializeObject(this, Formatting.Indented));
         }
 
         public string MQTTClientName { get; set; }

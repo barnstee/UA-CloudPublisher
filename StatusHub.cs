@@ -15,7 +15,7 @@ namespace UA.MQTT.Publisher
 
         public StatusHub()
         {
-            Task.Run(() => SendMessageViaSignalR());
+            _ = Task.Run(() => SendMessageViaSignalR());
         }
 
         public void AddOrUpdateTableEntry(string key, string value, bool addToChart = false)

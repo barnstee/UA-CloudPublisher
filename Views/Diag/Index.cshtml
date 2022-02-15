@@ -153,8 +153,21 @@
                 $('#table').html(html);
             });
 
-            connection.start();
+            // Start/continue the connection
+            function establishSignalRConnection() {
+                try {
+                    connection.start();
+                    console.log("connection to signalr hub successfull established");
+                } catch (err) {
+                    console.warn("Error creating SignalR connection, retry in 5 seconds %o", err);
+                    setTimeout(async () => { establishSignalRConnection(); }, 5000);
+                }
+            };
 
+            connection.onclose(async () => { establishSignalRConnection(); });
+
+            // Start the connection.
+            establishSignalRConnection();
         });
     </script>
 }

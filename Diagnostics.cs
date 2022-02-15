@@ -12,7 +12,8 @@ namespace UA.MQTT.Publisher
     public class Diagnostics
     {
         private readonly ILogger _logger;
-        private readonly StatusHub _hub;
+        
+        private StatusHub _hub = new StatusHub();
 
         private long _lastNumMessagesSent = 0;
 
@@ -22,8 +23,7 @@ namespace UA.MQTT.Publisher
         private Diagnostics()
         {
             ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
-            _logger = loggerFactory.CreateLogger("PeriodicDiagnosticsInfo");
-            _hub = (StatusHub)Program.AppHost.Services.GetService(typeof(StatusHub));
+            _logger = loggerFactory.CreateLogger("Diagnostics");
         }
 
         public static Diagnostics Singleton

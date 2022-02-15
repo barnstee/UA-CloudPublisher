@@ -8,10 +8,10 @@ namespace UA.MQTT.Publisher
     using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;
     using System;
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Configuration;
     using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
 
     public class Startup
     {
@@ -49,7 +49,6 @@ namespace UA.MQTT.Publisher
             services.AddSingleton<IMQTTSubscriber, MQTTSubscriber>();
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
             services.AddSingleton<OpcSessionHelper>();
-            services.AddSingleton<StatusHub>();
 
             // add our message processing engine
             services.AddSingleton<IMessageProcessor, MessageProcessor>();
@@ -64,7 +63,8 @@ namespace UA.MQTT.Publisher
                               ILoggerFactory loggerFactory,
                               IUAApplication uaApp,
                               IMessageProcessor engine,
-                              IMQTTSubscriber subscriber)
+                              IMQTTSubscriber subscriber,
+                              IPublishedNodesFileHandler publishedNodesFileHandler)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
 
@@ -107,6 +107,26 @@ namespace UA.MQTT.Publisher
 
             // run the telemetry engine
             _ = Task.Run(() => engine.Run());
+
+            // load our persistency file
+            string filePath = "./Settings/persistency.json";
+            if (System.IO.File.Exists(filePath))
+            {
+                logger.LogInformation($"Loading persistency file from {filePath}...");
+                X509Certificate2 certWithPrivateKey = uaApp.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
+                if (!publishedNodesFileHandler.ParseFile(filePath, certWithPrivateKey))
+                {
+                    logger.LogInformation("Could not load and parse persistency file!");
+                }
+                else
+                {
+                    logger.LogInformation("Persistency file parsed successfully.");
+                }
+            }
+            else
+            {
+                logger.LogInformation($"Persistency file not found in {filePath}.");
+            }
         }
     }
 }

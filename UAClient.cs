@@ -2,10 +2,12 @@
 namespace UA.MQTT.Publisher
 {
     using Microsoft.Extensions.Logging;
+    using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Client;
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Net;
     using System.Security.Cryptography.X509Certificates;
@@ -21,7 +23,7 @@ namespace UA.MQTT.Publisher
         private readonly ILoggerFactory _loggerFactory;
 
         private IMessageSource _trigger;
-
+ 
         private List<Session> _sessions = new List<Session>();
         private List<PeriodicPublishing> _heartbeats = new List<PeriodicPublishing>();
         private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
@@ -151,7 +153,7 @@ namespace UA.MQTT.Publisher
             catch (Exception e)
             {
                 _logger.LogError(e, "Session creation to endpoint {endpointUrl} failed. Please verify that the OPC UA server for the specified endpoint is accessible.",
-                    configuredEndpoint.EndpointUrl);
+                     configuredEndpoint.EndpointUrl);
 
                 return null;
             }
@@ -212,6 +214,9 @@ namespace UA.MQTT.Publisher
                     _logger.LogInformation("Session to endpoint {endpoint} closed successfully.", endpoint);
                 }
             }
+
+            // update our persistency
+            PersistPublishedNodesAsync().GetAwaiter().GetResult();
         }
 
         private Subscription CreateSubscription(Session session, ref int publishingInterval)
@@ -290,8 +295,8 @@ namespace UA.MQTT.Publisher
                 catch (Exception e)
                 {
                     _logger.LogError(e, "Exception in keep alive handling for endpoint {endpointUrl}. {message}",
-                        session.ConfiguredEndpoint.EndpointUrl,
-                        e.Message);
+                       session.ConfiguredEndpoint.EndpointUrl,
+                       e.Message);
                 }
             }
             else
@@ -318,7 +323,7 @@ namespace UA.MQTT.Publisher
                 nodeToPublish.ExpandedNodeId,
                 nodeToPublish.OpcPublishingInterval.ToString()?? "--",
                 nodeToPublish.OpcSamplingInterval.ToString() ?? "--");
-
+            
             Subscription opcSubscription = null;
             try
             {
@@ -479,10 +484,13 @@ namespace UA.MQTT.Publisher
                 }
 
                 _logger.LogDebug("PublishNode: Now monitoring OPC UA node {expandedNodeId} on endpoint {endpointUrl}",
-                    nodeToPublish.ExpandedNodeId,
-                    session.ConfiguredEndpoint.EndpointUrl);
+                   nodeToPublish.ExpandedNodeId,
+                   session.ConfiguredEndpoint.EndpointUrl);
 
                 Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored++;
+
+                // update our persistency
+                PersistPublishedNodesAsync().GetAwaiter().GetResult();
             }
             catch (ServiceResultException sre)
             {
@@ -564,6 +572,9 @@ namespace UA.MQTT.Publisher
                                 session.RemoveSubscription(subscription);
                                 Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
                             }
+
+                            // update our persistency
+                            PersistPublishedNodesAsync().GetAwaiter().GetResult();
 
                             return;
                         }
@@ -656,6 +667,22 @@ namespace UA.MQTT.Publisher
             }
 
             return publisherConfigurationFileEntries;
+        }
+
+        private async Task PersistPublishedNodesAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // iterate through all sessions, subscriptions and monitored items and create config file entries
+                IEnumerable<ConfigurationFileEntryModel> publisherNodeConfiguration = await GetListofPublishedNodesAsync(cancellationToken).ConfigureAwait(false);
+
+                // update the persistency file
+                await File.WriteAllTextAsync("./Settings/persistency.json", JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Update of persistency file failed.");
+            }
         }
     }
 }
