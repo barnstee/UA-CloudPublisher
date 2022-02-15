@@ -13,7 +13,7 @@ namespace UA.MQTT.Publisher
     public class Diagnostics
     {
         private readonly ILogger _logger;
-        private readonly StatusHubClient _hub;
+        private readonly StatusHubClient _hubClient;
 
         private long _lastNumMessagesSent = 0;
 
@@ -24,7 +24,7 @@ namespace UA.MQTT.Publisher
         {
             ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
             _logger = loggerFactory.CreateLogger("Diagnostics");
-            _hub = new StatusHubClient((IHubContext<StatusHub>)Program.AppHost.Services.GetService(typeof(IHubContext<StatusHub>)));
+            _hubClient = new StatusHubClient((IHubContext<StatusHub>)Program.AppHost.Services.GetService(typeof(IHubContext<StatusHub>)));
         }
 
         public static Diagnostics Singleton
@@ -95,34 +95,34 @@ namespace UA.MQTT.Publisher
                     float messagesPerSecond = ((float)(Info.SentMessages - _lastNumMessagesSent)) / Settings.Singleton.DiagnosticsLoggingInterval;
                     List<string> chartValues = new List<string>();
 
-                    _hub.AddOrUpdateTableEntry("Publisher Start Time", Info.PublisherStartTime.ToString());
-                    _hub.AddOrUpdateTableEntry("OPC UA sessions", Info.NumberOfOpcSessionsConnected.ToString());
-                    _hub.AddOrUpdateTableEntry("OPC UA subscriptions", Info.NumberOfOpcSubscriptionsConnected.ToString());
-                    _hub.AddOrUpdateTableEntry("OPC UA monitored items", Info.NumberOfOpcMonitoredItemsMonitored.ToString());
-                    _hub.AddOrUpdateTableEntry("OPC UA monitored items queue capacity", Settings.Singleton.InternalQueueCapacity.ToString());
-                    _hub.AddOrUpdateTableEntry("OPC UA monitored items queue current items", Info.MonitoredItemsQueueCount.ToString());
-                    _hub.AddOrUpdateTableEntry("OPC UA monitored item notifications enqueued", Info.EnqueueCount.ToString());
-                    _hub.AddOrUpdateTableEntry("OPC UA monitored item notifications enqueue failure", Info.EnqueueFailureCount.ToString());
-                    _hub.AddOrUpdateTableEntry("Messages sent to MQTT broker", Info.SentMessages.ToString());
-                    _hub.AddOrUpdateTableEntry("Last successful MQTT broker message sent @", Info.SentLastTime.ToString());
-                    _hub.AddOrUpdateTableEntry("Total bytes sent to MQTT broker", Info.SentBytes.ToString());
-                    _hub.AddOrUpdateTableEntry("Average MQTT broker message size (bytes)", (Info.SentBytes / (Info.SentMessages == 0 ? 1 : Info.SentMessages)).ToString());
-                    _hub.AddOrUpdateTableEntry("Average MQTT broker message latency (ms)", Info.AverageMessageLatency.ToString(), true);
-                    _hub.AddOrUpdateTableEntry("Average MQTT broker messages/second sent", messagesPerSecond.ToString(), true);
-                    _hub.AddOrUpdateTableEntry("Average number of notifications batched in MQTT broker message", Info.AverageNotificationsInBrokerMessage.ToString());
-                    _hub.AddOrUpdateTableEntry("Average number of OPC UA notifications/second sent", (messagesPerSecond * Info.AverageNotificationsInBrokerMessage).ToString(), true);
-                    _hub.AddOrUpdateTableEntry("MQTT broker message send failures", Info.FailedMessages.ToString());
-                    _hub.AddOrUpdateTableEntry("MQTT broker messages too large to send to MQTT broker", Info.TooLargeCount.ToString());
-                    _hub.AddOrUpdateTableEntry("Missed MQTT broker message send intervals", Info.MissedSendIntervalCount.ToString());
-                    _hub.AddOrUpdateTableEntry("Number of OPC UA notifications encoded", Info.NumberOfEvents.ToString());
-                    _hub.AddOrUpdateTableEntry("Current working set in MB", (Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)).ToString());
-                    _hub.AddOrUpdateTableEntry("MQTT broker send interval setting (s)", Settings.Singleton.DefaultSendIntervalSeconds.ToString());
-                    _hub.AddOrUpdateTableEntry("MQTT broker message size setting (bytes)", Settings.Singleton.MQTTMessageSize.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Publisher Start Time", Info.PublisherStartTime.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA sessions", Info.NumberOfOpcSessionsConnected.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA subscriptions", Info.NumberOfOpcSubscriptionsConnected.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA monitored items", Info.NumberOfOpcMonitoredItemsMonitored.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA monitored items queue capacity", Settings.Singleton.InternalQueueCapacity.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA monitored items queue current items", Info.MonitoredItemsQueueCount.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA monitored item notifications enqueued", Info.EnqueueCount.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA monitored item notifications enqueue failure", Info.EnqueueFailureCount.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Messages sent to MQTT broker", Info.SentMessages.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Last successful MQTT broker message sent @", Info.SentLastTime.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Total bytes sent to MQTT broker", Info.SentBytes.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Average MQTT broker message size (bytes)", (Info.SentBytes / (Info.SentMessages == 0 ? 1 : Info.SentMessages)).ToString());
+                    _hubClient.AddOrUpdateTableEntry("Average MQTT broker message latency (ms)", Info.AverageMessageLatency.ToString(), true);
+                    _hubClient.AddOrUpdateTableEntry("Average MQTT broker messages/second sent", messagesPerSecond.ToString(), true);
+                    _hubClient.AddOrUpdateTableEntry("Average number of notifications batched in MQTT broker message", Info.AverageNotificationsInBrokerMessage.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Average number of OPC UA notifications/second sent", (messagesPerSecond * Info.AverageNotificationsInBrokerMessage).ToString(), true);
+                    _hubClient.AddOrUpdateTableEntry("MQTT broker message send failures", Info.FailedMessages.ToString());
+                    _hubClient.AddOrUpdateTableEntry("MQTT broker messages too large to send to MQTT broker", Info.TooLargeCount.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Missed MQTT broker message send intervals", Info.MissedSendIntervalCount.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Number of OPC UA notifications encoded", Info.NumberOfEvents.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Current working set in MB", (Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)).ToString());
+                    _hubClient.AddOrUpdateTableEntry("MQTT broker send interval setting (s)", Settings.Singleton.DefaultSendIntervalSeconds.ToString());
+                    _hubClient.AddOrUpdateTableEntry("MQTT broker message size setting (bytes)", Settings.Singleton.MQTTMessageSize.ToString());
                     
                     chartValues.Add(Info.AverageMessageLatency.ToString());
                     chartValues.Add(messagesPerSecond.ToString());
                     chartValues.Add((messagesPerSecond * Info.AverageNotificationsInBrokerMessage).ToString());
-                    _hub.AddChartEntry(DateTime.UtcNow.ToString(), chartValues.ToArray());
+                    _hubClient.AddChartEntry(DateTime.UtcNow.ToString(), chartValues.ToArray());
 
                     // write to the log at 10x slower than the UI diagnostics
                     if (ticks % 10 == 0)
