@@ -31,89 +31,72 @@ namespace UA.MQTT.Publisher.Configuration
         /// <returns></returns>
         public bool ParseFile(string filePath, X509Certificate2 cert)
         {
-            _logger.LogInformation($"The name of the configuration file for published nodes is: {filePath}");
-
-            // check if the file exists
-            if (!File.Exists(filePath))
-            {
-                _logger.LogInformation($"The node configuration file '{filePath}' does not exist.");
-                return false;
-            }
-
-            List<ConfigurationFileEntryLegacyModel> _configurationFileEntries = null;
             try
             {
-                string json = File.ReadAllText(filePath);
-                _configurationFileEntries = JsonConvert.DeserializeObject<List<ConfigurationFileEntryLegacyModel>>(json);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Loading of the node configuration file failed with {ex.Message}. Does the file exist and does it have the correct syntax?");
-            }
+                _logger.LogInformation($"The name of the configuration file for published nodes is: {filePath}");
 
-            // process loaded config file entries
-            if (_configurationFileEntries != null)
-            {
-                _logger.LogInformation($"Loaded {_configurationFileEntries.Count} config file entry/entries.");
-                foreach (ConfigurationFileEntryLegacyModel publisherConfigFileEntryLegacy in _configurationFileEntries)
+                // check if the file exists
+                if (!File.Exists(filePath))
                 {
-                    // decrypt username and password, if required
-                    NetworkCredential decryptedCreds = null;
-                    if (publisherConfigFileEntryLegacy.EncryptedAuthCredential != null)
-                    {
-                        decryptedCreds = publisherConfigFileEntryLegacy.EncryptedAuthCredential.Decrypt(cert);
-                    }
+                    _logger.LogInformation($"The node configuration file '{filePath}' does not exist.");
+                    return false;
+                }
 
-                    if (publisherConfigFileEntryLegacy.NodeId == null)
+                List<ConfigurationFileEntryLegacyModel> _configurationFileEntries = null;
+                try
+                {
+                    string json = File.ReadAllText(filePath);
+                    _configurationFileEntries = JsonConvert.DeserializeObject<List<ConfigurationFileEntryLegacyModel>>(json);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Loading of the node configuration file failed with {ex.Message}. Does the file exist and does it have the correct syntax?");
+                }
+
+                // process loaded config file entries
+                if (_configurationFileEntries != null)
+                {
+                    _logger.LogInformation($"Loaded {_configurationFileEntries.Count} config file entry/entries.");
+                    foreach (ConfigurationFileEntryLegacyModel publisherConfigFileEntryLegacy in _configurationFileEntries)
                     {
-                        // new node configuration syntax.
-                        //checked for nodes or events
-                        if (publisherConfigFileEntryLegacy.OpcEvents != null)
+                        // decrypt username and password, if required
+                        NetworkCredential decryptedCreds = null;
+                        if (publisherConfigFileEntryLegacy.EncryptedAuthCredential != null)
                         {
-                            // process event configuration
-                            foreach (OpcEventOnEndpointModel opcEvent in publisherConfigFileEntryLegacy.OpcEvents)
-                            {
-                                ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcEvent.Id);
-                                EventPublishingModel publishingInfo = new EventPublishingModel() {
-                                    ExpandedNodeId = expandedNodeId,
-                                    EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
-                                    UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
-                                    DisplayName = opcEvent.DisplayName
-                                };
-                                publishingInfo.SelectClauses.AddRange(opcEvent.SelectClauses);
-                                publishingInfo.WhereClauses.AddRange(opcEvent.WhereClauses);
-                                _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
-                            }
+                            decryptedCreds = publisherConfigFileEntryLegacy.EncryptedAuthCredential.Decrypt(cert);
                         }
-                        else
+
+                        if (publisherConfigFileEntryLegacy.NodeId == null)
                         {
-                            foreach (OpcNodeOnEndpointModel opcNode in publisherConfigFileEntryLegacy.OpcNodes)
+                            // new node configuration syntax.
+                            //checked for nodes or events
+                            if (publisherConfigFileEntryLegacy.OpcEvents != null)
                             {
-                                if (opcNode.ExpandedNodeId != null)
+                                // process event configuration
+                                foreach (OpcEventOnEndpointModel opcEvent in publisherConfigFileEntryLegacy.OpcEvents)
                                 {
-                                    ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.ExpandedNodeId);
-                                    EventPublishingModel publishingInfo = new EventPublishingModel() {
+                                    ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcEvent.Id);
+                                    EventPublishingModel publishingInfo = new EventPublishingModel()
+                                    {
                                         ExpandedNodeId = expandedNodeId,
                                         EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
                                         UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
-                                        OpcPublishingInterval = opcNode.OpcPublishingInterval,
-                                        OpcSamplingInterval = opcNode.OpcSamplingInterval,
-                                        DisplayName = opcNode.DisplayName,
-                                        HeartbeatInterval = opcNode.HeartbeatInterval,
-                                        SkipFirst = opcNode.SkipFirst,
-                                        OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
-                                        AuthCredential = decryptedCreds
+                                        DisplayName = opcEvent.DisplayName
                                     };
+                                    publishingInfo.SelectClauses.AddRange(opcEvent.SelectClauses);
+                                    publishingInfo.WhereClauses.AddRange(opcEvent.WhereClauses);
                                     _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                                 }
-                                else
+                            }
+                            else
+                            {
+                                foreach (OpcNodeOnEndpointModel opcNode in publisherConfigFileEntryLegacy.OpcNodes)
                                 {
-                                    // check Id string to check which format we have
-                                    if (opcNode.Id.StartsWith("nsu=", StringComparison.InvariantCulture))
+                                    if (opcNode.ExpandedNodeId != null)
                                     {
-                                        // ExpandedNodeId format
-                                        ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.Id);
-                                        EventPublishingModel publishingInfo = new EventPublishingModel() {
+                                        ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.ExpandedNodeId);
+                                        EventPublishingModel publishingInfo = new EventPublishingModel()
+                                        {
                                             ExpandedNodeId = expandedNodeId,
                                             EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
                                             UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
@@ -129,42 +112,72 @@ namespace UA.MQTT.Publisher.Configuration
                                     }
                                     else
                                     {
-                                        // NodeId format
-                                        NodeId nodeId = NodeId.Parse(opcNode.Id);
-                                        EventPublishingModel publishingInfo = new EventPublishingModel {
-                                            ExpandedNodeId = nodeId,
-                                            EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
-                                            UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
-                                            OpcPublishingInterval = opcNode.OpcPublishingInterval,
-                                            OpcSamplingInterval = opcNode.OpcSamplingInterval,
-                                            DisplayName = opcNode.DisplayName,
-                                            HeartbeatInterval = opcNode.HeartbeatInterval,
-                                            SkipFirst = opcNode.SkipFirst,
-                                            OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
-                                            AuthCredential = decryptedCreds
-                                        };
-                                        _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                                        // check Id string to check which format we have
+                                        if (opcNode.Id.StartsWith("nsu=", StringComparison.InvariantCulture))
+                                        {
+                                            // ExpandedNodeId format
+                                            ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.Id);
+                                            EventPublishingModel publishingInfo = new EventPublishingModel()
+                                            {
+                                                ExpandedNodeId = expandedNodeId,
+                                                EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
+                                                UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
+                                                OpcPublishingInterval = opcNode.OpcPublishingInterval,
+                                                OpcSamplingInterval = opcNode.OpcSamplingInterval,
+                                                DisplayName = opcNode.DisplayName,
+                                                HeartbeatInterval = opcNode.HeartbeatInterval,
+                                                SkipFirst = opcNode.SkipFirst,
+                                                OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
+                                                AuthCredential = decryptedCreds
+                                            };
+                                            _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                                        }
+                                        else
+                                        {
+                                            // NodeId format
+                                            NodeId nodeId = NodeId.Parse(opcNode.Id);
+                                            EventPublishingModel publishingInfo = new EventPublishingModel
+                                            {
+                                                ExpandedNodeId = nodeId,
+                                                EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
+                                                UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
+                                                OpcPublishingInterval = opcNode.OpcPublishingInterval,
+                                                OpcSamplingInterval = opcNode.OpcSamplingInterval,
+                                                DisplayName = opcNode.DisplayName,
+                                                HeartbeatInterval = opcNode.HeartbeatInterval,
+                                                SkipFirst = opcNode.SkipFirst,
+                                                OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
+                                                AuthCredential = decryptedCreds
+                                            };
+                                            _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    else
-                    {
-                        // NodeId (ns=) format node configuration syntax using default sampling and publishing interval.
-                        EventPublishingModel publishingInfo = new EventPublishingModel() {
-                            ExpandedNodeId = publisherConfigFileEntryLegacy.NodeId,
-                            EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
-                            UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
-                            OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
-                            AuthCredential = decryptedCreds
-                        };
-                        _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                        else
+                        {
+                            // NodeId (ns=) format node configuration syntax using default sampling and publishing interval.
+                            EventPublishingModel publishingInfo = new EventPublishingModel()
+                            {
+                                ExpandedNodeId = publisherConfigFileEntryLegacy.NodeId,
+                                EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
+                                UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
+                                OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
+                                AuthCredential = decryptedCreds
+                            };
+                            _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                        }
                     }
                 }
-            }
 
-            return true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Could not parse published nodes file and publish all nodes: " + ex.Message);
+                return false;
+            }
         }
     }
 }

@@ -86,7 +86,10 @@ namespace UA.MQTT.Publisher.Controllers
                     file.CopyTo(stream);
                 }
 
-                await LoadPublishedNodesFile(filePath).ConfigureAwait(false);
+                if (!await LoadPublishedNodesFile(filePath).ConfigureAwait(false))
+                {
+                    throw new Exception("Could not parse publishednodes file and publish its nodes!");
+                }
 
                 IEnumerable<ConfigurationFileEntryModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
 
@@ -121,7 +124,7 @@ namespace UA.MQTT.Publisher.Controllers
             
         }
 
-        private async Task LoadPublishedNodesFile(string filePath)
+        private async Task<bool> LoadPublishedNodesFile(string filePath)
         {
             // load publishednodes.json file, if available
             if (System.IO.File.Exists(filePath))
@@ -131,15 +134,18 @@ namespace UA.MQTT.Publisher.Controllers
                 if (!_publishedNodesFileHandler.ParseFile(filePath, certWithPrivateKey))
                 {
                     _logger.LogInformation("Could not load and parse published nodes JSON file!");
+                    return false;
                 }
                 else
                 {
                     _logger.LogInformation("Published nodes JSON file parsed successfully.");
+                    return true;
                 }
             }
             else
             {
                 _logger.LogInformation($"Published nodes JSON file not found in {filePath}.");
+                return false;
             }
         }
     }
