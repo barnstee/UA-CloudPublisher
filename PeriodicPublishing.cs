@@ -13,7 +13,6 @@ namespace UA.MQTT.Publisher
 
         private readonly ILogger _logger;
         private readonly Timer _timer;
-        private readonly Settings _settings;
         private string _displayName;
 
         public Session HeartBeatSession { get; }
@@ -26,12 +25,9 @@ namespace UA.MQTT.Publisher
             uint heartbeatInterval,
             Session session,
             NodeId nodeId,
-            ILoggerFactory loggerFactory,
-            Settings settings
-        )
+            ILoggerFactory loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger("HeartBeatPublishing");
-            _settings = settings;
+            _logger = loggerFactory.CreateLogger("PeriodicPublishing");
 
             HeartBeatSession = session;
             HeartBeatNodeId = nodeId;
@@ -92,7 +88,7 @@ namespace UA.MQTT.Publisher
                 messageData.DisplayName = _displayName;
 
                 // enqueue the message
-                MessageProcessingEngine.Enqueue(messageData);
+                MessageProcessor.Enqueue(messageData);
             }
             catch (Exception ex)
             {

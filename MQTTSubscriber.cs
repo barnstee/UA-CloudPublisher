@@ -32,91 +32,95 @@ namespace UA.MQTT.Publisher.Configuration
         private readonly ILogger _logger;
         private readonly IUAClient _uaClient;
         private readonly IPeriodicDiagnosticsInfo _diag;
-        private readonly Settings _settings;
 
         public MQTTSubscriber(
             ILoggerFactory loggerFactory,
             IUAClient client,
-            IPeriodicDiagnosticsInfo diag,
-            Settings settings)
+            IPeriodicDiagnosticsInfo diag)
         {
             _logger = loggerFactory.CreateLogger("MQTTSubscriber");
             _uaClient = client;
             _diag = diag;
-            _settings = settings;
         }
 
         public void Connect()
         {
-            // create MQTT client
-            string password = _settings.MQTTPassword;
-            if (_settings.CreateMQTTSASToken)
+            try
             {
-                // create SAS token as password
-                TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
-                int week = 60 * 60 * 24 * 7;
-                string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
-                string stringToSign = HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _settings.MQTTClientName) + "\n" + expiry;
-                HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
-                string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-                password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(_settings.MQTTBrokerName + "/devices/" + _settings.MQTTClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
-            }
+                // create MQTT client
+                string password = Settings.Singleton.MQTTPassword;
+                if (Settings.Singleton.CreateMQTTSASToken)
+                {
+                    // create SAS token as password
+                    TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
+                    int week = 60 * 60 * 24 * 7;
+                    string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
+                    string stringToSign = HttpUtility.UrlEncode(Settings.Singleton.MQTTBrokerName + "/devices/" + Settings.Singleton.MQTTClientName) + "\n" + expiry;
+                    HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
+                    string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
+                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Singleton.MQTTBrokerName + "/devices/" + Settings.Singleton.MQTTClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
+                }
 
-            // create MQTT client
-            _client = new MqttFactory().CreateMqttClient();
-            _client.UseApplicationMessageReceivedHandler(msg => HandleMessageAsync(msg));
-            var clientOptions = new MqttClientOptionsBuilder()
-                .WithTcpServer(opt => opt.NoDelay = true)
-                .WithClientId(_settings.MQTTClientName)
-                .WithTcpServer(_settings.MQTTBrokerName, 8883)
-                .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = true })
-                .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
-                .WithCommunicationTimeout(TimeSpan.FromSeconds(30))
-                .WithKeepAlivePeriod(TimeSpan.FromSeconds(300))
-                .WithCleanSession(false) // keep existing subscriptions 
-                .WithCredentials(_settings.MQTTUsername, password);
+                // create MQTT client
+                _client = new MqttFactory().CreateMqttClient();
+                _client.UseApplicationMessageReceivedHandler(msg => HandleMessageAsync(msg));
+                var clientOptions = new MqttClientOptionsBuilder()
+                    .WithTcpServer(opt => opt.NoDelay = true)
+                    .WithClientId(Settings.Singleton.MQTTClientName)
+                    .WithTcpServer(Settings.Singleton.MQTTBrokerName, 8883)
+                    .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = true })
+                    .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
+                    .WithCommunicationTimeout(TimeSpan.FromSeconds(30))
+                    .WithKeepAlivePeriod(TimeSpan.FromSeconds(300))
+                    .WithCleanSession(false) // keep existing subscriptions 
+                    .WithCredentials(Settings.Singleton.MQTTUsername, password);
 
-            // setup disconnection handling
-            _client.UseDisconnectedHandler(disconnectArgs =>
-            {
-                _logger.LogWarning($"Disconnected from MQTT broker: {disconnectArgs.Reason}");
+                // setup disconnection handling
+                _client.UseDisconnectedHandler(disconnectArgs =>
+                {
+                    _logger.LogWarning($"Disconnected from MQTT broker: {disconnectArgs.Reason}");
 
                 // simply reconnect again
                 Connect();
-            });
+                });
 
-            try
-            {
-                var connectResult = _client.ConnectAsync(clientOptions.Build(), CancellationToken.None).GetAwaiter().GetResult();
-                if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
+                try
                 {
-                    var status = GetStatus(connectResult.UserProperties)?.ToString("x4");
-                    throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
-                }
-
-                var subscribeResult = _client.SubscribeAsync(
-                    new MqttTopicFilter
+                    var connectResult = _client.ConnectAsync(clientOptions.Build(), CancellationToken.None).GetAwaiter().GetResult();
+                    if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
                     {
-                        Topic = _settings.MQTTTopic,
-                        QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
-                    }).GetAwaiter().GetResult();
+                        var status = GetStatus(connectResult.UserProperties)?.ToString("x4");
+                        throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
+                    }
 
-                // make sure subscriptions were successful
-                if (subscribeResult.Items.Count != 1 || subscribeResult.Items[0].ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
-                {
-                    throw new ApplicationException("Failed to subscribe");
-                }
-            }
-            catch (MqttConnectingFailedException ex)
-            {
-                _logger.LogCritical($"Failed to connect with reason {ex.ResultCode} and message: {ex.Message}");
-                if (ex.Result?.UserProperties != null)
-                {
-                    foreach (var prop in ex.Result.UserProperties)
+                    var subscribeResult = _client.SubscribeAsync(
+                        new MqttTopicFilter
+                        {
+                            Topic = Settings.Singleton.MQTTTopic,
+                            QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
+                        }).GetAwaiter().GetResult();
+
+                    // make sure subscriptions were successful
+                    if (subscribeResult.Items.Count != 1 || subscribeResult.Items[0].ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
                     {
-                        _logger.LogCritical($"{prop.Name}: {prop.Value}");
+                        throw new ApplicationException("Failed to subscribe");
                     }
                 }
+                catch (MqttConnectingFailedException ex)
+                {
+                    _logger.LogCritical($"Failed to connect with reason {ex.ResultCode} and message: {ex.Message}");
+                    if (ex.Result?.UserProperties != null)
+                    {
+                        foreach (var prop in ex.Result.UserProperties)
+                        {
+                            _logger.LogCritical($"{prop.Name}: {prop.Value}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical("Failed to connect to MQTT broker: " + ex.Message);
             }
         }
 
@@ -124,7 +128,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .WithTopic($"devices/{_settings.MQTTClientName}/messages/events/")
+                .WithTopic($"devices/{Settings.Singleton.MQTTClientName}/messages/events/")
                 .WithPayload(payload)
                 .Build();
 
@@ -133,7 +137,7 @@ namespace UA.MQTT.Publisher.Configuration
 
         private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)
         {
-            string responseTopic = _settings.MQTTResponseTopic;
+            string responseTopic = Settings.Singleton.MQTTResponseTopic;
 
             return new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
@@ -159,7 +163,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             _logger.LogInformation($"Received method call with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
 
-            string requestTopic = _settings.MQTTTopic;
+            string requestTopic = Settings.Singleton.MQTTTopic;
             string requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
 
             try

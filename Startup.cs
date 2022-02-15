@@ -48,13 +48,12 @@ namespace UA.MQTT.Publisher
             services.AddSingleton<IUAClient, UAClient>();
             services.AddSingleton<IMQTTSubscriber, MQTTSubscriber>();
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
-            services.AddSingleton<Settings>();
             services.AddSingleton<IPeriodicDiagnosticsInfo, PeriodicDiagnosticsInfo>();
             services.AddSingleton<OpcSessionHelper>();
             services.AddSingleton<StatusHub>();
 
             // add our message processing engine
-            services.AddSingleton<IMessageProcessingEngine, MessageProcessingEngine>();
+            services.AddSingleton<IMessageProcessor, MessageProcessor>();
             services.AddSingleton<IMessageSource, MonitoredItemNotification>();
             services.AddSingleton<IMessageEncoder, PubSubTelemetryEncoder>();
             services.AddSingleton<IMessagePublisher, MQTTPublisher>();
@@ -65,15 +64,11 @@ namespace UA.MQTT.Publisher
                               IWebHostEnvironment env,
                               ILoggerFactory loggerFactory,
                               IUAApplication uaApp,
-                              IMessageProcessingEngine engine,
+                              IMessageProcessor engine,
                               IPeriodicDiagnosticsInfo diag,
-                              Settings settings,
                               IMQTTSubscriber subscriber)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
-
-            settings.LoadRequiredSettingsFromEnvironment();
-            settings.LoadOptionalSettingsFromEnvironment();
 
             if (env.IsDevelopment())
             {

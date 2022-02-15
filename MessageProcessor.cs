@@ -12,7 +12,7 @@ namespace UA.MQTT.Publisher
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
-    public class MessageProcessingEngine : IMessageProcessingEngine
+    public class MessageProcessor : IMessageProcessor
     {
         private static ulong _messageID = 0;
         private bool _batchEmpty = true;
@@ -30,20 +30,17 @@ namespace UA.MQTT.Publisher
         private static ILogger _logger;
         private static IPeriodicDiagnosticsInfo _diag;
         private readonly IMessageEncoder _encoder;
-        private readonly Settings _settings;
         private readonly IMessagePublisher _sink;
 
-        public MessageProcessingEngine(
+        public MessageProcessor(
             IPeriodicDiagnosticsInfo diag,
             IMessageEncoder encoder,
             ILoggerFactory loggerFactory,
-            Settings settings,
             IMessagePublisher sink)
         {
-            _logger = loggerFactory.CreateLogger("MessageProcessingEngine");
+            _logger = loggerFactory.CreateLogger("MessageProcessor");
             _diag = diag;
             _encoder = encoder;
-            _settings = settings;
             _sink = sink;
         }
 
@@ -61,7 +58,7 @@ namespace UA.MQTT.Publisher
         }
 
         /// <summary>
-        /// Enqueue a message for sending to IoT Hub.
+        /// Enqueue a message for sending to MQTT broker
         /// </summary>
         public static void Enqueue(MessageDataModel json)
         {
@@ -92,7 +89,7 @@ namespace UA.MQTT.Publisher
         {
             if (_isRunning)
             {
-                _logger.LogError("Message Processor Engine is already running.");
+                _logger.LogError("Message Processor is already running.");
                 return;
             }
 
@@ -129,8 +126,8 @@ namespace UA.MQTT.Publisher
                             else
                             {
                                 // nothing to send, reset the clock and keep waiting
-                                _logger.LogTrace("Adding {seconds} seconds to current nextSendTime {nextSendTime}...", _settings.DefaultSendIntervalSeconds, _nextSendTime);
-                                _nextSendTime += TimeSpan.FromSeconds(_settings.DefaultSendIntervalSeconds);
+                                _logger.LogTrace("Adding {seconds} seconds to current nextSendTime {nextSendTime}...", Settings.Singleton.DefaultSendIntervalSeconds, _nextSendTime);
+                                _nextSendTime += TimeSpan.FromSeconds(Settings.Singleton.DefaultSendIntervalSeconds);
                                 continue;
                             }
                         }
@@ -151,12 +148,10 @@ namespace UA.MQTT.Publisher
                         // batch message instead
                         string jsonMessage = JsonEncodeMessage(messageData);
                         int jsonMessageSize = Encoding.UTF8.GetByteCount(jsonMessage);
-                        uint hubMessageBufferSize = _settings.MQTTMessageSize > 0 ? _settings.MQTTMessageSize : Settings.HubMessageSizeMax;
-
-                        // TODO: Try to get the size occupied by the encoded message properties reliably from the IoT Hub client
+                        uint hubMessageBufferSize = Settings.Singleton.MQTTMessageSize > 0 ? Settings.Singleton.MQTTMessageSize : Settings.HubMessageSizeMax;
                         int encodedMessagePropertiesLengthMax = 512;
 
-                        // reduce the IoT Hub message payload by the space occupied by the message properties
+                        // reduce the message payload by the space occupied by the message properties
                         hubMessageBufferSize -= (uint)encodedMessagePropertiesLengthMax;
 
                         // check if the message will fit into our batch in principle
@@ -195,19 +190,19 @@ namespace UA.MQTT.Publisher
 
         private void Init()
         {
-            _logger.LogInformation($"Message processing configured with a send interval of {_settings.DefaultSendIntervalSeconds} sec and a message buffer size of {_settings.MQTTMessageSize} bytes.");
+            _logger.LogInformation($"Message processing configured with a send interval of {Settings.Singleton.DefaultSendIntervalSeconds} sec and a message buffer size of {Settings.Singleton.MQTTMessageSize} bytes.");
 
             // create the queue for monitored items
-            _monitoredItemsDataQueue = new BlockingCollection<MessageDataModel>((int)_settings.InternalQueueCapacity);
+            _monitoredItemsDataQueue = new BlockingCollection<MessageDataModel>((int)Settings.Singleton.InternalQueueCapacity);
 
-            _singleMessageSend = _settings.DefaultSendIntervalSeconds == 0 && _settings.MQTTMessageSize == 0;
+            _singleMessageSend = Settings.Singleton.DefaultSendIntervalSeconds == 0 && Settings.Singleton.MQTTMessageSize == 0;
 
             _messageClosingParenthesisSize = 2;
             
             InitBatch();
 
             // init our send time
-            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(_settings.DefaultSendIntervalSeconds);
+            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Singleton.DefaultSendIntervalSeconds);
         }
 
         private void BatchMessage(string jsonMessage)
@@ -240,7 +235,7 @@ namespace UA.MQTT.Publisher
                 sum += notificationInBatch;
             }
 
-            _diag.Info.AverageNotificationsInHubMessage = sum / _lastNotificationInBatch.Count;
+            _diag.Info.AverageNotificationsInBrokerMessage = sum / _lastNotificationInBatch.Count;
 
             return _batchBuffer.ToArray();
         }
@@ -258,7 +253,7 @@ namespace UA.MQTT.Publisher
             InitBatch();
 
             // reset our send time
-            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(_settings.DefaultSendIntervalSeconds);
+            _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Singleton.DefaultSendIntervalSeconds);
         }
 
         private string JsonEncodeMessage(MessageDataModel messageData)
@@ -296,7 +291,7 @@ namespace UA.MQTT.Publisher
             int timeout;
 
             // sanity check the send interval
-            if (_settings.DefaultSendIntervalSeconds > 0)
+            if (Settings.Singleton.DefaultSendIntervalSeconds > 0)
             {
                 TimeSpan timeTillNextSend = _nextSendTime.Subtract(DateTime.UtcNow);
                 if (timeTillNextSend < TimeSpan.Zero)
@@ -335,11 +330,11 @@ namespace UA.MQTT.Publisher
 
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
             // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
-            JsonEncoder encoder = new JsonEncoder(new ServiceMessageContext(), _settings.ReversiblePubSubEncoding);
+            JsonEncoder encoder = new JsonEncoder(new ServiceMessageContext(), Settings.Singleton.ReversiblePubSubEncoding);
 
             encoder.WriteString("MessageId", _messageID++.ToString());
             encoder.WriteString("MessageType", "ua-data");
-            encoder.WriteString("PublisherId", _settings.PublisherName);
+            encoder.WriteString("PublisherId", Settings.Singleton.PublisherName);
             encoder.PushArray("Messages");
 
             // remove the closing bracket as we will add this later

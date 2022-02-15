@@ -14,32 +14,30 @@ namespace UA.MQTT.Publisher
     public class UAApplication : IUAApplication
     {
         private readonly ILogger _logger;
-        private readonly Settings _settings;
         private ApplicationInstance _uaApplicationInstance;
 
-        public UAApplication(ILoggerFactory loggerFactory, Settings settings)
+        public UAApplication(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.CreateLogger("UAApplication");
-            _settings = settings;
         }
 
         public async Task CreateAsync(CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(_settings.PublisherName))
+            if (string.IsNullOrEmpty(Settings.Singleton.PublisherName))
             {
-                _settings.PublisherName = "UA-MQTT-Publisher";
+                Settings.Singleton.PublisherName = "UA-MQTT-Publisher";
             }
 
             _uaApplicationInstance = new ApplicationInstance {
-                ApplicationName = _settings.PublisherName,
+                ApplicationName = Settings.Singleton.PublisherName,
                 ApplicationType = ApplicationType.Client,
                 ConfigSectionName = "UA-MQTT-Publisher"
             };
 
             await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
-            _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = _settings.UAStackTraceMask;
+            _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Singleton.UAStackTraceMask;
             Opc.Ua.Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
-            _logger.LogInformation($"OPC UA stack trace mask set to: 0x{_settings.UAStackTraceMask:X}");
+            _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Singleton.UAStackTraceMask:X}");
 
             // check the application certificate.
             bool certOK = await _uaApplicationInstance.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
@@ -85,7 +83,7 @@ namespace UA.MQTT.Publisher
 
         private void OpcStackLoggingHandler(object sender, TraceEventArgs e)
         {
-            if ((e.TraceMask & _settings.UAStackTraceMask) != 0)
+            if ((e.TraceMask & Settings.Singleton.UAStackTraceMask) != 0)
             {
                 if (e.Arguments != null)
                 {

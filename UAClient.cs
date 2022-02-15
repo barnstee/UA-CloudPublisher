@@ -20,7 +20,6 @@ namespace UA.MQTT.Publisher
         private readonly IPeriodicDiagnosticsInfo _diag;
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly Settings _settings;
 
         private IMessageSource _trigger;
 
@@ -33,14 +32,12 @@ namespace UA.MQTT.Publisher
             IUAApplication app,
             IPeriodicDiagnosticsInfo diag,
             ILoggerFactory loggerFactory,
-            Settings settings,
             IMessageSource trigger)
         {
             _logger = loggerFactory.CreateLogger("UAClient");
             _loggerFactory = loggerFactory;
             _app = app;
             _diag = diag;
-            _settings = settings;
             _trigger = trigger;
         }
 
@@ -329,7 +326,7 @@ namespace UA.MQTT.Publisher
             try
             {
                 // check if there is already a subscription with the same publishing interval, which can be used to monitor the node
-                int opcPublishingIntervalForNode = (nodeToPublish.OpcPublishingInterval == 0) ? (int)_settings.DefaultOpcPublishingInterval : nodeToPublish.OpcPublishingInterval;
+                int opcPublishingIntervalForNode = (nodeToPublish.OpcPublishingInterval == 0) ? (int)Settings.Singleton.DefaultOpcPublishingInterval : nodeToPublish.OpcPublishingInterval;
                 foreach (Subscription subscription in session.Subscriptions)
                 {
                     if (subscription.PublishingInterval == opcPublishingIntervalForNode)
@@ -432,7 +429,7 @@ namespace UA.MQTT.Publisher
                     }
                 }
 
-                int opcSamplingIntervalForNode = (nodeToPublish.OpcSamplingInterval == 0) ? (int)_settings.DefaultOpcSamplingInterval : nodeToPublish.OpcSamplingInterval;
+                int opcSamplingIntervalForNode = (nodeToPublish.OpcSamplingInterval == 0) ? (int)Settings.Singleton.DefaultOpcSamplingInterval : nodeToPublish.OpcSamplingInterval;
                 MonitoredItem newMonitoredItem = new MonitoredItem(opcSubscription.DefaultItem) {
                     StartNodeId = resolvedNodeId,
                     AttributeId = Attributes.Value,
@@ -470,9 +467,7 @@ namespace UA.MQTT.Publisher
                         (uint)nodeToPublish.HeartbeatInterval,
                         session,
                         resolvedNodeId,
-                        _loggerFactory,
-                        _settings
-                    );
+                        _loggerFactory);
 
                     lock (_heartbeats)
                     {

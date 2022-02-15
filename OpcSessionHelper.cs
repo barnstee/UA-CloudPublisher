@@ -5,7 +5,6 @@ namespace UA.MQTT.Publisher
     using Opc.Ua.Client;
     using System;
     using System.Collections.Concurrent;
-    using System.Diagnostics;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Interfaces;
 

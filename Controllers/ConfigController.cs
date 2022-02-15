@@ -2,20 +2,21 @@
 namespace UA.MQTT.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Mvc;
+    using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
     public class ConfigController : Controller
     {
-        private Settings _settings;
+        private readonly IMQTTSubscriber _subscriber;
 
-        public ConfigController(Settings settings)
+        public ConfigController(IMQTTSubscriber subscriber)
         {
-            _settings = settings;
+            _subscriber = subscriber;
         }
 
         public IActionResult Index()
         {
-            return View("Index", _settings);
+            return View("Index", Settings.Singleton);
         }
 
         [HttpPost]
@@ -23,10 +24,14 @@ namespace UA.MQTT.Publisher.Controllers
         {
             if (ModelState.IsValid)
             {
-                _settings = settings;
+                Settings.Singleton = settings;
+                Settings.Singleton.Save();
+
+                // reconnect to broker with new settings
+                _subscriber.Connect();
             }
 
-            return View("Index", _settings);
+            return View("Index", Settings.Singleton);
         }
     }
 }

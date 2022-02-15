@@ -6,9 +6,12 @@ namespace UA.MQTT.Publisher
 
     public sealed class Program
     {
+        public static IHost AppHost { get; private set; }
+
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            AppHost = CreateHostBuilder(args).Build();
+            AppHost.Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>

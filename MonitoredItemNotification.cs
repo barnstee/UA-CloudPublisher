@@ -16,16 +16,12 @@ namespace UA.MQTT.Publisher
     public class MonitoredItemNotification : IMessageSource
     {
         private readonly ILogger _logger;
-        private readonly Settings _settings;
 
         public Dictionary<string, bool> SkipFirst { get; set; } = new Dictionary<string, bool>();
 
-        public MonitoredItemNotification(
-            ILoggerFactory loggerFactory,
-            Settings settings)
+        public MonitoredItemNotification(ILoggerFactory loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger("MonitoredItemNotificationTrigger");
-            _settings = settings;
+            _logger = loggerFactory.CreateLogger("MonitoredItemNotification");
         }
 
         /// <summary>
@@ -90,7 +86,7 @@ namespace UA.MQTT.Publisher
 
                 if (monitoredItem.Subscription == null)
                 {
-                    _logger.LogDebug($"Subscription already removed. No more details available.");
+                    _logger.LogDebug($"Subscription already removed");
                 }
                 else
                 {
@@ -101,7 +97,7 @@ namespace UA.MQTT.Publisher
                 // add message to fifo send queue
                 if (monitoredItem.Subscription == null)
                 {
-                    _logger.LogDebug($"Subscription already removed. No more details available.");
+                    _logger.LogDebug($"Subscription already removed");
                 }
                 else
                 {
@@ -110,7 +106,7 @@ namespace UA.MQTT.Publisher
                 }
 
                 // enqueue the telemetry event
-                MessageProcessingEngine.Enqueue(eventMessageData);
+                MessageProcessor.Enqueue(eventMessageData);
             }
             catch (Exception ex)
             {
@@ -163,7 +159,7 @@ namespace UA.MQTT.Publisher
 
                 if (monitoredItem.Subscription == null)
                 {
-                    _logger.LogDebug($"Subscription already removed. No more details available.");
+                    _logger.LogDebug($"Subscription already removed");
                 }
                 else
                 {
@@ -180,7 +176,7 @@ namespace UA.MQTT.Publisher
                 else
                 {
                     // enqueue the telemetry event
-                    MessageProcessingEngine.Enqueue(messageData);
+                    MessageProcessor.Enqueue(messageData);
                 }
             }
             catch (Exception ex)

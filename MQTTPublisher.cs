@@ -20,7 +20,7 @@ namespace UA.MQTT.Publisher
                                ILoggerFactory loggerFactory,
                                IMQTTSubscriber subscriber)
         {
-            _logger = loggerFactory.CreateLogger("MQTTMessageSink");
+            _logger = loggerFactory.CreateLogger("MQTTPublisher");
             _diag = diag;
             _client = subscriber;
         }

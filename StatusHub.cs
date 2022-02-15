@@ -2,22 +2,37 @@
 namespace UA.MQTT.Publisher
 {
     using Microsoft.AspNetCore.SignalR;
+    using System;
     using System.Collections.Generic;
     using System.Text;
     using System.Threading.Tasks;
 
     public class StatusHub : Hub
     {
-        public Dictionary<string, string> TableEntries { get; set; }
+        private Dictionary<string, Tuple<string, bool>> TableEntries { get; set; } = new Dictionary<string, Tuple<string, bool>>();
 
-        public Dictionary<string, string[]> ChartEntries { get; set; }
+        private Dictionary<string, string[]> ChartEntries { get; set; } = new Dictionary<string, string[]>();
 
         public StatusHub()
         {
-            TableEntries = new Dictionary<string, string>();
-            ChartEntries = new Dictionary<string, string[]>();
-
             Task.Run(() => SendMessageViaSignalR());
+        }
+
+        public void AddOrUpdateTableEntry(string key, string value, bool addToChart = false)
+        {
+            if (TableEntries.ContainsKey(key))
+            {
+                TableEntries[key] = new Tuple<string, bool>(value, addToChart);
+            }
+            else
+            {
+                TableEntries.Add(key, new Tuple<string, bool>(value, addToChart));
+            }
+        }
+
+        public void AddChartEntry(string timeAxisEntry, string[] valueAxisEntries)
+        {
+            ChartEntries.Add(timeAxisEntry, valueAxisEntries);
         }
 
         private async Task SendMessageViaSignalR()
@@ -28,9 +43,12 @@ namespace UA.MQTT.Publisher
 
                 lock (TableEntries)
                 {
-                    foreach (string displayName in TableEntries.Keys)
+                    foreach (KeyValuePair<string, Tuple<string, bool>> entry in TableEntries)
                     {
-                        Clients?.All.SendAsync("addDatasetToChart", displayName).GetAwaiter().GetResult();
+                        if (entry.Value.Item2 == true)
+                        {
+                            Clients?.All.SendAsync("addDatasetToChart", entry.Key).GetAwaiter().GetResult();
+                        }
                     }
 
                     foreach (KeyValuePair<string, string[]> entry in ChartEntries)
@@ -57,11 +75,11 @@ namespace UA.MQTT.Publisher
             sb.Append("</tr>");
 
             // rows
-            foreach (KeyValuePair<string, string> item in TableEntries)
+            foreach (KeyValuePair<string, Tuple<string,bool>> item in TableEntries)
             {
                 sb.Append("<tr>");
                 sb.Append("<td style='width:400px'>" + item.Key + "</td>");
-                sb.Append("<td style='width:200px'>" + item.Value + "</td>");
+                sb.Append("<td style='width:200px'>" + item.Value.Item1 + "</td>");
                 sb.Append("</tr>");
             }
 
