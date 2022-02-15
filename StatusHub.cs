@@ -9,12 +9,21 @@ namespace UA.MQTT.Publisher
 
     public class StatusHub : Hub
     {
+        // this is our SignalR Status Hub
+    }
+
+    public class StatusHubClient
+    {
+        private readonly IHubContext<StatusHub> _hubContext;
+
         private Dictionary<string, Tuple<string, bool>> TableEntries { get; set; } = new Dictionary<string, Tuple<string, bool>>();
 
         private Dictionary<string, string[]> ChartEntries { get; set; } = new Dictionary<string, string[]>();
 
-        public StatusHub()
+        public StatusHubClient(IHubContext<StatusHub> hubContext)
         {
+            _hubContext = hubContext;
+
             _ = Task.Run(() => SendMessageViaSignalR());
         }
 
@@ -47,13 +56,13 @@ namespace UA.MQTT.Publisher
                     {
                         if (entry.Value.Item2 == true)
                         {
-                            Clients?.All.SendAsync("addDatasetToChart", entry.Key).GetAwaiter().GetResult();
+                            _hubContext.Clients.All.SendAsync("addDatasetToChart", entry.Key).GetAwaiter().GetResult();
                         }
                     }
 
                     foreach (KeyValuePair<string, string[]> entry in ChartEntries)
                     {
-                        Clients?.All.SendAsync("addDataToChart", entry.Key, entry.Value).GetAwaiter().GetResult();
+                        _hubContext.Clients.All.SendAsync("addDataToChart", entry.Key, entry.Value).GetAwaiter().GetResult();
                     }
                     ChartEntries.Clear();
 
@@ -85,7 +94,7 @@ namespace UA.MQTT.Publisher
 
             sb.Append("</table>");
 
-            Clients?.All.SendAsync("addTable", sb.ToString()).GetAwaiter().GetResult();
+            _hubContext.Clients.All.SendAsync("addTable", sb.ToString()).GetAwaiter().GetResult();
         }
     }
 }

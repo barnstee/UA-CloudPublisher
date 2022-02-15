@@ -18,83 +18,83 @@
 @section scripts {
     <script src="~/lib/Chart.js/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function ()
-        {
-            const config = {
-                type: 'line',
-                options: {
-                    spanGaps: true,
-                    responsive: true,
-                    plugins: {
-                      legend: {
-                        position: 'top',
-                      },
-                      title: {
-                        display: false,
-                        text: ''
-                      }
-                },
-                scales: {
-                     xAxis: [{
-                        type: 'timeseries'
-                    }],
-                    yAxis: [{
-                        ticks:
-                        {
-                            beginAtZero: true
-                        }
-                    }]
-                }
-              }
-            };
 
-            var myChart = new Chart(document.getElementById('myChart'), config);
+        const config = {
+            type: 'line',
+            options: {
+                spanGaps: true,
+                responsive: true,
+                plugins: {
+                    legend: {
+                    position: 'top',
+                    },
+                    title: {
+                    display: false,
+                    text: ''
+                    }
+            },
+            scales: {
+                    xAxis: [{
+                    type: 'timeseries'
+                }],
+                yAxis: [{
+                    ticks:
+                    {
+                        beginAtZero: true
+                    }
+                }]
+            }
+            }
+        };
 
-            // connection to SignalR hub
+        const CHART_COLORS = {
+            red: 'rgb(255, 0, 0)',
+            magenta: 'rgb(255, 0, 255)',
+            yellow: 'rgb(255, 255, 0)',
+            green: 'rgb(0, 128, 0)',
+            blue: 'rgb(0, 0, 255)',
+            cyan: 'rgb(0, 255, 255)',
+            grey: 'rgb(128, 128, 128)',
+            black: 'rgb(0, 0, 0)',
+            silver: 'rgb(192, 192, 192)',
+            lime: 'rgb(0, 255, 0)',
+            maroon: 'rgb(128, 0, 0)',
+            olive: 'rgb(128, 128, 0)',
+            purple: 'rbg(128, 0, 128)',
+            teal: 'rgb(0, 128, 128)',
+            navy: 'rgb(0, 0, 128)'
+        };
+
+        const NAMED_COLORS = [
+            CHART_COLORS.red,
+            CHART_COLORS.magenta,
+            CHART_COLORS.yellow,
+            CHART_COLORS.green,
+            CHART_COLORS.blue,
+            CHART_COLORS.cyan,
+            CHART_COLORS.grey,
+            CHART_COLORS.black,
+            CHART_COLORS.silver,
+            CHART_COLORS.lime,
+            CHART_COLORS.maroon,
+            CHART_COLORS.olive,
+            CHART_COLORS.purple,
+            CHART_COLORS.teal,
+            CHART_COLORS.navy
+        ];
+
+        function namedColor(index) {
+            return NAMED_COLORS[index % NAMED_COLORS.length];
+        }
+
+        var myChart = new Chart(document.getElementById('myChart'), config);
+
+        $(async function () {
+            //connection to SignalR hub
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl("/statusHub")
                 .configureLogging(signalR.LogLevel.Information)
                 .build();
-
-            const CHART_COLORS = {
-                red: 'rgb(255, 0, 0)',
-                magenta: 'rgb(255, 0, 255)',
-                yellow: 'rgb(255, 255, 0)',
-                green: 'rgb(0, 128, 0)',
-                blue: 'rgb(0, 0, 255)',
-                cyan: 'rgb(0, 255, 255)',
-                grey: 'rgb(128, 128, 128)',
-                black: 'rgb(0, 0, 0)',
-                silver: 'rgb(192, 192, 192)',
-                lime: 'rgb(0, 255, 0)',
-                maroon: 'rgb(128, 0, 0)',
-                olive: 'rgb(128, 128, 0)',
-                purple: 'rbg(128, 0, 128)',
-                teal: 'rgb(0, 128, 128)',
-                navy: 'rgb(0, 0, 128)'
-            };
-
-            const NAMED_COLORS = [
-                CHART_COLORS.red,
-                CHART_COLORS.magenta,
-                CHART_COLORS.yellow,
-                CHART_COLORS.green,
-                CHART_COLORS.blue,
-                CHART_COLORS.cyan,
-                CHART_COLORS.grey,
-                CHART_COLORS.black,
-                CHART_COLORS.silver,
-                CHART_COLORS.lime,
-                CHART_COLORS.maroon,
-                CHART_COLORS.olive,
-                CHART_COLORS.purple,
-                CHART_COLORS.teal,
-                CHART_COLORS.navy
-            ];
-
-            function namedColor(index) {
-                return NAMED_COLORS[index % NAMED_COLORS.length];
-            }
 
             // add dataset function
             connection.on("addDatasetToChart", function(name)
@@ -154,20 +154,21 @@
             });
 
             // Start/continue the connection
-            function establishSignalRConnection() {
+            async function establishSignalRConnection() {
                 try {
-                    connection.start();
-                    console.log("connection to signalr hub successfull established");
+                    await connection.start();
+                    console.log("Connection to SignalR Status Hub successfull established.");
                 } catch (err) {
                     console.warn("Error creating SignalR connection, retry in 5 seconds %o", err);
-                    setTimeout(async () => { establishSignalRConnection(); }, 5000);
+                    setTimeout(async () => { await establishSignalRConnection(); }, 5000);
                 }
             };
 
-            connection.onclose(async () => { establishSignalRConnection(); });
+            connection.onclose(async () => { await establishSignalRConnection(); });
 
-            // Start the connection.
-            establishSignalRConnection();
+            // start the connection
+            await establishSignalRConnection();
         });
+
     </script>
 }

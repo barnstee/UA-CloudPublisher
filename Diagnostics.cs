@@ -1,6 +1,7 @@
 ﻿
 namespace UA.MQTT.Publisher
 {
+    using Microsoft.AspNetCore.SignalR;
     using Microsoft.Extensions.Logging;
     using System;
     using System.Collections.Generic;
@@ -12,8 +13,7 @@ namespace UA.MQTT.Publisher
     public class Diagnostics
     {
         private readonly ILogger _logger;
-        
-        private StatusHub _hub = new StatusHub();
+        private readonly StatusHubClient _hub;
 
         private long _lastNumMessagesSent = 0;
 
@@ -24,6 +24,7 @@ namespace UA.MQTT.Publisher
         {
             ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
             _logger = loggerFactory.CreateLogger("Diagnostics");
+            _hub = new StatusHubClient((IHubContext<StatusHub>)Program.AppHost.Services.GetService(typeof(IHubContext<StatusHub>)));
         }
 
         public static Diagnostics Singleton
