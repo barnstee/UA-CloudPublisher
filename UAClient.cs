@@ -17,7 +17,6 @@ namespace UA.MQTT.Publisher
     public class UAClient : IUAClient
     {
         private readonly IUAApplication _app;
-        private readonly IPeriodicDiagnosticsInfo _diag;
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
 
@@ -30,14 +29,12 @@ namespace UA.MQTT.Publisher
 
         public UAClient(
             IUAApplication app,
-            IPeriodicDiagnosticsInfo diag,
             ILoggerFactory loggerFactory,
             IMessageSource trigger)
         {
             _logger = loggerFactory.CreateLogger("UAClient");
             _loggerFactory = loggerFactory;
             _app = app;
-            _diag = diag;
             _trigger = trigger;
         }
 
@@ -172,7 +169,7 @@ namespace UA.MQTT.Publisher
             lock (_sessions)
             {
                 _sessions.Add(newSession);
-                _diag.Info.NumberOfOpcSessionsConnected++;
+                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
             }
 
             return newSession;
@@ -201,16 +198,16 @@ namespace UA.MQTT.Publisher
                             subscription.RemoveItem(subscription.MonitoredItems.First());
                             subscription.ApplyChanges();
                         }
-                        _diag.Info.NumberOfOpcMonitoredItemsMonitored -= (int)subscription.MonitoredItemCount;
+                        Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored -= (int)subscription.MonitoredItemCount;
 
                         session.RemoveSubscription(subscription);
-                        _diag.Info.NumberOfOpcSubscriptionsConnected--;
+                        Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
                     }
 
                     string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
                     session.Close();
                     _sessions.Remove(session);
-                    _diag.Info.NumberOfOpcSessionsConnected--;
+                    Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
 
                     _logger.LogInformation("Session to endpoint {endpoint} closed successfully.", endpoint);
                 }
@@ -227,7 +224,7 @@ namespace UA.MQTT.Publisher
             session.AddSubscription(subscription);
             subscription.Create();
 
-            _diag.Info.NumberOfOpcSubscriptionsConnected++;
+            Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected++;
 
             _logger.LogInformation("Created subscription with id {id} on endpoint {endpointUrl}.",
                 subscription.Id,
@@ -485,7 +482,7 @@ namespace UA.MQTT.Publisher
                     nodeToPublish.ExpandedNodeId,
                     session.ConfiguredEndpoint.EndpointUrl);
 
-                _diag.Info.NumberOfOpcMonitoredItemsMonitored++;
+                Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored++;
             }
             catch (ServiceResultException sre)
             {
@@ -559,13 +556,13 @@ namespace UA.MQTT.Publisher
                             subscription.RemoveItem(monitoredItem);
                             subscription.ApplyChanges();
 
-                            _diag.Info.NumberOfOpcMonitoredItemsMonitored--;
+                            Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
 
                             // cleanup empty subscriptions and sessions
                             if (subscription.MonitoredItemCount == 0)
                             {
                                 session.RemoveSubscription(subscription);
-                                _diag.Info.NumberOfOpcSubscriptionsConnected--;
+                                Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
                             }
 
                             return;

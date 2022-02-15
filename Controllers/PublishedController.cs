@@ -5,30 +5,57 @@ namespace UA.MQTT.Publisher.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Security.Cryptography.X509Certificates;
+    using System.Threading.Tasks;
     using UA.MQTT.Publisher.Interfaces;
+    using UA.MQTT.Publisher.Models;
 
     public class PublishedController : Controller
     {
         private readonly ILogger _logger;
         private readonly IPublishedNodesFileHandler _publishedNodesFileHandler;
         private readonly IUAApplication _app;
+        private readonly IUAClient _client;
 
-        public PublishedController(ILoggerFactory loggerFactory, IPublishedNodesFileHandler publishedNodesFileHandler, IUAApplication app)
+        public PublishedController(ILoggerFactory loggerFactory, IPublishedNodesFileHandler publishedNodesFileHandler, IUAApplication app, IUAClient client)
         {
             _logger = loggerFactory.CreateLogger("PublishedController");
             _publishedNodesFileHandler = publishedNodesFileHandler;
             _app = app;
+            _client = client;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View();
+            IEnumerable<ConfigurationFileEntryModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
+            
+            List<string> publishedNodesDisplay = new List<string>();
+            foreach (ConfigurationFileEntryModel entry in publishedNodes)
+            {
+                if (entry.OpcEvents != null)
+                {
+                    foreach (OpcEventOnEndpointModel node in entry.OpcEvents)
+                    {
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Event: " + node.Id);
+                    }
+                }
+
+                if (entry.OpcNodes != null)
+                {
+                    foreach (OpcNodeOnEndpointModel node in entry.OpcNodes)
+                    {
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Variable: " + node.Id);
+                    }
+                }
+            }
+
+            return View(publishedNodesDisplay.ToArray());
         }
 
         [HttpPost]
-        public IActionResult Load(IFormFile file)
+        public async Task<IActionResult> Load(IFormFile file)
         {
             try
             {
@@ -59,23 +86,48 @@ namespace UA.MQTT.Publisher.Controllers
                     file.CopyTo(stream);
                 }
 
-                LoadPublishedNodesFile(filePath);
+                await LoadPublishedNodesFile(filePath).ConfigureAwait(false);
+
+                IEnumerable<ConfigurationFileEntryModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
+
+                List<string> publishedNodesDisplay = new List<string>();
+                foreach (ConfigurationFileEntryModel entry in publishedNodes)
+                {
+                    if (entry.OpcEvents != null)
+                    {
+                        foreach (OpcEventOnEndpointModel node in entry.OpcEvents)
+                        {
+                            publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Event: " + node.Id);
+                        }
+                    }
+
+                    if (entry.OpcNodes != null)
+                    {
+                        foreach (OpcNodeOnEndpointModel node in entry.OpcNodes)
+                        {
+                            publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Variable: " + node.Id);
+                        }
+                    }
+                }
+
+                return View("Index", publishedNodesDisplay.ToArray());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
+                return View("Index", new string[] { ex.Message });
             }
 
-            return View("Index");
+            
         }
 
-        private void LoadPublishedNodesFile(string filePath)
+        private async Task LoadPublishedNodesFile(string filePath)
         {
             // load publishednodes.json file, if available
             if (System.IO.File.Exists(filePath))
             {
                 _logger.LogInformation($"Loading published nodes JSON file from {filePath}...");
-                X509Certificate2 certWithPrivateKey = _app.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
+                X509Certificate2 certWithPrivateKey = await _app.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).ConfigureAwait(false);
                 if (!_publishedNodesFileHandler.ParseFile(filePath, certWithPrivateKey))
                 {
                     _logger.LogInformation("Could not load and parse published nodes JSON file!");

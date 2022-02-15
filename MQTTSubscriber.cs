@@ -31,16 +31,11 @@ namespace UA.MQTT.Publisher.Configuration
 
         private readonly ILogger _logger;
         private readonly IUAClient _uaClient;
-        private readonly IPeriodicDiagnosticsInfo _diag;
 
-        public MQTTSubscriber(
-            ILoggerFactory loggerFactory,
-            IUAClient client,
-            IPeriodicDiagnosticsInfo diag)
+        public MQTTSubscriber(ILoggerFactory loggerFactory, IUAClient client)
         {
             _logger = loggerFactory.CreateLogger("MQTTSubscriber");
             _uaClient = client;
-            _diag = diag;
         }
 
         public void Connect()
@@ -435,7 +430,7 @@ namespace UA.MQTT.Publisher.Configuration
             try
             {
                 List<DiagnosticInfo> diagnosticInfos = new List<DiagnosticInfo>();
-                diagnosticInfos.Add(_diag.Info);
+                diagnosticInfos.Add(Diagnostics.Singleton.Info);
                 diagnosticInfoResponse.DiagnosticInfos = diagnosticInfos;
             }
             catch (Exception e)

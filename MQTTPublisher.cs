@@ -12,16 +12,12 @@ namespace UA.MQTT.Publisher
         private IMQTTSubscriber _client;
 
         private readonly ILogger _logger;
-        private readonly IPeriodicDiagnosticsInfo _diag;
 
         private Queue<long> _lastMessageLatencies = new Queue<long>();
 
-        public MQTTPublisher(IPeriodicDiagnosticsInfo diag,
-                               ILoggerFactory loggerFactory,
-                               IMQTTSubscriber subscriber)
+        public MQTTPublisher(ILoggerFactory loggerFactory, IMQTTSubscriber subscriber)
         {
             _logger = loggerFactory.CreateLogger("MQTTPublisher");
-            _diag = diag;
             _client = subscriber;
         }
 
@@ -47,7 +43,7 @@ namespace UA.MQTT.Publisher
                     ex = ((AggregateException)ex).Flatten();
                 }
                 _logger.LogError(ex, "Error while sending message. Dropping...");
-                _diag.Info.FailedMessages++;
+                Diagnostics.Singleton.Info.FailedMessages++;
             }
 
             watch.Stop();
@@ -66,7 +62,7 @@ namespace UA.MQTT.Publisher
                 sum += latency;
             }
 
-            _diag.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
+            Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
         }
     }
 }

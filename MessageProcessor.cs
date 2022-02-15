@@ -28,18 +28,15 @@ namespace UA.MQTT.Publisher
         private bool _isRunning = false;
 
         private static ILogger _logger;
-        private static IPeriodicDiagnosticsInfo _diag;
         private readonly IMessageEncoder _encoder;
         private readonly IMessagePublisher _sink;
 
         public MessageProcessor(
-            IPeriodicDiagnosticsInfo diag,
             IMessageEncoder encoder,
             ILoggerFactory loggerFactory,
             IMessagePublisher sink)
         {
             _logger = loggerFactory.CreateLogger("MessageProcessor");
-            _diag = diag;
             _encoder = encoder;
             _sink = sink;
         }
@@ -66,18 +63,18 @@ namespace UA.MQTT.Publisher
             {
                 if (_monitoredItemsDataQueue.TryAdd(json) == false)
                 {
-                    _diag.Info.EnqueueFailureCount++;
+                    Diagnostics.Singleton.Info.EnqueueFailureCount++;
 
                     // log an error message for every 10K messages lost
-                    if (_diag.Info.EnqueueFailureCount % 10000 == 0)
+                    if (Diagnostics.Singleton.Info.EnqueueFailureCount % 10000 == 0)
                     {
-                        _logger.LogError($"The internal monitored item message queue is above its capacity of {_monitoredItemsDataQueue.BoundedCapacity}. We have lost {_diag.Info.EnqueueFailureCount} monitored item notifications so far.");
+                        _logger.LogError($"The internal monitored item message queue is above its capacity of {_monitoredItemsDataQueue.BoundedCapacity}. We have lost {Diagnostics.Singleton.Info.EnqueueFailureCount} monitored item notifications so far.");
                     }
                 }
                 else
                 {
-                    _diag.Info.EnqueueCount++;
-                    _diag.Info.MonitoredItemsQueueCount++;
+                    Diagnostics.Singleton.Info.EnqueueCount++;
+                    Diagnostics.Singleton.Info.MonitoredItemsQueueCount++;
                 }
             }
         }
@@ -134,7 +131,7 @@ namespace UA.MQTT.Publisher
                     }
                     else
                     {
-                        _diag.Info.MonitoredItemsQueueCount--;
+                        Diagnostics.Singleton.Info.MonitoredItemsQueueCount--;
                     }
 
                     // check if we should send the new item straight away
@@ -158,7 +155,7 @@ namespace UA.MQTT.Publisher
                         if (jsonMessageSize > hubMessageBufferSize)
                         {
                             _logger.LogError($"Configured hub message size {hubMessageBufferSize} too small to even fit the generated telemetry message of {jsonMessageSize}. Please adjust. The telemetry message will be discarded!");
-                            _diag.Info.TooLargeCount++;
+                            Diagnostics.Singleton.Info.TooLargeCount++;
                             continue;
                         }
 
@@ -235,7 +232,7 @@ namespace UA.MQTT.Publisher
                 sum += notificationInBatch;
             }
 
-            _diag.Info.AverageNotificationsInBrokerMessage = sum / _lastNotificationInBatch.Count;
+            Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage = sum / _lastNotificationInBatch.Count;
 
             return _batchBuffer.ToArray();
         }
@@ -244,9 +241,9 @@ namespace UA.MQTT.Publisher
         {
             _sink.SendMessage(bytesToSend);
 
-            _diag.Info.SentBytes += bytesToSend.Length;
-            _diag.Info.SentMessages++;
-            _diag.Info.SentLastTime = DateTime.UtcNow;
+            Diagnostics.Singleton.Info.SentBytes += bytesToSend.Length;
+            Diagnostics.Singleton.Info.SentMessages++;
+            Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
             _logger.LogDebug($"Sent {bytesToSend.Length} bytes to hub!");
 
             // reset our batch
@@ -281,7 +278,7 @@ namespace UA.MQTT.Publisher
                 jsonMessage = _encoder.EncodeEvent(eventMessageData);
             }
 
-            _diag.Info.NumberOfEvents++;
+            Diagnostics.Singleton.Info.NumberOfEvents++;
 
             return jsonMessage;
         }
@@ -296,7 +293,7 @@ namespace UA.MQTT.Publisher
                 TimeSpan timeTillNextSend = _nextSendTime.Subtract(DateTime.UtcNow);
                 if (timeTillNextSend < TimeSpan.Zero)
                 {
-                    _diag.Info.MissedSendIntervalCount++;
+                    Diagnostics.Singleton.Info.MissedSendIntervalCount++;
 
                     // no wait if the send interval was missed
                     timeTillNextSend = TimeSpan.Zero;

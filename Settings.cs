@@ -1,19 +1,15 @@
 ﻿
 namespace UA.MQTT.Publisher.Models
 {
-    using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using System;
     using System.IO;
 
     public class Settings
     {
-        private readonly ILogger _logger;
-
         public Settings()
         {
-            ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
-            _logger = loggerFactory.CreateLogger("Settings");
+            // needed for serialization
         }
 
         private static Settings _instance = null;

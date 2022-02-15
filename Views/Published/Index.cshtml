@@ -1,5 +1,7 @@
 ﻿@using UA.MQTT.Publisher.Models
 
+@model string[]
+
 @{
     ViewData["Title"] = "List of Currently Published OPC UA Nodes";
 }
@@ -9,8 +11,6 @@
 <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Load">
     <div class="container-fluid browser_connect_container">
         <br/>
-        <hr />
-        <br />
         <p>
             <h2>Open a local publishednodes.json file</h2>
         </p>
@@ -20,5 +20,14 @@
         <p>
             <input class="btn btn-primary" type="submit" value="Open">
         </p>
+        <br />
+        <hr />
+        <br />
+        <ul>
+        @foreach(var role in Model) 
+        {
+           <li>@role</li>
+        }
+        </ul>
     </div>
 </form>

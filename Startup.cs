@@ -48,7 +48,6 @@ namespace UA.MQTT.Publisher
             services.AddSingleton<IUAClient, UAClient>();
             services.AddSingleton<IMQTTSubscriber, MQTTSubscriber>();
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
-            services.AddSingleton<IPeriodicDiagnosticsInfo, PeriodicDiagnosticsInfo>();
             services.AddSingleton<OpcSessionHelper>();
             services.AddSingleton<StatusHub>();
 
@@ -65,7 +64,6 @@ namespace UA.MQTT.Publisher
                               ILoggerFactory loggerFactory,
                               IUAApplication uaApp,
                               IMessageProcessor engine,
-                              IPeriodicDiagnosticsInfo diag,
                               IMQTTSubscriber subscriber)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
@@ -102,7 +100,7 @@ namespace UA.MQTT.Publisher
             uaApp.CreateAsync().GetAwaiter().GetResult();
 
             // kick off the task to show periodic diagnostic info
-            _ = Task.Run(() => diag.RunAsync());
+            _ = Task.Run(() => Diagnostics.Singleton.RunAsync());
 
             // connect to MQTT broker
             subscriber.Connect();

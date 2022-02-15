@@ -7,34 +7,48 @@ namespace UA.MQTT.Publisher
     using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
-    /// <summary>
-    /// Logs periodic diagnostics info
-    /// </summary>
-    public class PeriodicDiagnosticsInfo : IPeriodicDiagnosticsInfo
+    public class Diagnostics
     {
         private readonly ILogger _logger;
         private readonly StatusHub _hub;
 
         private long _lastNumMessagesSent = 0;
 
-        public PeriodicDiagnosticsInfo(ILoggerFactory loggerFactory, StatusHub hub)
+        private static Diagnostics _instance = null;
+        private static object _instanceLock = new object();
+
+        private Diagnostics()
         {
+            ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
             _logger = loggerFactory.CreateLogger("PeriodicDiagnosticsInfo");
-            _hub = hub;
+            _hub = (StatusHub)Program.AppHost.Services.GetService(typeof(StatusHub));
         }
 
-        /// <summary>
-        /// The Diagnostic info
-        /// </summary>
+        public static Diagnostics Singleton
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    lock (_instanceLock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new Diagnostics();
+                        }
+                    }
+                }
+
+                return _instance;
+            }
+       
+        }
+
         public DiagnosticInfo Info { get; set; } = new DiagnosticInfo();
 
-        /// <summary>
-        /// Clear all metrics
-        /// </summary>
-        public void Clear()
+        private void Clear()
         {
             Info.PublisherStartTime = DateTime.UtcNow;
             Info.NumberOfOpcSessionsConnected = 0;
@@ -53,16 +67,15 @@ namespace UA.MQTT.Publisher
             Info.AverageNotificationsInBrokerMessage = 0;
         }
 
-        /// <summary>
-        /// Kicks of the task to show diagnostic information
-        /// </summary>
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
             if ( Settings.Singleton.DiagnosticsLoggingInterval == 0)
             {
-                // period diagnostics are disabled
+                // diagnostics are disabled
                 return;
             }
+
+            Clear();
 
             uint ticks = 0;
             while (true)

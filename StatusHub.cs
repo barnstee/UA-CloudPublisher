@@ -39,7 +39,7 @@ namespace UA.MQTT.Publisher
         {
             while (true)
             {
-                await Task.Delay(3000).ConfigureAwait(false);
+                await Task.Delay(1000).ConfigureAwait(false);
 
                 lock (TableEntries)
                 {
