@@ -15,3 +15,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * Publishing from the cloud via a connected MQTT broker
 * Publishing on data changes or on regular intervals
 * Supports Microsoft OPC Publisher publishesnodes.json imput file format
+
+## Build Status
+
+[![Docker](https://github.com/barnstee/UA-MQTT-Publisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-MQTT-Publisher/actions/workflows/docker-publish.yml)
