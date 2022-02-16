@@ -59,6 +59,11 @@ namespace UA.MQTT.Publisher.Models
 
         public void Save()
         {
+            if (!Directory.Exists("./Settings"))
+            {
+                Directory.CreateDirectory("./Settings");
+            }
+
             File.WriteAllText("./Settings/settings.json", JsonConvert.SerializeObject(this, Formatting.Indented));
         }
 

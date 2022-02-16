@@ -8,6 +8,7 @@ namespace UA.MQTT.Publisher
     using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;
     using System;
+    using System.IO;
     using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Configuration;
@@ -109,8 +110,13 @@ namespace UA.MQTT.Publisher
             _ = Task.Run(() => engine.Run());
 
             // load our persistency file
+            if (!Directory.Exists("./Settings"))
+            {
+                Directory.CreateDirectory("./Settings");
+            }
+
             string filePath = "./Settings/persistency.json";
-            if (System.IO.File.Exists(filePath))
+            if (File.Exists(filePath))
             {
                 logger.LogInformation($"Loading persistency file from {filePath}...");
                 X509Certificate2 certWithPrivateKey = uaApp.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
