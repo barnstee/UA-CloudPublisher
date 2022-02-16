@@ -25,7 +25,8 @@ namespace UA.MQTT.Publisher
         private IMessageSource _trigger;
  
         private List<Session> _sessions = new List<Session>();
-        private List<PeriodicPublishing> _heartbeats = new List<PeriodicPublishing>();
+        private List<SessionReconnectHandler> _reconnectHandlers = new List<SessionReconnectHandler>();
+        private List<PeriodicPublishing> _periodicPublishingList = new List<PeriodicPublishing>();
         private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
         private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
 
@@ -182,12 +183,12 @@ namespace UA.MQTT.Publisher
             // loop through all sessions
             lock (_sessions)
             {
-                foreach (PeriodicPublishing heartbeat in _heartbeats)
+                foreach (PeriodicPublishing heartbeat in _periodicPublishingList)
                 {
                     heartbeat.Stop();
                     heartbeat.Dispose();
                 }
-                _heartbeats.Clear();
+                _periodicPublishingList.Clear();
 
                 while (_sessions.Count > 0)
                 {
@@ -274,8 +275,36 @@ namespace UA.MQTT.Publisher
                         // start reconnect if there are 3 missed keep alives
                         if (_missedKeepAlives[endpoint] >= 3)
                         {
-                            _logger.LogInformation("RECONNECTING session {sessionId}...", session.SessionId);
-                            session.Reconnect();
+                            // check if a reconnection is already in progress
+                            bool reconnectInProgress = false;
+                            lock (_reconnectHandlers)
+                            {
+                                foreach (SessionReconnectHandler handler in _reconnectHandlers)
+                                {
+                                    if (ReferenceEquals(handler.Session, session))
+                                    {
+                                        reconnectInProgress = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!reconnectInProgress)
+                            {
+                                lock (_sessions)
+                                {
+                                    _sessions.Remove(session);
+                                }
+
+                                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
+                                _logger.LogInformation($"RECONNECTING session {session.SessionId}...");
+                                SessionReconnectHandler reconnectHandler = new SessionReconnectHandler();
+                                lock (_reconnectHandlers)
+                                {
+                                    _reconnectHandlers.Add(reconnectHandler);
+                                }
+                                reconnectHandler.BeginReconnect(session, 10000, ReconnectCompleteHandler);
+                            }
                         }
                     }
                     else
@@ -303,6 +332,45 @@ namespace UA.MQTT.Publisher
             {
                 _logger.LogWarning("Keep alive arguments invalid.");
             }
+        }
+
+        private void ReconnectCompleteHandler(object sender, EventArgs e)
+        {
+            // find our reconnect handler
+            SessionReconnectHandler reconnectHandler = null;
+            lock (_reconnectHandlers)
+            {
+                foreach (SessionReconnectHandler handler in _reconnectHandlers)
+                {
+                    if (ReferenceEquals(sender, handler))
+                    {
+                        reconnectHandler = handler;
+                        break;
+                    }
+                }
+            }
+
+            // ignore callbacks from discarded objects
+            if (reconnectHandler == null)
+            {
+                return;
+            }
+
+            // update the session
+            Session session = reconnectHandler.Session;
+            lock (_sessions)
+            {
+                _sessions.Add(session);
+            }
+
+            Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
+            lock (_reconnectHandlers)
+            {
+                _reconnectHandlers.Remove(reconnectHandler);
+            }
+            reconnectHandler.Dispose();
+
+            _logger.LogInformation($"RECONNECTED session {session.SessionId}!");
         }
 
         public async Task PublishNodeAsync(EventPublishingModel nodeToPublish, CancellationToken cancellationToken = default)
@@ -471,9 +539,9 @@ namespace UA.MQTT.Publisher
                         resolvedNodeId,
                         _loggerFactory);
 
-                    lock (_heartbeats)
+                    lock (_periodicPublishingList)
                     {
-                        _heartbeats.Add(heartbeat);
+                        _periodicPublishingList.Add(heartbeat);
                     }
                 }
 
@@ -634,9 +702,9 @@ namespace UA.MQTT.Publisher
                                     SkipFirst = false
                                 };
 
-                                lock (_heartbeats)
+                                lock (_periodicPublishingList)
                                 {
-                                    foreach (PeriodicPublishing heartbeat in _heartbeats)
+                                    foreach (PeriodicPublishing heartbeat in _periodicPublishingList)
                                     {
                                         if ((heartbeat.HeartBeatSession == session) && (heartbeat.HeartBeatNodeId == monitoredItem.ResolvedNodeId))
                                         {

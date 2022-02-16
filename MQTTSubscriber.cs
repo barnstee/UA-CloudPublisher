@@ -42,7 +42,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             try
             {
-                // create MQTT client
+                // create MQTT password
                 string password = Settings.Singleton.MQTTPassword;
                 if (Settings.Singleton.CreateMQTTSASToken)
                 {
