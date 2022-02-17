@@ -29,29 +29,7 @@ namespace UA.MQTT.Publisher.Controllers
 
         public async Task<IActionResult> Index()
         {
-            IEnumerable<ConfigurationFileEntryModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
-            
-            List<string> publishedNodesDisplay = new List<string>();
-            foreach (ConfigurationFileEntryModel entry in publishedNodes)
-            {
-                if (entry.OpcEvents != null)
-                {
-                    foreach (OpcEventOnEndpointModel node in entry.OpcEvents)
-                    {
-                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Event: " + node.Id);
-                    }
-                }
-
-                if (entry.OpcNodes != null)
-                {
-                    foreach (OpcNodeOnEndpointModel node in entry.OpcNodes)
-                    {
-                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Variable: " + node.Id);
-                    }
-                }
-            }
-
-            return View(publishedNodesDisplay.ToArray());
+            return View(await GeneratePublishedNodesArray().ConfigureAwait(false));
         }
 
         [HttpPost]
@@ -91,37 +69,40 @@ namespace UA.MQTT.Publisher.Controllers
                     throw new Exception("Could not parse publishednodes file and publish its nodes!");
                 }
 
-                IEnumerable<ConfigurationFileEntryModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
-
-                List<string> publishedNodesDisplay = new List<string>();
-                foreach (ConfigurationFileEntryModel entry in publishedNodes)
-                {
-                    if (entry.OpcEvents != null)
-                    {
-                        foreach (OpcEventOnEndpointModel node in entry.OpcEvents)
-                        {
-                            publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Event: " + node.Id);
-                        }
-                    }
-
-                    if (entry.OpcNodes != null)
-                    {
-                        foreach (OpcNodeOnEndpointModel node in entry.OpcNodes)
-                        {
-                            publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + "\t Variable: " + node.Id);
-                        }
-                    }
-                }
-
-                return View("Index", publishedNodesDisplay.ToArray());
+                return View("Index", await GeneratePublishedNodesArray().ConfigureAwait(false));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
                 return View("Index", new string[] { ex.Message });
             }
+        }
 
-            
+        private async Task<string[]> GeneratePublishedNodesArray()
+        {
+            IEnumerable<ConfigurationFileEntryModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
+
+            List<string> publishedNodesDisplay = new List<string>();
+            foreach (ConfigurationFileEntryModel entry in publishedNodes)
+            {
+                if (entry.OpcEvents != null)
+                {
+                    foreach (OpcEventOnEndpointModel node in entry.OpcEvents)
+                    {
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Event: " + node.Id + " Name: " + node.DisplayName);
+                    }
+                }
+
+                if (entry.OpcNodes != null)
+                {
+                    foreach (OpcNodeOnEndpointModel node in entry.OpcNodes)
+                    {
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Variable: " + node.ExpandedNodeId + " Name: " + node.DisplayName);
+                    }
+                }
+            }
+
+            return publishedNodesDisplay.ToArray();
         }
 
         private async Task<bool> LoadPublishedNodesFile(string filePath)

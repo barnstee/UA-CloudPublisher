@@ -5,6 +5,7 @@ namespace UA.MQTT.Publisher
     using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Client;
+    using Opc.Ua.Client.ComplexTypes;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -29,6 +30,7 @@ namespace UA.MQTT.Publisher
         private List<PeriodicPublishing> _periodicPublishingList = new List<PeriodicPublishing>();
         private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
         private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
+        private readonly Dictionary<Session, ComplexTypeSystem> _complexTypeList = new Dictionary<Session, ComplexTypeSystem>();
 
         public UAClient(
             IUAApplication app,
@@ -175,6 +177,21 @@ namespace UA.MQTT.Publisher
                 Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
             }
 
+            // load complex type system
+            try
+            {
+                if (!_complexTypeList.ContainsKey(newSession))
+                {
+                    _complexTypeList.Add(newSession, new ComplexTypeSystem(newSession));
+                }
+
+                await _complexTypeList[newSession].Load().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load complex type system for session!");
+            }
+
             return newSession;
         }
 
@@ -210,6 +227,7 @@ namespace UA.MQTT.Publisher
                     string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
                     session.Close();
                     _sessions.Remove(session);
+                    _complexTypeList.Remove(session);
                     Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
 
                     _logger.LogInformation("Session to endpoint {endpoint} closed successfully.", endpoint);
@@ -698,7 +716,8 @@ namespace UA.MQTT.Publisher
                                     OpcPublishingInterval = subscription.PublishingInterval,
                                     OpcSamplingInterval = monitoredItem.SamplingInterval,
                                     DisplayName = monitoredItem.DisplayName,
-                                    HeartbeatInterval = 0,
+                                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                                HeartbeatInterval = 0,
                                     SkipFirst = false
                                 };
 
