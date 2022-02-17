@@ -56,6 +56,13 @@ namespace UA.MQTT.Publisher
             services.AddSingleton<IMessageSource, MonitoredItemNotification>();
             services.AddSingleton<IMessageEncoder, PubSubTelemetryEncoder>();
             services.AddSingleton<IMessagePublisher, MQTTPublisher>();
+
+            // setup file storage
+            switch (Configuration["STORAGE_TYPE"])
+            {
+                case "Azure": services.AddSingleton<IFileStorage, AzureFileStorage>(); break;
+                default: services.AddSingleton<IFileStorage, LocalFileStorage>(); break;
+            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -65,7 +72,8 @@ namespace UA.MQTT.Publisher
                               IUAApplication uaApp,
                               IMessageProcessor engine,
                               IMQTTSubscriber subscriber,
-                              IPublishedNodesFileHandler publishedNodesFileHandler)
+                              IPublishedNodesFileHandler publishedNodesFileHandler,
+                              IFileStorage storage)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
 
@@ -110,28 +118,32 @@ namespace UA.MQTT.Publisher
             _ = Task.Run(() => engine.Run());
 
             // load our persistency file
-            if (!Directory.Exists("./Settings"))
+            try
             {
-                Directory.CreateDirectory("./Settings");
-            }
-
-            string filePath = "./Settings/persistency.json";
-            if (File.Exists(filePath))
-            {
-                logger.LogInformation($"Loading persistency file from {filePath}...");
-                X509Certificate2 certWithPrivateKey = uaApp.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
-                if (!publishedNodesFileHandler.ParseFile(filePath, certWithPrivateKey))
+                string persistencyFilePath = storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
+                byte[] persistencyFile = storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
+                if (persistencyFile == null)
                 {
-                    logger.LogInformation("Could not load and parse persistency file!");
+                    // no file persisted yet
+                    logger.LogInformation("Persistency file not found.");
                 }
                 else
                 {
-                    logger.LogInformation("Persistency file parsed successfully.");
+                    logger.LogInformation($"Parsing persistency file...");
+                    X509Certificate2 certWithPrivateKey = uaApp.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
+                    if (!publishedNodesFileHandler.ParseFile(persistencyFile, certWithPrivateKey))
+                    {
+                        logger.LogInformation("Could not parse persistency file!");
+                    }
+                    else
+                    {
+                        logger.LogInformation("Persistency file parsed successfully.");
+                    }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                logger.LogInformation($"Persistency file not found in {filePath}.");
+                logger.LogInformation(ex, "Persistency file not loaded!");
             }
         }
     }

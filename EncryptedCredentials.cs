@@ -6,9 +6,7 @@ namespace UA.MQTT.Publisher
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
 
-    /// <summary>
-    /// Provides in-memory access to encrypted credentials. It uses the OPC UA app cert to encrypt/decrypt credentials.
-    /// </summary>
+    // Uses the OPC UA app cert to encrypt/decrypt credentials
     public class EncryptedCredentials : NetworkCredential
     {
         public EncryptedCredentials(X509Certificate2 cert, NetworkCredential networkCredential)

@@ -9,6 +9,7 @@ namespace UA.MQTT.Publisher.Configuration
     using System.IO;
     using System.Net;
     using System.Security.Cryptography.X509Certificates;
+    using System.Text;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
@@ -25,32 +26,19 @@ namespace UA.MQTT.Publisher.Configuration
             _uaClient = client;
         }
 
-        /// <summary>
-        /// Parse and publish the nodes in the configuration file.
-        /// </summary>
-        /// <returns></returns>
-        public bool ParseFile(string filePath, X509Certificate2 cert)
+        public bool ParseFile(byte[] content, X509Certificate2 cert)
         {
             try
             {
-                _logger.LogInformation($"The name of the configuration file for published nodes is: {filePath}");
-
-                // check if the file exists
-                if (!File.Exists(filePath))
-                {
-                    _logger.LogInformation($"The node configuration file '{filePath}' does not exist.");
-                    return false;
-                }
-
                 List<ConfigurationFileEntryLegacyModel> _configurationFileEntries = null;
                 try
                 {
-                    string json = File.ReadAllText(filePath);
+                    string json = Encoding.UTF8.GetString(content);
                     _configurationFileEntries = JsonConvert.DeserializeObject<List<ConfigurationFileEntryLegacyModel>>(json);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Loading of the node configuration file failed with {ex.Message}. Does the file exist and does it have the correct syntax?");
+                    _logger.LogError(ex, $"Loading of the node configuration file failed with {ex.Message}.");
                 }
 
                 // process loaded config file entries

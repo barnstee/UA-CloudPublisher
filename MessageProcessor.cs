@@ -41,9 +41,6 @@ namespace UA.MQTT.Publisher
             _sink = sink;
         }
 
-        /// <summary>
-        /// Cleanup of unmanaged resources
-        /// </summary>
         public void Dispose()
         {
             _batchBuffer.Dispose();
@@ -54,9 +51,6 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        /// <summary>
-        /// Enqueue a message for sending to MQTT broker
-        /// </summary>
         public static void Enqueue(MessageDataModel json)
         {
             if (_monitoredItemsDataQueue != null)
@@ -79,9 +73,6 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        /// <summary>
-        /// Dequeue monitored item notification messages, batch them for send (if needed) and send them
-        /// </summary>
         public void Run(CancellationToken cancellationToken = default)
         {
             if (_isRunning)
@@ -239,12 +230,13 @@ namespace UA.MQTT.Publisher
 
         private void SendBatch(byte[] bytesToSend)
         {
-            _sink.SendMessage(bytesToSend);
-
-            Diagnostics.Singleton.Info.SentBytes += bytesToSend.Length;
-            Diagnostics.Singleton.Info.SentMessages++;
-            Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
-            _logger.LogDebug($"Sent {bytesToSend.Length} bytes to hub!");
+            if (_sink.SendMessage(bytesToSend))
+            {
+                Diagnostics.Singleton.Info.SentBytes += bytesToSend.Length;
+                Diagnostics.Singleton.Info.SentMessages++;
+                Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
+                _logger.LogDebug($"Sent {bytesToSend.Length} bytes to broker!");
+            }
 
             // reset our batch
             InitBatch();

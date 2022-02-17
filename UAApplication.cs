@@ -6,19 +6,22 @@ namespace UA.MQTT.Publisher
     using Opc.Ua.Configuration;
     using System;
     using System.Globalization;
+    using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
 
     public class UAApplication : IUAApplication
     {
         private readonly ILogger _logger;
+        private readonly IFileStorage _storage;
+
         private ApplicationInstance _uaApplicationInstance;
 
-        public UAApplication(ILoggerFactory loggerFactory)
+        public UAApplication(ILoggerFactory loggerFactory, IFileStorage storage)
         {
             _logger = loggerFactory.CreateLogger("UAApplication");
+            _storage = storage;
         }
 
         public async Task CreateAsync(CancellationToken cancellationToken = default)
@@ -26,6 +29,57 @@ namespace UA.MQTT.Publisher
             if (string.IsNullOrEmpty(Settings.Singleton.PublisherName))
             {
                 Settings.Singleton.PublisherName = "UA-MQTT-Publisher";
+            }
+
+            try
+            {
+                // load app cert from storage
+                string certFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), ".der").ConfigureAwait(false);
+                byte[] certFile = await _storage.LoadFileAsync(certFilePath).ConfigureAwait(false);
+                if (certFile == null)
+                {
+                    _logger.LogError("Cloud not load cert file, creating a new one. This means the new cert needs to be trusted by all OPC UA servers we connect to!");
+                }
+                else
+                {
+                    if (!Path.IsPathRooted(certFilePath))
+                    {
+                        certFilePath = Path.DirectorySeparatorChar.ToString() + certFilePath;
+                    }
+
+                    if (!Directory.Exists(Path.GetDirectoryName(certFilePath)))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(certFilePath));
+                    }
+
+                    File.WriteAllBytes(certFilePath, certFile);
+                }
+
+                // load app private key from storage
+                string keyFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "private"), ".pfx").ConfigureAwait(false);
+                byte[] keyFile = await _storage.LoadFileAsync(keyFilePath).ConfigureAwait(false);
+                if (keyFile == null)
+                {
+                    _logger.LogError("Cloud not load key file, creating a new one. This means the new cert generated from the key needs to be trusted by all OPC UA servers we connect to!");
+                }
+                else
+                {
+                    if (!Path.IsPathRooted(keyFilePath))
+                    {
+                        keyFilePath = Path.DirectorySeparatorChar.ToString() + keyFilePath;
+                    }
+
+                    if (!Directory.Exists(Path.GetDirectoryName(keyFilePath)))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(keyFilePath));
+                    }
+
+                    File.WriteAllBytes(keyFilePath, keyFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cloud not load cert or private key files, creating a new ones. This means the new cert needs to be trusted by all OPC UA servers we connect to!");
             }
 
             _uaApplicationInstance = new ApplicationInstance {
@@ -36,7 +90,7 @@ namespace UA.MQTT.Publisher
 
             await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
             _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Singleton.UAStackTraceMask;
-            Opc.Ua.Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
+            Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
             _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Singleton.UAStackTraceMask:X}");
 
             // check the application certificate.
@@ -44,6 +98,20 @@ namespace UA.MQTT.Publisher
             if (!certOK)
             {
                 throw new Exception("Application instance certificate invalid!");
+            }
+            else
+            {
+                // store app cert
+                foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), "*.der"))
+                {
+                    await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+                }
+
+                // store private key
+                foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "private"), "*.pfx"))
+                {
+                    await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+                }
             }
 
             _logger.LogInformation($"Trusted Issuer store type is: {_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedIssuerCertificates.StoreType}");

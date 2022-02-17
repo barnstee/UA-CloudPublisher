@@ -21,8 +21,9 @@ namespace UA.MQTT.Publisher
             _client = subscriber;
         }
 
-        public void SendMessage(byte[] message)
+        public bool SendMessage(byte[] message)
         {
+            bool success = false;
             Stopwatch watch = new Stopwatch();
             watch.Start();
             try
@@ -30,6 +31,7 @@ namespace UA.MQTT.Publisher
                 if (_client != null)
                 {
                     _client.Publish(message);
+                    success = true;
                 }
                 else
                 {
@@ -63,6 +65,8 @@ namespace UA.MQTT.Publisher
             }
 
             Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
+
+            return success;
         }
     }
 }

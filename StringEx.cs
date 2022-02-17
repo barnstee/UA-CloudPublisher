@@ -6,11 +6,6 @@ namespace UA.MQTT.Publisher
 
     public static class StringEx
     {
-        /// <summary>
-        /// ResolveAttributeId string extension
-        /// </summary>
-        /// <param name="attributeId"></param>
-        /// <returns></returns>
         public static uint ResolveAttributeId(this string attributeId)
         {
             uint resolvedAttributeId = Attributes.Value;
@@ -33,11 +28,6 @@ namespace UA.MQTT.Publisher
             return resolvedAttributeId;
         }
 
-        /// <summary>
-        /// ResolveIndexRange string extension
-        /// </summary>
-        /// <param name="indexRange"></param>
-        /// <returns></returns>
         public static NumericRange ResolveIndexRange(this string indexRange)
         {
             NumericRange resolvedIndexRange = new NumericRange(0, 0);
@@ -57,11 +47,6 @@ namespace UA.MQTT.Publisher
             return resolvedIndexRange;
         }
 
-        /// <summary>
-        /// ResolveFilterOperator string extension
-        /// </summary>
-        /// <param name="filterOperator"></param>
-        /// <returns></returns>
         public static FilterOperator ResolveFilterOperator(this string filterOperator)
         {
 
@@ -74,12 +59,6 @@ namespace UA.MQTT.Publisher
             return resolvedFilterOperator;
         }
 
-        /// <summary>
-        /// ToNodeId string extension
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="namespaceTable"></param>
-        /// <returns></returns>
         public static NodeId ToNodeId(this string id, NamespaceTable namespaceTable)
         {
             NodeId nodeId = null;

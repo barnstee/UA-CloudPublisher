@@ -12,6 +12,7 @@ namespace UA.MQTT.Publisher
     using System.Linq;
     using System.Net;
     using System.Security.Cryptography.X509Certificates;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Interfaces;
@@ -22,6 +23,7 @@ namespace UA.MQTT.Publisher
         private readonly IUAApplication _app;
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly IFileStorage _storage;
 
         private IMessageSource _trigger;
  
@@ -35,12 +37,14 @@ namespace UA.MQTT.Publisher
         public UAClient(
             IUAApplication app,
             ILoggerFactory loggerFactory,
-            IMessageSource trigger)
+            IMessageSource trigger,
+            IFileStorage storage)
         {
             _logger = loggerFactory.CreateLogger("UAClient");
             _loggerFactory = loggerFactory;
             _app = app;
             _trigger = trigger;
+            _storage = storage;
         }
 
         public void Dispose()
@@ -764,7 +768,10 @@ namespace UA.MQTT.Publisher
                 IEnumerable<ConfigurationFileEntryModel> publisherNodeConfiguration = await GetListofPublishedNodesAsync(cancellationToken).ConfigureAwait(false);
 
                 // update the persistency file
-                await File.WriteAllTextAsync("./Settings/persistency.json", JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented), cancellationToken).ConfigureAwait(false);
+                if (await _storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)), cancellationToken).ConfigureAwait(false) == null)
+                {
+                    _logger.LogError("Could not store persistency file. Published nodes won't be persisted!");
+                }
             }
             catch (Exception ex)
             {

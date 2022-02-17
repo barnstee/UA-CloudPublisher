@@ -18,13 +18,15 @@ namespace UA.MQTT.Publisher.Controllers
         private readonly IPublishedNodesFileHandler _publishedNodesFileHandler;
         private readonly IUAApplication _app;
         private readonly IUAClient _client;
+        private readonly IFileStorage _storage;
 
-        public PublishedController(ILoggerFactory loggerFactory, IPublishedNodesFileHandler publishedNodesFileHandler, IUAApplication app, IUAClient client)
+        public PublishedController(ILoggerFactory loggerFactory, IPublishedNodesFileHandler publishedNodesFileHandler, IUAApplication app, IUAClient client, IFileStorage storage)
         {
             _logger = loggerFactory.CreateLogger("PublishedController");
             _publishedNodesFileHandler = publishedNodesFileHandler;
             _app = app;
             _client = client;
+            _storage = storage;
         }
 
         public async Task<IActionResult> Index()
@@ -47,28 +49,18 @@ namespace UA.MQTT.Publisher.Controllers
                     throw new ArgumentException("Invalid file specified!");
                 }
 
-                // file name validation
-                new FileInfo(file.FileName);
-
-                // create seperate directory
-                string pathToPublishedNodes = Path.Combine(Directory.GetCurrentDirectory(), "PublishedNodes");
-                if (!Directory.Exists(pathToPublishedNodes))
+                using (Stream content = file.OpenReadStream())
                 {
-                    Directory.CreateDirectory(pathToPublishedNodes);
-                }
+                    byte[] bytes = new byte[file.Length];
+                    content.Read(bytes, 0, (int)file.Length);
 
-                // store the file on the webserver
-                string filePath = Path.Combine(pathToPublishedNodes, file.FileName);
-                using (FileStream stream = new FileStream(filePath, FileMode.Create))
-                {
-                    file.CopyTo(stream);
+                    X509Certificate2 certWithPrivateKey = _app.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
+                    if (!_publishedNodesFileHandler.ParseFile(bytes, certWithPrivateKey))
+                    {
+                        throw new Exception("Could not parse publishednodes file and publish its nodes!");
+                    }
                 }
-
-                if (!await LoadPublishedNodesFile(filePath).ConfigureAwait(false))
-                {
-                    throw new Exception("Could not parse publishednodes file and publish its nodes!");
-                }
-
+                
                 return View("Index", await GeneratePublishedNodesArray().ConfigureAwait(false));
             }
             catch (Exception ex)
@@ -103,31 +95,6 @@ namespace UA.MQTT.Publisher.Controllers
             }
 
             return publishedNodesDisplay.ToArray();
-        }
-
-        private async Task<bool> LoadPublishedNodesFile(string filePath)
-        {
-            // load publishednodes.json file, if available
-            if (System.IO.File.Exists(filePath))
-            {
-                _logger.LogInformation($"Loading published nodes JSON file from {filePath}...");
-                X509Certificate2 certWithPrivateKey = await _app.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).ConfigureAwait(false);
-                if (!_publishedNodesFileHandler.ParseFile(filePath, certWithPrivateKey))
-                {
-                    _logger.LogInformation("Could not load and parse published nodes JSON file!");
-                    return false;
-                }
-                else
-                {
-                    _logger.LogInformation("Published nodes JSON file parsed successfully.");
-                    return true;
-                }
-            }
-            else
-            {
-                _logger.LogInformation($"Published nodes JSON file not found in {filePath}.");
-                return false;
-            }
         }
     }
 }

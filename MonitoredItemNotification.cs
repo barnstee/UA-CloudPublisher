@@ -10,9 +10,6 @@ namespace UA.MQTT.Publisher
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
-    /// <summary>
-    /// Wrapper for the OPC UA monitored item, which monitored a nodes we need to publish.
-    /// </summary>
     public class MonitoredItemNotification : IMessageSource
     {
         private readonly ILogger _logger;
@@ -24,9 +21,6 @@ namespace UA.MQTT.Publisher
             _logger = loggerFactory.CreateLogger("MonitoredItemNotification");
         }
 
-        /// <summary>
-        /// The notification that a monitored item event has occured on an OPC UA server.
-        /// </summary>
         public void EventNotificationHandler(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
         {
             try
@@ -114,9 +108,6 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        /// <summary>
-        /// The notification that the data for a monitored item has changed on an OPC UA server.
-        /// </summary>
         public void DataChangedNotificationHandler(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
         {
             try

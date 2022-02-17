@@ -47,17 +47,11 @@ namespace UA.MQTT.Publisher
             _timer.Dispose();
         }
 
-        /// <summary>
-        /// Stop the heartbeat
-        /// </summary>
         public void Stop()
         {
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
-        /// <summary>
-        /// Timer callback for heartbeat telemetry send.
-        /// </summary>
         private void HeartbeatSend(object state)
         {
             try

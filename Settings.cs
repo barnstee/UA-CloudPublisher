@@ -1,9 +1,13 @@
 ﻿
-namespace UA.MQTT.Publisher.Models
+namespace UA.MQTT.Publisher
 {
+    using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using System;
     using System.IO;
+    using System.Text;
+    using System.Threading.Tasks;
+    using UA.MQTT.Publisher.Interfaces;
 
     public class Settings
     {
@@ -25,7 +29,7 @@ namespace UA.MQTT.Publisher.Models
                     {
                         if (_instance == null)
                         {
-                            _instance = Load();
+                            _instance = Load().GetAwaiter().GetResult();
                         }
                     }
                 }
@@ -41,30 +45,49 @@ namespace UA.MQTT.Publisher.Models
             }
         }
 
-        private static Settings Load()
+        private static async Task<Settings> Load()
         {
+            ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
+            ILogger logger = loggerFactory.CreateLogger("Settings");
+            IFileStorage storage = (IFileStorage)Program.AppHost.Services.GetService(typeof(IFileStorage));
+
             try
             {
-                return JsonConvert.DeserializeObject<Settings>(File.ReadAllText("./Settings/settings.json"));
+                string settingsFilePath = await storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "settings.json").ConfigureAwait(false);
+                byte[] settingsFile = await storage.LoadFileAsync(settingsFilePath).ConfigureAwait(false);
+                if (settingsFile == null)
+                {
+                    // no file persisted yet
+                    logger.LogError("Creating new settings file as none was persisted so far.");
+                    Settings newInstance = new Settings();
+                    newInstance.Save();
+                    return newInstance;
+                }
+                else
+                {
+                    return JsonConvert.DeserializeObject<Settings>(Encoding.UTF8.GetString(settingsFile));
+                }
             }
             catch (Exception ex)
             {
-                // no file persisted yet
-                Console.WriteLine("Creating new settings file due to: " + ex.Message);
+                logger.LogError(ex, "Loading settings file failed. Creating a new one.");
                 Settings newInstance = new Settings();
                 newInstance.Save();
                 return newInstance;
             }
         }
 
-        public void Save()
+        public async void Save()
         {
-            if (!Directory.Exists("./Settings"))
-            {
-                Directory.CreateDirectory("./Settings");
-            }
+            ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
+            ILogger logger = loggerFactory.CreateLogger("Settings");
+            IFileStorage storage = (IFileStorage)Program.AppHost.Services.GetService(typeof(IFileStorage));
 
-            File.WriteAllText("./Settings/settings.json", JsonConvert.SerializeObject(this, Formatting.Indented));
+            // store app cert
+            if (await storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(this, Formatting.Indented))).ConfigureAwait(false) == null)
+            {
+                logger.LogError("Could not store settings file. Settings won't be persisted!");
+            }
         }
 
         public string MQTTClientName { get; set; }
