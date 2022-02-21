@@ -22,6 +22,104 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (within the container).
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.
 
+## MQTT Sub-topics for Configuration from the Cloud
+
+### PublishNodes
+Payload:
+```json
+{
+	"EndpointUrl": "string",
+	"OpcNodes": [
+		"Id": "string",
+		"ExpandedNodeId": "string",
+		"OpcSamplingInterval": int,
+		"OpcPublishingInterval": int,
+		"DisplayName": "string",
+		"HeartbeatInterval": int,
+		"SkipFirst": bool
+	],
+	"OpcSessionUserAuthenticationMode": "Anonymous"|"UsernamePassword",
+	"UseSecurity": bool,
+	"UserName": "string",
+	"Password": "string"
+}
+```
+Response:
+```json
+{
+	[
+		"string"
+	]
+}
+```
+
+### UnpublishNodes
+Payload:
+```json
+{
+	"EndpointUrl": "string",
+	"OpcNodes": [
+		"Id": "string",
+		"ExpandedNodeId": "string",
+		"OpcSamplingInterval": int,
+		"OpcPublishingInterval": int,
+		"DisplayName": "string",
+		"HeartbeatInterval": int,
+		"SkipFirst": bool
+	]
+}
+```
+Response:
+```json
+{
+	[
+		"string"
+	]
+}
+```
+
+### UnPublishAllNodes
+Payload:
+```json
+{
+	"EndpointUrl": "string"
+}
+```
+Response:
+```json
+{
+	[
+		"string"
+	]
+}
+```
+
+### GetDiagnosticInfo
+Payload: none
+Response:
+```json
+{
+	"DiagnosticInfos": [
+		"PublisherStartTime": DateTime,
+		"NumberOfOpcSessionsConnected": int,
+		"NumberOfOpcSubscriptionsConnected": int,
+		"NumberOfOpcMonitoredItemsMonitored": int,
+		"MonitoredItemsQueueCount": long,
+		"EnqueueCount": long,
+		"EnqueueFailureCount": long,
+		"NumberOfEvents": long,
+		"MissedSendIntervalCount": long,
+		"TooLargeCount": long,
+		"SentBytes": long,
+		"SentMessages": long,
+		"SentLastTime": DateTime,
+		"FailedMessages": long,
+		"AverageMessageLatency": long,
+		"AverageNotificationsInBrokerMessage": long
+	]
+}
+```
+
 ## Build Status
 
 [![Docker](https://github.com/barnstee/UA-MQTT-Publisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-MQTT-Publisher/actions/workflows/docker-publish.yml)
