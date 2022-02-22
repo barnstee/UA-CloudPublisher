@@ -29,30 +29,29 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 Payload:
 ```json
 {
-	"EndpointUrl": "string",
-	"OpcNodes": [
-		{
-			"ExpandedNodeId": "string",
-			"OpcSamplingInterval": int,
-			"OpcPublishingInterval": int,
-			"DisplayName": "string",
-			"HeartbeatInterval": int,
-			"SkipFirst": bool
-		}
-	],
-	"OpcAuthenticationMode": "Anonymous"|"UsernamePassword",
-	"UseSecurity": bool,
-	"UserName": "string",
-	"Password": "string"
+ "EndpointUrl": "string",
+ "OpcNodes": [
+  {
+    "ExpandedNodeId": "string",
+	"OpcSamplingInterval": 1000,
+	"OpcPublishingInterval": 1000,
+	"DisplayName": "string",
+	"HeartbeatInterval": 0,
+    "SkipFirst": false
+  }
+ ],
+ "OpcAuthenticationMode": "Anonymous", // or "UsernamePassword"
+ "UserName": "string",
+ "Password": "string"
 }
 ```
 
 Response:
 ```json
 {
-	[
-		"string"
-	]
+ [
+  "string"
+ ]
 }
 ```
 
@@ -61,21 +60,21 @@ Response:
 Payload:
 ```json
 {
-	"EndpointUrl": "string",
-	"OpcNodes": [
-		{
-			"ExpandedNodeId": "string"
-		}
-	]
+ "EndpointUrl": "string",
+  "OpcNodes": [
+   {
+	"ExpandedNodeId": "string"
+   }
+  ]
 }
 ```
 
 Response:
 ```json
 {
-	[
-		"string"
-	]
+ [
+  "string"
+ ]
 }
 ```
 
@@ -86,9 +85,9 @@ Payload: None
 Response:
 ```json
 {
-	[
-		"string"
-	]
+ [
+  "string"
+ ]
 }
 ```
 
@@ -99,26 +98,26 @@ Payload: None
 Response:
 ```json
 {
-	"DiagnosticInfos": [
-		{
-			"PublisherStartTime": DateTime,
-			"NumberOfOpcSessionsConnected": int,
-			"NumberOfOpcSubscriptionsConnected": int,
-			"NumberOfOpcMonitoredItemsMonitored": int,
-			"MonitoredItemsQueueCount": long,
-			"EnqueueCount": long,
-			"EnqueueFailureCount": long,
-			"NumberOfEvents": long,
-			"MissedSendIntervalCount": long,
-			"TooLargeCount": long,
-			"SentBytes": long,
-			"SentMessages": long,
-			"SentLastTime": DateTime,
-			"FailedMessages": long,
-			"AverageMessageLatency": long,
-			"AverageNotificationsInBrokerMessage": long
-		}
-	]
+ "DiagnosticInfos": [
+  {
+   "PublisherStartTime": DateTime,
+   "NumberOfOpcSessionsConnected": 0,
+   "NumberOfOpcSubscriptionsConnected": 0,
+   "NumberOfOpcMonitoredItemsMonitored": 0,
+   "MonitoredItemsQueueCount": 0,
+   "EnqueueCount": 0,
+   "EnqueueFailureCount": 0,
+   "NumberOfEvents": 0,
+   "MissedSendIntervalCount": 0,
+   "TooLargeCount": 0,
+   "SentBytes": 0,
+   "SentMessages": 0,
+   "SentLastTime": "2022-02-22T22:22:22.222Z",
+   "FailedMessages": 0,
+   "AverageMessageLatency": 0,
+   "AverageNotificationsInBrokerMessage": 0
+  }
+ ]
 }
 ```
 
