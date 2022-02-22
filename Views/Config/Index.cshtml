@@ -27,11 +27,15 @@
         @Html.Password("MQTTPassword", @Model.MQTTPassword, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Topic (<b>required</b>, for Azure IoT Hub, this is devices/[ClientName]/messages/events/)<br />
-        @Html.TextBox("MQTTTopic", @Model.MQTTTopic, new { style = "width:100%;" })<br />
+        MQTT Message Topic (<b>required</b>, for Azure IoT Hub, this is devices/[ClientName]/messages/events/)<br />
+        @Html.TextBox("MQTTTopic", @Model.MQTTMessageTopic, new { style = "width:100%;" })<br />
+    </p>
+     <p>
+        MQTT Command Topic (<b>required</b>, for Azure IoT Hub, this is $iothub/methods/POST/#)<br />
+        @Html.TextBox("MQTTTopic", @Model.MQTTCommandTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Response Topic (<b>required</b>, for Azure IoT Hub, this is $iothub/methods/res)<br />
+        MQTT Command Response Topic (<b>required</b>, for Azure IoT Hub, this is $iothub/methods/res/{status}/?$rid={request id})<br />
         @Html.TextBox("MQTTResponseTopic", @Model.MQTTResponseTopic, new { style = "width:100%;" })<br />
     </p>
     <p>

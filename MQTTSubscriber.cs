@@ -91,7 +91,7 @@ namespace UA.MQTT.Publisher.Configuration
                     var subscribeResult = _client.SubscribeAsync(
                         new MqttTopicFilter
                         {
-                            Topic = Settings.Singleton.MQTTTopic,
+                            Topic = Settings.Singleton.MQTTCommandTopic,
                             QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
                         }).GetAwaiter().GetResult();
 
@@ -123,7 +123,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .WithTopic($"devices/{Settings.Singleton.MQTTClientName}/messages/events/")
+                .WithTopic(Settings.Singleton.MQTTMessageTopic)
                 .WithPayload(payload)
                 .Build();
 
@@ -158,7 +158,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             _logger.LogInformation($"Received method call with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
 
-            string requestTopic = Settings.Singleton.MQTTTopic;
+            string requestTopic = Settings.Singleton.MQTTCommandTopic;
             string requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
 
             try
@@ -171,17 +171,17 @@ namespace UA.MQTT.Publisher.Configuration
                 {
                     responsePayload = PublishNodes(requestPayload);
                 }
-                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnPublishNodes"))
+                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
                 {
                     responsePayload = UnpublishNodes(requestPayload);
                 }
-                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnPublishAllNodes"))
+                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
                 {
-                    responsePayload = UnpublishAllNodes(requestPayload);
+                    responsePayload = UnpublishAllNodes();
                 }
-                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetDiagnosticInfo"))
+                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
                 {
-                    responsePayload = GetDiagnosticInfo(requestPayload);
+                    responsePayload = GetInfo();
                 }
                 else
                 {
@@ -194,7 +194,7 @@ namespace UA.MQTT.Publisher.Configuration
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "MQTTBrokerPublishReceived");
+                _logger.LogError(ex, "HandleMessageAsync");
 
                 // send error to MQTT broker
                 await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(ex.Message))).ConfigureAwait(false);
@@ -203,259 +203,93 @@ namespace UA.MQTT.Publisher.Configuration
 
         public byte[] PublishNodes(string payload)
         {
-            string logPrefix = "HandlePublishNodesMethodAsync:";
             OpcSessionUserAuthenticationMode desiredAuthenticationMode = OpcSessionUserAuthenticationMode.Anonymous;
-            HttpStatusCode statusCode = HttpStatusCode.OK;
             List<string> statusResponse = new List<string>();
-            string statusMessage = string.Empty;
-            PublishNodesMethodRequestModel publishNodesMethodData = null;
 
-            try
+            PublishNodesMethodRequestModel publishNodesMethodData = JsonConvert.DeserializeObject<PublishNodesMethodRequestModel>(payload);
+
+            if (publishNodesMethodData.OpcAuthenticationMode == OpcSessionUserAuthenticationMode.UsernamePassword)
             {
-                _logger.LogDebug($"{logPrefix} called");
-                publishNodesMethodData = JsonConvert.DeserializeObject<PublishNodesMethodRequestModel>(payload);
-
-                if (publishNodesMethodData.OpcAuthenticationMode == OpcSessionUserAuthenticationMode.UsernamePassword)
+                if (string.IsNullOrWhiteSpace(publishNodesMethodData.UserName) && string.IsNullOrWhiteSpace(publishNodesMethodData.Password))
                 {
-                    if (string.IsNullOrWhiteSpace(publishNodesMethodData.UserName) && string.IsNullOrWhiteSpace(publishNodesMethodData.Password))
-                    {
-                        throw new ArgumentException($"If {nameof(publishNodesMethodData.OpcAuthenticationMode)} is set to '{OpcSessionUserAuthenticationMode.UsernamePassword}', you have to specify '{nameof(publishNodesMethodData.UserName)}' and/or '{nameof(publishNodesMethodData.Password)}'.");
-                    }
-
-                    desiredAuthenticationMode = OpcSessionUserAuthenticationMode.UsernamePassword;
+                    throw new ArgumentException($"If {nameof(publishNodesMethodData.OpcAuthenticationMode)} is set to '{OpcSessionUserAuthenticationMode.UsernamePassword}', you have to specify '{nameof(publishNodesMethodData.UserName)}' and/or '{nameof(publishNodesMethodData.Password)}'.");
                 }
+
+                desiredAuthenticationMode = OpcSessionUserAuthenticationMode.UsernamePassword;
             }
-            catch (UriFormatException e)
+
+            foreach (OpcNodeOnEndpointModel nodeOnEndpoint in publishNodesMethodData.OpcNodes)
             {
-                statusMessage = $"Exception ({e.Message}) while parsing EndpointUrl '{publishNodesMethodData.EndpointUrl}'";
-                _logger.LogError(e, $"{logPrefix} {statusMessage}");
+                EventPublishingModel node = new EventPublishingModel {
+                    ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
+                    EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
+                    SkipFirst = nodeOnEndpoint.SkipFirst,
+                    DisplayName = nodeOnEndpoint.DisplayName,
+                    HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
+                    OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
+                    OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,
+                    UseSecurity = publishNodesMethodData.UseSecurity,
+                    AuthCredential = null,
+                    OpcAuthenticationMode = desiredAuthenticationMode
+                };
+
+                if (desiredAuthenticationMode == OpcSessionUserAuthenticationMode.UsernamePassword)
+                {
+                    node.AuthCredential = new NetworkCredential(publishNodesMethodData.UserName, publishNodesMethodData.Password);
+                }
+
+                _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
+
+                string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} published successfully.";
                 statusResponse.Add(statusMessage);
-                statusCode = HttpStatusCode.NotAcceptable;
-            }
-            catch (Exception e)
-            {
-                statusMessage = $"Exception ({e.Message}) while deserializing message payload";
-                _logger.LogError(e, $"{logPrefix} {statusMessage}");
-                statusResponse.Add(statusMessage);
-                statusCode = HttpStatusCode.InternalServerError;
+                _logger.LogInformation(statusMessage);
             }
 
-            if (statusCode == HttpStatusCode.OK)
-            {
-                try
-                {
-                    foreach (OpcNodeOnEndpointModel nodeOnEndpoint in publishNodesMethodData.OpcNodes)
-                    {
-                        EventPublishingModel node = new EventPublishingModel {
-                            ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
-                            EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
-                            SkipFirst = nodeOnEndpoint.SkipFirst,
-                            DisplayName = nodeOnEndpoint.DisplayName,
-                            HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
-                            OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
-                            OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,
-                            UseSecurity = publishNodesMethodData.UseSecurity,
-                            AuthCredential = null,
-                            OpcAuthenticationMode = desiredAuthenticationMode
-                        };
-
-                        if (nodeOnEndpoint.ExpandedNodeId == null)
-                        {
-                            node.ExpandedNodeId = new Opc.Ua.ExpandedNodeId(nodeOnEndpoint.Id);
-                        }
-
-                        if (desiredAuthenticationMode == OpcSessionUserAuthenticationMode.UsernamePassword)
-                        {
-                            node.AuthCredential = new NetworkCredential(publishNodesMethodData.UserName, publishNodesMethodData.Password);
-                        }
-
-                        _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
-                    }
-                }
-                catch (AggregateException e)
-                {
-                    foreach (Exception ex in e.InnerExceptions)
-                    {
-                        _logger.LogError(ex, $"{logPrefix} Exception");
-                    }
-                    statusMessage = $"EndpointUrl: '{publishNodesMethodData.EndpointUrl}': exception ({e.Message}) while trying to publish";
-                    _logger.LogError(e, $"{logPrefix} {statusMessage}");
-                    statusResponse.Add(statusMessage);
-                    statusCode = HttpStatusCode.InternalServerError;
-                }
-                catch (Exception e)
-                {
-                    statusMessage = $"EndpointUrl: '{publishNodesMethodData.EndpointUrl}': exception ({e.Message}) while trying to publish";
-                    _logger.LogError(e, $"{logPrefix} {statusMessage}");
-                    statusResponse.Add(statusMessage);
-                    statusCode = HttpStatusCode.InternalServerError;
-                }
-            }
-
-            return BuildResponseAndCropStatus(logPrefix, statusResponse);
+            return BuildResponseAndCropStatus(statusResponse);
         }
 
         public byte[] UnpublishNodes(string payload)
         {
-            string logPrefix = "HandleUnpublishNodesMethodAsync:";
-            UnpublishNodesMethodRequestModel unpublishNodesMethodData = null;
-            HttpStatusCode statusCode = HttpStatusCode.OK;
             List<string> statusResponse = new List<string>();
-            string statusMessage = string.Empty;
-            try
+
+            UnpublishNodesMethodRequestModel unpublishNodesMethodData = JsonConvert.DeserializeObject<UnpublishNodesMethodRequestModel>(payload);
+
+            foreach (OpcNodeOnEndpointModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
             {
-                _logger.LogDebug($"{logPrefix} called");
-                unpublishNodesMethodData = JsonConvert.DeserializeObject<UnpublishNodesMethodRequestModel>(payload);
-            }
-            catch (UriFormatException e)
-            {
-                statusMessage = $"Exception ({e.Message}) while parsing EndpointUrl '{unpublishNodesMethodData.EndpointUrl}'";
-                _logger.LogError(e, $"{logPrefix} {statusMessage}");
+                EventPublishingModel node = new EventPublishingModel {
+                    ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
+                    EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
+                };
+
+                _uaClient.UnpublishNode(node);
+
+                string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.";
                 statusResponse.Add(statusMessage);
-                statusCode = HttpStatusCode.InternalServerError;
-            }
-            catch (Exception e)
-            {
-                statusMessage = $"Exception ({e.Message}) while deserializing message payload";
-                _logger.LogError(e, $"{logPrefix} {statusMessage}");
-                statusResponse.Add(statusMessage);
-                statusCode = HttpStatusCode.InternalServerError;
+                _logger.LogInformation(statusMessage);
             }
 
-            if (statusCode == HttpStatusCode.OK)
-            {
-                try
-                {
-                    foreach (OpcNodeOnEndpointModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
-                    {
-                        EventPublishingModel node = new EventPublishingModel {
-                            ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
-                            EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString(),
-                            SkipFirst = nodeOnEndpoint.SkipFirst,
-                            DisplayName = nodeOnEndpoint.DisplayName,
-                            HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
-                            OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
-                            OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,
-                        };
-
-                        if (nodeOnEndpoint.ExpandedNodeId == null)
-                        {
-                            node.ExpandedNodeId = new Opc.Ua.ExpandedNodeId(nodeOnEndpoint.Id);
-                        }
-
-                        _uaClient.UnpublishNode(node);
-
-                        // build response
-                        statusMessage = $"All monitored items in all subscriptions{(unpublishNodesMethodData.EndpointUrl != null ? $" on endpoint '{unpublishNodesMethodData.EndpointUrl}'" : " ")} tagged for removal";
-                        statusResponse.Add(statusMessage);
-                        _logger.LogInformation($"{logPrefix} {statusMessage}");
-                    }
-                }
-                catch (AggregateException e)
-                {
-                    foreach (Exception ex in e.InnerExceptions)
-                    {
-                        _logger.LogError(ex, $"{logPrefix} Exception");
-                    }
-                    statusMessage = $"EndpointUrl: '{unpublishNodesMethodData.EndpointUrl}': exception while trying to unpublish";
-                    _logger.LogError(e, $"{logPrefix} {statusMessage}");
-                    statusResponse.Add(statusMessage);
-                    statusCode = HttpStatusCode.InternalServerError;
-                }
-                catch (Exception e)
-                {
-                    statusMessage = $"EndpointUrl: '{unpublishNodesMethodData.EndpointUrl}': exception ({e.Message}) while trying to unpublish";
-                    _logger.LogError($"e, {logPrefix} {statusMessage}");
-                    statusResponse.Add(statusMessage);
-                    statusCode = HttpStatusCode.InternalServerError;
-                }
-            }
-
-            return BuildResponseAndCropStatus(logPrefix, statusResponse);
+            return BuildResponseAndCropStatus(statusResponse);
         }
 
-        public byte[] UnpublishAllNodes(string payload)
+        public byte[] UnpublishAllNodes()
         {
-            string logPrefix = "HandleUnpublishAllNodesMethodAsync:";
-            Uri endpointUri = null;
-            UnpublishAllNodesMethodRequestModel unpublishAllNodesMethodData = null;
-            HttpStatusCode statusCode = HttpStatusCode.OK;
-            List<string> statusResponse = new List<string>();
-            string statusMessage = string.Empty;
-
-            try
-            {
-                _logger.LogDebug($"{logPrefix} called");
-                if (!string.IsNullOrEmpty(payload))
-                {
-                    unpublishAllNodesMethodData = JsonConvert.DeserializeObject<UnpublishAllNodesMethodRequestModel>(payload);
-                }
-                if (unpublishAllNodesMethodData != null && unpublishAllNodesMethodData?.EndpointUrl != null)
-                {
-                    endpointUri = new Uri(unpublishAllNodesMethodData.EndpointUrl);
-                }
-            }
-            catch (UriFormatException e)
-            {
-                statusMessage = $"Exception ({e.Message}) while parsing EndpointUrl '{unpublishAllNodesMethodData.EndpointUrl}'";
-                _logger.LogError(e, $"{logPrefix} {statusMessage}");
-                statusResponse.Add(statusMessage);
-                statusCode = HttpStatusCode.InternalServerError;
-            }
-            catch (Exception e)
-            {
-                statusMessage = $"Exception ({e.Message}) while deserializing message payload";
-                _logger.LogError(e, $"{logPrefix} {statusMessage}");
-                statusResponse.Add(statusMessage);
-                statusCode = HttpStatusCode.InternalServerError;
-            }
-
-            if (statusCode == HttpStatusCode.OK)
-            {
-                _uaClient.UnpublishAllNodes();
-            }
-
-            return BuildResponseAndCropStatus(logPrefix, statusResponse);
+            _uaClient.UnpublishAllNodes();
+        
+            return BuildResponseAndTruncateResult("All nodes unpublished successfully.");
         }
 
-        public byte[] GetDiagnosticInfo(string payload)
+        public byte[] GetInfo()
         {
-            string logPrefix = "HandleGetDiagnosticInfoMethodAsync:";
-            HttpStatusCode statusCode = HttpStatusCode.OK;
-            List<string> statusResponse = new List<string>();
-            string statusMessage = string.Empty;
-
-            // get the diagnostic info
             DiagnosticInfoMethodResponseModel diagnosticInfoResponse = new DiagnosticInfoMethodResponseModel();
-            try
-            {
-                List<DiagnosticInfo> diagnosticInfos = new List<DiagnosticInfo>();
-                diagnosticInfos.Add(Diagnostics.Singleton.Info);
-                diagnosticInfoResponse.DiagnosticInfos = diagnosticInfos;
-            }
-            catch (Exception e)
-            {
-                statusMessage = $"Exception ({e.Message}) while reading diagnostic info";
-                _logger.LogError(e, $"{logPrefix} Exception");
-                statusResponse.Add(statusMessage);
-                statusCode = HttpStatusCode.InternalServerError;
-            }
+            List<DiagnosticInfo> diagnosticInfos = new List<DiagnosticInfo>();
 
-            // build response
-            string resultString = null;
-            if (statusCode == HttpStatusCode.OK)
-            {
-                resultString = JsonConvert.SerializeObject(diagnosticInfoResponse);
-            }
-            else
-            {
-                resultString = JsonConvert.SerializeObject(statusResponse);
-            }
+            diagnosticInfos.Add(Diagnostics.Singleton.Info);
+            diagnosticInfoResponse.DiagnosticInfos = diagnosticInfos;
 
-            return BuildResponseAndTruncateResult(logPrefix, resultString);
+            return BuildResponseAndTruncateResult(diagnosticInfoResponse);
         }
 
-        private byte[] BuildResponseAndCropStatus(string logPrefix, List<string> statusResponse)
+        private byte[] BuildResponseAndCropStatus(List<string> statusResponse)
         {
             byte[] result;
             int maxIndex = statusResponse.Count();
@@ -481,17 +315,17 @@ namespace UA.MQTT.Publisher.Configuration
             return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(statusResponse.GetRange(0, maxIndex)));
         }
 
-        private byte[] BuildResponseAndTruncateResult(string logPrefix, string resultString)
+        private byte[] BuildResponseAndTruncateResult(object result)
         {
-            byte[] result = Encoding.UTF8.GetBytes(resultString);
+            byte[] response = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(result));
 
-            if (result.Length > Settings.MaxResponsePayloadLength)
+            if (response.Length > Settings.MaxResponsePayloadLength)
             {
-                _logger.LogError($"{logPrefix} Response size is too long");
-                Array.Resize(ref result, result.Length > Settings.MaxResponsePayloadLength ? Settings.MaxResponsePayloadLength : result.Length);
+                _logger.LogError("Response size is too long");
+                Array.Resize(ref response, response.Length > Settings.MaxResponsePayloadLength ? Settings.MaxResponsePayloadLength : response.Length);
             }
 
-            return result;
+            return response;
         }
     }
 }

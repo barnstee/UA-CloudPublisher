@@ -25,25 +25,28 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 ## MQTT Sub-topics for Configuration from the Cloud
 
 ### PublishNodes
+
 Payload:
 ```json
 {
 	"EndpointUrl": "string",
 	"OpcNodes": [
-		"Id": "string",
-		"ExpandedNodeId": "string",
-		"OpcSamplingInterval": int,
-		"OpcPublishingInterval": int,
-		"DisplayName": "string",
-		"HeartbeatInterval": int,
-		"SkipFirst": bool
+		{
+			"ExpandedNodeId": "string",
+			"OpcSamplingInterval": int,
+			"OpcPublishingInterval": int,
+			"DisplayName": "string",
+			"HeartbeatInterval": int,
+			"SkipFirst": bool
+		}
 	],
-	"OpcSessionUserAuthenticationMode": "Anonymous"|"UsernamePassword",
+	"OpcAuthenticationMode": "Anonymous"|"UsernamePassword",
 	"UseSecurity": bool,
 	"UserName": "string",
 	"Password": "string"
 }
 ```
+
 Response:
 ```json
 {
@@ -54,21 +57,19 @@ Response:
 ```
 
 ### UnpublishNodes
+
 Payload:
 ```json
 {
 	"EndpointUrl": "string",
 	"OpcNodes": [
-		"Id": "string",
-		"ExpandedNodeId": "string",
-		"OpcSamplingInterval": int,
-		"OpcPublishingInterval": int,
-		"DisplayName": "string",
-		"HeartbeatInterval": int,
-		"SkipFirst": bool
+		{
+			"ExpandedNodeId": "string"
+		}
 	]
 }
 ```
+
 Response:
 ```json
 {
@@ -78,13 +79,10 @@ Response:
 }
 ```
 
-### UnPublishAllNodes
-Payload:
-```json
-{
-	"EndpointUrl": "string"
-}
-```
+### UnpublishAllNodes
+
+Payload: None
+
 Response:
 ```json
 {
@@ -94,28 +92,32 @@ Response:
 }
 ```
 
-### GetDiagnosticInfo
-Payload: none
+### GetInfo
+
+Payload: None
+
 Response:
 ```json
 {
 	"DiagnosticInfos": [
-		"PublisherStartTime": DateTime,
-		"NumberOfOpcSessionsConnected": int,
-		"NumberOfOpcSubscriptionsConnected": int,
-		"NumberOfOpcMonitoredItemsMonitored": int,
-		"MonitoredItemsQueueCount": long,
-		"EnqueueCount": long,
-		"EnqueueFailureCount": long,
-		"NumberOfEvents": long,
-		"MissedSendIntervalCount": long,
-		"TooLargeCount": long,
-		"SentBytes": long,
-		"SentMessages": long,
-		"SentLastTime": DateTime,
-		"FailedMessages": long,
-		"AverageMessageLatency": long,
-		"AverageNotificationsInBrokerMessage": long
+		{
+			"PublisherStartTime": DateTime,
+			"NumberOfOpcSessionsConnected": int,
+			"NumberOfOpcSubscriptionsConnected": int,
+			"NumberOfOpcMonitoredItemsMonitored": int,
+			"MonitoredItemsQueueCount": long,
+			"EnqueueCount": long,
+			"EnqueueFailureCount": long,
+			"NumberOfEvents": long,
+			"MissedSendIntervalCount": long,
+			"TooLargeCount": long,
+			"SentBytes": long,
+			"SentMessages": long,
+			"SentLastTime": DateTime,
+			"FailedMessages": long,
+			"AverageMessageLatency": long,
+			"AverageNotificationsInBrokerMessage": long
+		}
 	]
 }
 ```

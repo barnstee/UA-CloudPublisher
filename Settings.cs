@@ -98,7 +98,9 @@ namespace UA.MQTT.Publisher
 
         public string MQTTPassword { get; set; }
 
-        public string MQTTTopic { get; set; }
+        public string MQTTMessageTopic { get; set; }
+
+        public string MQTTCommandTopic { get; set; }
 
         public string MQTTResponseTopic { get; set; }
 
