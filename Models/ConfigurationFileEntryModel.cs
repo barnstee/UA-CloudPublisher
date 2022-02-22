@@ -3,19 +3,22 @@ namespace UA.MQTT.Publisher.Models
 {
     using Newtonsoft.Json;
     using Newtonsoft.Json.Converters;
-    using UA.MQTT.Publisher;
+    using Opc.Ua;
     using System;
     using System.Collections.Generic;
     using System.ComponentModel;
+    using UA.MQTT.Publisher;
 
     public partial class ConfigurationFileEntryModel
     {
         public Uri EndpointUrl { get; set; }
 
-
         [DefaultValue(true)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore)]
-        public bool? UseSecurity { get; set; }
+        public bool UseSecurity { get; set; }
+        
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public NodeId NodeId { get; set; }
 
         [DefaultValue(OpcSessionUserAuthenticationMode.Anonymous)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore)]

@@ -30,11 +30,11 @@ namespace UA.MQTT.Publisher.Configuration
         {
             try
             {
-                List<ConfigurationFileEntryLegacyModel> _configurationFileEntries = null;
+                List<ConfigurationFileEntryModel> _configurationFileEntries = null;
                 try
                 {
                     string json = Encoding.UTF8.GetString(content);
-                    _configurationFileEntries = JsonConvert.DeserializeObject<List<ConfigurationFileEntryLegacyModel>>(json);
+                    _configurationFileEntries = JsonConvert.DeserializeObject<List<ConfigurationFileEntryModel>>(json);
                 }
                 catch (Exception ex)
                 {
@@ -45,7 +45,7 @@ namespace UA.MQTT.Publisher.Configuration
                 if (_configurationFileEntries != null)
                 {
                     _logger.LogInformation($"Loaded {_configurationFileEntries.Count} config file entry/entries.");
-                    foreach (ConfigurationFileEntryLegacyModel publisherConfigFileEntryLegacy in _configurationFileEntries)
+                    foreach (ConfigurationFileEntryModel publisherConfigFileEntryLegacy in _configurationFileEntries)
                     {
                         // decrypt username and password, if required
                         NetworkCredential decryptedCreds = null;
