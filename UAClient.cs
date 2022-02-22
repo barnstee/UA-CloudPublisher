@@ -395,7 +395,7 @@ namespace UA.MQTT.Publisher
             _logger.LogInformation($"RECONNECTED session {session.SessionId}!");
         }
 
-        public async Task PublishNodeAsync(EventPublishingModel nodeToPublish, CancellationToken cancellationToken = default)
+        public async Task PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default)
         {
             // find or create the session we need to monitor the node
             Session session = await ConnectSessionAsync(
@@ -621,7 +621,7 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        public void UnpublishNode(EventPublishingModel nodeToUnpublish)
+        public void UnpublishNode(NodePublishingModel nodeToUnpublish)
         {
             // find the required session
             Session session = FindSession(nodeToUnpublish.EndpointUrl);

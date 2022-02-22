@@ -6,10 +6,6 @@ namespace UA.MQTT.Publisher.Interfaces
 
     public interface IMessageProcessor : IDisposable
     {
-        /// <summary>
-        /// Run the engine
-        /// </summary>
-        /// <param name="cancellationToken"></param>
         void Run(CancellationToken cancellationToken = default);
     }
 }

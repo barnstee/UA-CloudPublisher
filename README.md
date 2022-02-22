@@ -100,7 +100,7 @@ Response:
 {
  "DiagnosticInfos": [
   {
-   "PublisherStartTime": DateTime,
+   "PublisherStartTime": "2022-02-22T22:22:22.222Z",
    "NumberOfOpcSessionsConnected": 0,
    "NumberOfOpcSubscriptionsConnected": 0,
    "NumberOfOpcMonitoredItemsMonitored": 0,

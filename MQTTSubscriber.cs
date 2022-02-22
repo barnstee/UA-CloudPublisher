@@ -197,7 +197,7 @@ namespace UA.MQTT.Publisher.Configuration
                 _logger.LogError(ex, "HandleMessageAsync");
 
                 // send error to MQTT broker
-                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(ex.Message))).ConfigureAwait(false);
+                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message)))).ConfigureAwait(false);
             }
         }
 
@@ -220,7 +220,7 @@ namespace UA.MQTT.Publisher.Configuration
 
             foreach (OpcNodeOnEndpointModel nodeOnEndpoint in publishNodesMethodData.OpcNodes)
             {
-                EventPublishingModel node = new EventPublishingModel {
+                NodePublishingModel node = new NodePublishingModel {
                     ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
                     EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
                     SkipFirst = nodeOnEndpoint.SkipFirst,
@@ -228,7 +228,6 @@ namespace UA.MQTT.Publisher.Configuration
                     HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
                     OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
                     OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,
-                    UseSecurity = publishNodesMethodData.UseSecurity,
                     AuthCredential = null,
                     OpcAuthenticationMode = desiredAuthenticationMode
                 };
@@ -256,7 +255,7 @@ namespace UA.MQTT.Publisher.Configuration
 
             foreach (OpcNodeOnEndpointModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
             {
-                EventPublishingModel node = new EventPublishingModel {
+                NodePublishingModel node = new NodePublishingModel {
                     ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
                     EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
                 };

@@ -16,7 +16,7 @@ namespace UA.MQTT.Publisher
             _logger = loggerFactory.CreateLogger("PubSubTelemetryEncoder");
         }
 
-        public string EncodeDataChange(MessageDataModel messageData)
+        public string Encode(MessageProcessorModel messageData)
         {
             try
             {
@@ -26,37 +26,17 @@ namespace UA.MQTT.Publisher
 
                 encoder.PushStructure("Payload");
 
-                encoder.WriteDataValue(messageData.DisplayName, messageData.Value);
-
-                encoder.PopStructure();
-
-                return encoder.CloseAndReturnText();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Generation of JSON PubSub data change message failed.");
-            }
-
-            return string.Empty;
-        }
-
-        public string EncodeEvent(EventMessageDataModel eventData)
-        {
-            try
-            {
-                JsonEncoder encoder = new JsonEncoder(eventData.MessageContext, Settings.Singleton.ReversiblePubSubEncoding);
-
-                encoder.WriteString("DataSetWriterId", eventData.DataSetWriterId);
-
-                encoder.PushStructure("Payload");
-
                 // process EventValues object properties
-                if (eventData.EventValues != null && eventData.EventValues.Count > 0)
+                if (messageData.EventValues != null && messageData.EventValues.Count > 0)
                 {
-                    foreach (EventValueModel eventValue in eventData.EventValues)
+                    foreach (EventValueModel eventValue in messageData.EventValues)
                     {
-                        encoder.WriteDataValue(eventData.DisplayName, eventData.Value);
+                        encoder.WriteDataValue(eventValue.Name, eventValue.Value);
                     }
+                }
+                else
+                {
+                    encoder.WriteDataValue(messageData.DisplayName, messageData.Value);
                 }
 
                 encoder.PopStructure();
@@ -65,7 +45,7 @@ namespace UA.MQTT.Publisher
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Generation of JSON PubSub event message failed.");
+                _logger.LogError(e, "Generation of JSON PubSub message failed.");
             }
 
             return string.Empty;

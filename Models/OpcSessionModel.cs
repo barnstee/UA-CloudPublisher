@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.Rendering;
-
+﻿
 namespace UA.MQTT.Publisher.Models
 {
     public class OpcSessionModel

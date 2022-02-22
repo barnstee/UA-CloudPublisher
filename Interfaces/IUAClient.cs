@@ -9,9 +9,9 @@ namespace UA.MQTT.Publisher.Interfaces
 
     public interface IUAClient : IDisposable
     {
-        Task PublishNodeAsync(EventPublishingModel nodeToPublish, CancellationToken cancellationToken = default);
+        Task PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);
 
-        void UnpublishNode(EventPublishingModel nodeToUnpublish);
+        void UnpublishNode(NodePublishingModel nodeToUnpublish);
 
         void UnpublishAllNodes();
 

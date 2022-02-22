@@ -45,11 +45,13 @@ namespace UA.MQTT.Publisher
                     return;
                 }
 
-                EventMessageDataModel eventMessageData = new EventMessageDataModel();
-                eventMessageData.EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                eventMessageData.ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri;
-                eventMessageData.DisplayName = monitoredItem.DisplayName;
-                eventMessageData.ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString();
+                MessageProcessorModel eventMessageData = new MessageProcessorModel
+                {
+                    EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
+                    ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
+                    DisplayName = monitoredItem.DisplayName,
+                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString()
+                };
                 eventMessageData.DataSetWriterId = eventMessageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
                 eventMessageData.MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext;
 
@@ -134,11 +136,13 @@ namespace UA.MQTT.Publisher
                     return;
                 }
 
-                MessageDataModel messageData = new MessageDataModel();
-                messageData.EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                messageData.ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri;
-                messageData.DisplayName = monitoredItem.DisplayName;
-                messageData.ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString();
+                MessageProcessorModel messageData = new MessageProcessorModel
+                {
+                    EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
+                    ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
+                    DisplayName = monitoredItem.DisplayName,
+                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString()
+                };
                 messageData.DataSetWriterId = messageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
                 messageData.MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext;
                 messageData.Value = value;

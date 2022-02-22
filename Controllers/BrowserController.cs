@@ -391,7 +391,7 @@ namespace UA.MQTT.Publisher.Controllers
 
                 Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl).ConfigureAwait(false);
 
-                EventPublishingModel node = new EventPublishingModel
+                NodePublishingModel node = new NodePublishingModel
                 {
                     ExpandedNodeId = new ExpandedNodeId(nodeId, session.NamespaceUris.ToArray()[nodeId.NamespaceIndex]),
                     EndpointUrl = endpointUrl,

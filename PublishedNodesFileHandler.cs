@@ -64,15 +64,20 @@ namespace UA.MQTT.Publisher.Configuration
                                 foreach (OpcEventOnEndpointModel opcEvent in publisherConfigFileEntryLegacy.OpcEvents)
                                 {
                                     ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcEvent.Id);
-                                    EventPublishingModel publishingInfo = new EventPublishingModel()
+                                    NodePublishingModel publishingInfo = new NodePublishingModel()
                                     {
                                         ExpandedNodeId = expandedNodeId,
                                         EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
                                         UseSecurity = publisherConfigFileEntryLegacy.UseSecurity,
                                         DisplayName = opcEvent.DisplayName
                                     };
+
+                                    publishingInfo.SelectClauses = new List<SelectClauseModel>();
                                     publishingInfo.SelectClauses.AddRange(opcEvent.SelectClauses);
+
+                                    publishingInfo.WhereClauses = new List<WhereClauseElementModel>();
                                     publishingInfo.WhereClauses.AddRange(opcEvent.WhereClauses);
+
                                     _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                                 }
                             }
@@ -83,7 +88,7 @@ namespace UA.MQTT.Publisher.Configuration
                                     if (opcNode.ExpandedNodeId != null)
                                     {
                                         ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.ExpandedNodeId);
-                                        EventPublishingModel publishingInfo = new EventPublishingModel()
+                                        NodePublishingModel publishingInfo = new NodePublishingModel()
                                         {
                                             ExpandedNodeId = expandedNodeId,
                                             EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
@@ -96,6 +101,7 @@ namespace UA.MQTT.Publisher.Configuration
                                             OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
                                             AuthCredential = decryptedCreds
                                         };
+
                                         _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                                     }
                                     else
@@ -105,7 +111,7 @@ namespace UA.MQTT.Publisher.Configuration
                                         {
                                             // ExpandedNodeId format
                                             ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.Id);
-                                            EventPublishingModel publishingInfo = new EventPublishingModel()
+                                            NodePublishingModel publishingInfo = new NodePublishingModel()
                                             {
                                                 ExpandedNodeId = expandedNodeId,
                                                 EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
@@ -118,13 +124,14 @@ namespace UA.MQTT.Publisher.Configuration
                                                 OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
                                                 AuthCredential = decryptedCreds
                                             };
+
                                             _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                                         }
                                         else
                                         {
                                             // NodeId format
                                             NodeId nodeId = NodeId.Parse(opcNode.Id);
-                                            EventPublishingModel publishingInfo = new EventPublishingModel
+                                            NodePublishingModel publishingInfo = new NodePublishingModel
                                             {
                                                 ExpandedNodeId = nodeId,
                                                 EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,
@@ -137,6 +144,7 @@ namespace UA.MQTT.Publisher.Configuration
                                                 OpcAuthenticationMode = publisherConfigFileEntryLegacy.OpcAuthenticationMode,
                                                 AuthCredential = decryptedCreds
                                             };
+
                                             _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                                         }
                                     }
@@ -146,7 +154,7 @@ namespace UA.MQTT.Publisher.Configuration
                         else
                         {
                             // NodeId (ns=) format node configuration syntax using default sampling and publishing interval.
-                            EventPublishingModel publishingInfo = new EventPublishingModel()
+                            NodePublishingModel publishingInfo = new NodePublishingModel()
                             {
                                 ExpandedNodeId = publisherConfigFileEntryLegacy.NodeId,
                                 EndpointUrl = publisherConfigFileEntryLegacy.EndpointUrl.OriginalString,

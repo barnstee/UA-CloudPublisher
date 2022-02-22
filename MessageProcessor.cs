@@ -24,7 +24,7 @@ namespace UA.MQTT.Publisher
         private int _notificationsInBatch = 0;
 
         MemoryStream _batchBuffer = new MemoryStream(); // turn this into a FileStream to persist the batch cache
-        private static BlockingCollection<MessageDataModel> _monitoredItemsDataQueue;
+        private static BlockingCollection<MessageProcessorModel> _monitoredItemsDataQueue;
         private bool _isRunning = false;
 
         private static ILogger _logger;
@@ -51,7 +51,7 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        public static void Enqueue(MessageDataModel json)
+        public static void Enqueue(MessageProcessorModel json)
         {
             if (_monitoredItemsDataQueue != null)
             {
@@ -89,7 +89,7 @@ namespace UA.MQTT.Publisher
                 try
                 {
                     // read the next message from our queue
-                    MessageDataModel messageData = new MessageDataModel();
+                    MessageProcessorModel messageData = new MessageProcessorModel();
                     int timeout = CalculateBatchTimeout(cancellationToken);
                     bool gotItem = _monitoredItemsDataQueue.TryTake(out messageData, timeout, cancellationToken);
                     if (!gotItem)
@@ -181,7 +181,7 @@ namespace UA.MQTT.Publisher
             _logger.LogInformation($"Message processing configured with a send interval of {Settings.Singleton.DefaultSendIntervalSeconds} sec and a message buffer size of {Settings.Singleton.MQTTMessageSize} bytes.");
 
             // create the queue for monitored items
-            _monitoredItemsDataQueue = new BlockingCollection<MessageDataModel>((int)Settings.Singleton.InternalQueueCapacity);
+            _monitoredItemsDataQueue = new BlockingCollection<MessageProcessorModel>((int)Settings.Singleton.InternalQueueCapacity);
 
             _singleMessageSend = Settings.Singleton.DefaultSendIntervalSeconds == 0 && Settings.Singleton.MQTTMessageSize == 0;
 
@@ -245,31 +245,10 @@ namespace UA.MQTT.Publisher
             _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Singleton.DefaultSendIntervalSeconds);
         }
 
-        private string JsonEncodeMessage(MessageDataModel messageData)
+        private string JsonEncodeMessage(MessageProcessorModel messageData)
         {
-            string jsonMessage = string.Empty;
-
-            EventMessageDataModel eventMessageData = null;
-            MessageDataModel dataChangeMessageData = null;
-            if (messageData is EventMessageDataModel model)
-            {
-                eventMessageData = model;
-            }
-            else
-            {
-                dataChangeMessageData = messageData;
-            }
-
-            // encode message
-            if (dataChangeMessageData != null)
-            {
-                jsonMessage = _encoder.EncodeDataChange(dataChangeMessageData);
-            }
-            if (eventMessageData != null)
-            {
-                jsonMessage = _encoder.EncodeEvent(eventMessageData);
-            }
-
+            string jsonMessage = _encoder.Encode(messageData);
+            
             Diagnostics.Singleton.Info.NumberOfEvents++;
 
             return jsonMessage;
