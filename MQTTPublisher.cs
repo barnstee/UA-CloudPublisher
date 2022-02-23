@@ -68,10 +68,10 @@ namespace UA.MQTT.Publisher
 
                             _logger.LogInformation($"There are {filePaths.Length - 1} stored messages left to send.");
                         }
-                        catch (Exception)
+                        catch (Exception ex)
                         {
                             // do nothing, just try again next time around
-                            _logger.LogInformation($"There are {filePaths.Length} stored messages left to send.");
+                            _logger.LogError(ex, $"Sending stored message failed, will retry later. There are {filePaths.Length} stored messages left to send.");
                         }
                     }
                 }
