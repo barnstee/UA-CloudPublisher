@@ -16,7 +16,22 @@ namespace UA.MQTT.Publisher
             _logger = loggerFactory.CreateLogger("PubSubTelemetryEncoder");
         }
 
-        public string Encode(MessageProcessorModel messageData)
+        public string EncodeHeader(ulong messageID)
+        {
+            // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
+            // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
+            JsonEncoder encoder = new JsonEncoder(new ServiceMessageContext(), Settings.Singleton.ReversiblePubSubEncoding);
+
+            encoder.WriteString("MessageId", messageID.ToString());
+            encoder.WriteString("MessageType", "ua-data");
+            encoder.WriteString("PublisherId", Settings.Singleton.PublisherName);
+            encoder.PushArray("Messages");
+
+            // remove the closing bracket as we will add this later
+            return encoder.CloseAndReturnText().TrimEnd('}');
+        }
+
+        public string EncodePayload(MessageProcessorModel messageData)
         {
             try
             {

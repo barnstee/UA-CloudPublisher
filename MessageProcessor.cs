@@ -23,7 +23,7 @@ namespace UA.MQTT.Publisher
         private Queue<long> _lastNotificationInBatch = new Queue<long>();
         private int _notificationsInBatch = 0;
 
-        MemoryStream _batchBuffer = new MemoryStream(); // turn this into a FileStream to persist the batch cache
+        MemoryStream _batchBuffer = new MemoryStream();
         private static BlockingCollection<MessageProcessorModel> _monitoredItemsDataQueue;
         private bool _isRunning = false;
 
@@ -232,9 +232,6 @@ namespace UA.MQTT.Publisher
         {
             if (_sink.SendMessage(bytesToSend))
             {
-                Diagnostics.Singleton.Info.SentBytes += bytesToSend.Length;
-                Diagnostics.Singleton.Info.SentMessages++;
-                Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
                 _logger.LogDebug($"Sent {bytesToSend.Length} bytes to broker!");
             }
 
@@ -247,7 +244,7 @@ namespace UA.MQTT.Publisher
 
         private string JsonEncodeMessage(MessageProcessorModel messageData)
         {
-            string jsonMessage = _encoder.Encode(messageData);
+            string jsonMessage = _encoder.EncodePayload(messageData);
             
             Diagnostics.Singleton.Info.NumberOfEvents++;
 
@@ -296,17 +293,7 @@ namespace UA.MQTT.Publisher
             _batchBuffer.SetLength(0);
             _notificationsInBatch = 0;
 
-            // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
-            // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
-            JsonEncoder encoder = new JsonEncoder(new ServiceMessageContext(), Settings.Singleton.ReversiblePubSubEncoding);
-
-            encoder.WriteString("MessageId", _messageID++.ToString());
-            encoder.WriteString("MessageType", "ua-data");
-            encoder.WriteString("PublisherId", Settings.Singleton.PublisherName);
-            encoder.PushArray("Messages");
-
-            // remove the closing bracket as we will add this later
-            string pubSubJSONNetworkMessageHeader = encoder.CloseAndReturnText().TrimEnd('}');
+            string pubSubJSONNetworkMessageHeader = _encoder.EncodeHeader(_messageID++);
 
             _batchBuffer.Write(Encoding.UTF8.GetBytes(pubSubJSONNetworkMessageHeader));
         }

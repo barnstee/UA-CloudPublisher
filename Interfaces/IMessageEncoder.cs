@@ -5,6 +5,8 @@ namespace UA.MQTT.Publisher.Interfaces
 
     public interface IMessageEncoder
     {
-        string Encode(MessageProcessorModel messageData);
+        string EncodeHeader(ulong messageID);
+
+        string EncodePayload(MessageProcessorModel messageData);
     }
 }

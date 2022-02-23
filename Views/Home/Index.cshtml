@@ -9,7 +9,7 @@
 UA-MQTT-Publisher is a cross-platform OPC UA cloud publisher reference impelementation leveraging OPC UA PubSub over MQTT, running in a Docker container or on Kubernetes and it comes with an easy-to-use web user interface.
 <br />
 <br />
-<h2>Features</h2>
+<h3>Features</h3>
  <ul>
     <li>Cross-plattform - Runs on Windows and Linux</li>
     <li>Runs inside a Docker container</li>
@@ -24,12 +24,24 @@ UA-MQTT-Publisher is a cross-platform OPC UA cloud publisher reference impelemen
     <li>Publishing from the cloud via a connected MQTT broker</li>
     <li>Publishing on data changes or on regular intervals</li>
     <li>Supports Microsoft OPC Publisher publishesnodes.json imput file format</li>
+    <li>Support for storing configuration files locally or in the cloud</li>
+    <li>Support for Store & Forward during Internet connection outages</li>
 </ul>
 <br />
-<br />
-<h2>Optional Environment Variables</h2>
+<h3>Optional Environment Variables</h3>
 <ul>
     <li>LOG_FILE_PATH - path to the log file to use. Default is ./Logs/UA-MQTT-Publisher.log.</li>
     <li>STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (within the container).</li>
     <li>STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.</li>
+</ul>
+<br />
+<h3>MQTT Sub-topics for Configuration from the Cloud</h3>
+See the readme <a href="https://github.com/barnstee/UA-MQTT-Publisher#mqtt-sub-topics-for-configuration-from-the-cloud">here</a> for the payload configuration.
+<br />
+<br />
+<ul>
+    <li>PublishNodes</li>
+    <li>UnpublishNodes</li>
+    <li>UnpublishAllNodes</li>
+    <li>GetInfo</li>
 </ul>

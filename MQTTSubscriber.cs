@@ -65,8 +65,8 @@ namespace UA.MQTT.Publisher.Configuration
                     .WithTcpServer(Settings.Singleton.MQTTBrokerName, 8883)
                     .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = true })
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
-                    .WithCommunicationTimeout(TimeSpan.FromSeconds(30))
-                    .WithKeepAlivePeriod(TimeSpan.FromSeconds(300))
+                    .WithCommunicationTimeout(TimeSpan.FromSeconds(10))
+                    .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                     .WithCleanSession(false) // keep existing subscriptions 
                     .WithCredentials(Settings.Singleton.MQTTUsername, password);
 
@@ -75,8 +75,9 @@ namespace UA.MQTT.Publisher.Configuration
                 {
                     _logger.LogWarning($"Disconnected from MQTT broker: {disconnectArgs.Reason}");
 
-                // simply reconnect again
-                Connect();
+                    // wait a second, then simply reconnect again
+                    Task.Delay(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+                    Connect();
                 });
 
                 try
