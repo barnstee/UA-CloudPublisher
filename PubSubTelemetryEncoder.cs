@@ -46,7 +46,9 @@ namespace UA.MQTT.Publisher
             try
             {
                 DataSetMetaDataType dataSetMetaData = new DataSetMetaDataType();
+
                 dataSetMetaData.Name = "telemetry";
+
                 dataSetMetaData.Fields = new FieldMetaDataCollection();
                 
                 if (messageData.EventValues != null && messageData.EventValues.Count > 0)
@@ -100,7 +102,7 @@ namespace UA.MQTT.Publisher
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Generation of JSON PubSub message failed.");
+                _logger.LogError(e, "Generation of JSON PubSub metadata message failed.");
             }
 
             return string.Empty;
@@ -138,7 +140,7 @@ namespace UA.MQTT.Publisher
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Generation of JSON PubSub message failed.");
+                _logger.LogError(e, "Generation of JSON PubSub data message failed.");
             }
 
             return string.Empty;
