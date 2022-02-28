@@ -68,7 +68,7 @@ namespace UA.MQTT.Publisher.Configuration
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                     .WithCommunicationTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
-                    .WithCleanSession(false) // keep existing subscriptions 
+                    .WithCleanSession(true) // clear existing subscriptions 
                     .WithCredentials(Settings.Singleton.MQTTUsername, password);
 
                 // setup disconnection handling
