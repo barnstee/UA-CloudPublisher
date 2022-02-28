@@ -69,6 +69,7 @@ namespace UA.MQTT.Publisher
 
                             // use the Value as reported in the notification event argument
                             eventValue.Value = new DataValue(eventField);
+                            eventValue.Value.ServerTimestamp = DateTime.MinValue; // remove server timestamp to save message payload space
 
                             messageData.EventValues.Add(eventValue);
                         }
@@ -146,6 +147,7 @@ namespace UA.MQTT.Publisher
                 messageData.DataSetWriterId = messageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
                 messageData.MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext;
                 messageData.Value = value;
+                messageData.Value.ServerTimestamp = DateTime.MinValue; // remove server timestamp to save message payload space
 
                 _logger.LogDebug($"   ApplicationUri: {messageData.ApplicationUri}");
                 _logger.LogDebug($"   EndpointUrl: {messageData.EndpointUrl}");
