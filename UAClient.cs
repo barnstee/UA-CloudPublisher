@@ -114,7 +114,7 @@ namespace UA.MQTT.Publisher
             return null;
         }
 
-        private async Task<Session> ConnectSessionAsync(string endpointUrl, NetworkCredential credentials)
+        private async Task<Session> ConnectSessionAsync(string endpointUrl, string username, string password)
         {
             // check if the required session is already available
             Session existingSession = FindSession(endpointUrl);
@@ -134,13 +134,13 @@ namespace UA.MQTT.Publisher
                 timeout);
 
             UserIdentity userIdentity = null;
-            if (credentials == null)
+            if (username == null)
             {
                 userIdentity = new UserIdentity(new AnonymousIdentityToken());
             }
             else
             {
-                userIdentity = new UserIdentity(credentials.UserName, credentials.Password);
+                userIdentity = new UserIdentity(username, password);
             }
 
             Session newSession = null;
@@ -400,7 +400,8 @@ namespace UA.MQTT.Publisher
             // find or create the session we need to monitor the node
             Session session = await ConnectSessionAsync(
                 nodeToPublish.EndpointUrl,
-                nodeToPublish.AuthCredential
+                nodeToPublish.Username,
+                nodeToPublish.Password
             ).ConfigureAwait(false);
 
             if (session == null)
@@ -459,7 +460,7 @@ namespace UA.MQTT.Publisher
                 }
                 if (nodeToPublish.WhereClauses != null)
                 {
-                    foreach (WhereClauseElementModel whereClauseElement in nodeToPublish.WhereClauses)
+                    foreach (WhereClauseModel whereClauseElement in nodeToPublish.WhereClauses)
                     {
                         ContentFilterElement contentFilterElement = new ContentFilterElement();
                         contentFilterElement.FilterOperator = whereClauseElement.Operator.ResolveFilterOperator();
@@ -674,9 +675,9 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        public async Task<IEnumerable<ConfigurationFileEntryModel>> GetListofPublishedNodesAsync(CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<PublishNodesInterfaceModel>> GetListofPublishedNodesAsync(CancellationToken cancellationToken = default)
         {
-            List<ConfigurationFileEntryModel> publisherConfigurationFileEntries = new List<ConfigurationFileEntryModel>();
+            List<PublishNodesInterfaceModel> publisherConfigurationFileEntries = new List<PublishNodesInterfaceModel>();
 
             try
             {
@@ -692,35 +693,37 @@ namespace UA.MQTT.Publisher
                 {
                     foreach (Session session in _sessions)
                     {
-                        OpcSessionUserAuthenticationMode authenticationMode = OpcSessionUserAuthenticationMode.Anonymous;
-                        EncryptedCredentials credentials = null;
+                        UserAuthModeEnum authenticationMode = UserAuthModeEnum.Anonymous;
+                        string username = null;
+                        string password = null;
 
                         if (session.Identity.TokenType == UserTokenType.UserName)
                         {
-                            authenticationMode = OpcSessionUserAuthenticationMode.UsernamePassword;
+                            authenticationMode = UserAuthModeEnum.UsernamePassword;
 
                             UserNameIdentityToken token = (UserNameIdentityToken)session.Identity.GetIdentityToken();
-                            string username = token.UserName;
-                            string password = token.DecryptedPassword;
-                            credentials = new EncryptedCredentials(privateKey, new NetworkCredential(username, password));
+                            username = token.UserName;
+                            password = token.DecryptedPassword;
                         }
 
-                        ConfigurationFileEntryModel publisherConfigurationFileEntry = new ConfigurationFileEntryModel();
-                        publisherConfigurationFileEntry.EndpointUrl = session.ConfiguredEndpoint.EndpointUrl;
-                        publisherConfigurationFileEntry.OpcAuthenticationMode = authenticationMode;
-                        publisherConfigurationFileEntry.EncryptedAuthCredential = credentials;
-                        publisherConfigurationFileEntry.UseSecurity = true;
-                        publisherConfigurationFileEntry.OpcNodes = new List<OpcNodeOnEndpointModel>();
+                        PublishNodesInterfaceModel publisherConfigurationFileEntry = new PublishNodesInterfaceModel
+                        {
+                            EndpointUrl = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
+                            OpcAuthenticationMode = authenticationMode,
+                            UserName = username,
+                            Password = password,
+                            OpcNodes = new List<VariableModel>()
+                        };
 
                         foreach (Subscription subscription in session.Subscriptions)
                         {
                             foreach (MonitoredItem monitoredItem in subscription.MonitoredItems)
                             {
-                                OpcNodeOnEndpointModel opcNodeOnEndpoint = new OpcNodeOnEndpointModel(monitoredItem.ResolvedNodeId.ToString()) {
+                                VariableModel opcNodeOnEndpoint = new VariableModel(monitoredItem.ResolvedNodeId.ToString()) {
                                     OpcPublishingInterval = subscription.PublishingInterval,
                                     OpcSamplingInterval = monitoredItem.SamplingInterval,
                                     DisplayName = monitoredItem.DisplayName,
-                                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                                    Id = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
                                 HeartbeatInterval = 0,
                                     SkipFirst = false
                                 };
@@ -765,7 +768,7 @@ namespace UA.MQTT.Publisher
             try
             {
                 // iterate through all sessions, subscriptions and monitored items and create config file entries
-                IEnumerable<ConfigurationFileEntryModel> publisherNodeConfiguration = await GetListofPublishedNodesAsync(cancellationToken).ConfigureAwait(false);
+                IEnumerable<PublishNodesInterfaceModel> publisherNodeConfiguration = await GetListofPublishedNodesAsync(cancellationToken).ConfigureAwait(false);
 
                 // update the persistency file
                 if (await _storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)), cancellationToken).ConfigureAwait(false) == null)

@@ -3,13 +3,10 @@ namespace UA.MQTT.Publisher.Models
 {
     using Opc.Ua;
     using System.Collections.Generic;
-    using System.Net;
 
     public class NodePublishingModel
     {
         public string EndpointUrl { get; set; }
-
-        public bool UseSecurity { get; set; }
 
         public ExpandedNodeId ExpandedNodeId { get; set; }
 
@@ -23,16 +20,14 @@ namespace UA.MQTT.Publisher.Models
 
         public bool SkipFirst { get; set; }
 
-        public OpcSessionUserAuthenticationMode OpcAuthenticationMode { get; set; }
+        public UserAuthModeEnum OpcAuthenticationMode { get; set; }
 
-        public NetworkCredential AuthCredential { get; set; }
+        public string Username { get; set; }
 
-        public string DataSetFieldId { get; set; }
-
-        public string DataSetWriterId { get; set; }
+        public string Password { get; set; }
 
         public List<SelectClauseModel> SelectClauses { get; set; }
 
-        public List<WhereClauseElementModel> WhereClauses { get; set; }
+        public List<WhereClauseModel> WhereClauses { get; set; }
     }
 }

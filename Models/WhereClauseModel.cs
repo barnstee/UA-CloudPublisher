@@ -4,7 +4,7 @@ namespace UA.MQTT.Publisher.Models
     using Newtonsoft.Json;
     using System.Collections.Generic;
 
-    public class WhereClauseElementModel
+    public class WhereClauseModel
     {
         [JsonProperty(Required = Required.Always)]
         public string Operator { get; set; }

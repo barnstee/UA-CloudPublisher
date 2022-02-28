@@ -45,15 +45,15 @@ namespace UA.MQTT.Publisher
                     return;
                 }
 
-                MessageProcessorModel eventMessageData = new MessageProcessorModel
+                MessageProcessorModel messageData = new MessageProcessorModel
                 {
                     EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
                     ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     DisplayName = monitoredItem.DisplayName,
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString()
                 };
-                eventMessageData.DataSetWriterId = eventMessageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
-                eventMessageData.MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext;
+                messageData.DataSetWriterId = messageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
+                messageData.MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext;
 
                 foreach (ExtensionObject eventList in notificationData)
                 {
@@ -70,15 +70,15 @@ namespace UA.MQTT.Publisher
                             // use the Value as reported in the notification event argument
                             eventValue.Value = new DataValue(eventField);
 
-                            eventMessageData.EventValues.Add(eventValue);
+                            messageData.EventValues.Add(eventValue);
                         }
                     }
                 }
 
-                _logger.LogDebug($"   ApplicationUri: {eventMessageData.ApplicationUri}");
-                _logger.LogDebug($"   EndpointUrl: {eventMessageData.EndpointUrl}");
-                _logger.LogDebug($"   DisplayName: {eventMessageData.DisplayName}");
-                _logger.LogDebug($"   Value: {eventMessageData.Value}");
+                _logger.LogDebug($"   ApplicationUri: {messageData.ApplicationUri}");
+                _logger.LogDebug($"   EndpointUrl: {messageData.EndpointUrl}");
+                _logger.LogDebug($"   DisplayName: {messageData.DisplayName}");
+                _logger.LogDebug($"   Value: {messageData.Value}");
 
                 if (monitoredItem.Subscription == null)
                 {
@@ -102,7 +102,7 @@ namespace UA.MQTT.Publisher
                 }
 
                 // enqueue the telemetry event
-                MessageProcessor.Enqueue(eventMessageData);
+                MessageProcessor.Enqueue(messageData);
             }
             catch (Exception ex)
             {

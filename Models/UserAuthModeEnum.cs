@@ -1,7 +1,7 @@
 ﻿
 namespace UA.MQTT.Publisher.Models
 {
-    public enum OpcSessionUserAuthenticationMode
+    public enum UserAuthModeEnum
     {
         Anonymous,
         UsernamePassword

@@ -14,7 +14,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * UI for configuration
 * Publishing from the cloud via a connected MQTT broker
 * Publishing on data changes or on regular intervals
-* Supports Microsoft OPC Publisher publishesnodes.json imput file format
+* Supports publishednodes.json imput file format
 * Support for storing configuration files locally or in the cloud
 * Support for Store & Forward during Internet connection outages
 
@@ -22,6 +22,67 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * LOG_FILE_PATH - path to the log file to use. Default is ./Logs/UA-MQTT-Publisher.log.
 * STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (within the container).
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.
+
+## PublishedNodes.json File Format
+
+```json
+[
+ {
+  "EndpointUrl": "string",
+  "OpcNodes": [
+   {
+    "Id": "string",
+    "OpcSamplingInterval": 1000,
+    "OpcPublishingInterval": 1000,
+    "DisplayName": "string"
+    "HeartbeatInterval": 0,
+    "SkipFirst": false
+   }
+  ],
+  "OpcEvents": [
+   {
+    "ExpandedNodeId": "string",
+    "DisplayName": "string",
+    "SelectClauses": [
+     {
+      "TypeId": "string",
+      "BrowsePaths": "string",
+      "AttributeId": "string",
+      "IndexRange": "string"
+     }
+    ],
+    "WhereClauses": [
+     {
+      "Operator": "string",
+      "Operands": [
+       {
+        "Element": 0,
+        "Literal": string,
+        "Attribute": {
+         "NodeId": string,
+         "Alias": string,
+         "BrowsePath": string,
+         "AttributeId": string,
+         "IndexRange": string
+        },
+        "SimpleAttribute": {
+         "TypeId": "string",
+         "BrowsePaths": string,
+         "AtributeId": "string",
+         "IndexRange": string
+        }
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "OpcAuthenticationMode": "Anonymous", // or "UsernamePassword"
+  "UserName": "string",
+  "Password": "string"
+ }
+]
+```
 
 ## MQTT Sub-topics for Configuration from the Cloud
 
@@ -33,12 +94,50 @@ Payload:
  "EndpointUrl": "string",
  "OpcNodes": [
   {
-    "ExpandedNodeId": "string",
-	"OpcSamplingInterval": 1000,
-	"OpcPublishingInterval": 1000,
-	"DisplayName": "string",
-	"HeartbeatInterval": 0,
-    "SkipFirst": false
+   "Id": "string",
+   "OpcSamplingInterval": 1000,
+   "OpcPublishingInterval": 1000,
+   "DisplayName": "string",
+   "HeartbeatInterval": 0,
+   "SkipFirst": false
+  }
+ ],
+ "OpcEvents": [
+  {
+   "ExpandedNodeId": "string",
+   "DisplayName": "string",
+   "SelectClauses": [
+    {
+     "TypeId": "string",
+     "BrowsePaths": "string",
+     "AttributeId": "string",
+     "IndexRange": "string"
+    }
+   ],
+   "WhereClauses": [
+    {
+     "Operator": "string",
+     "Operands": [
+      {
+       "Element": 0,
+       "Literal": string,
+       "Attribute": {
+        "NodeId": string,
+        "Alias": string,
+        "BrowsePath": string,
+        "AttributeId": string,
+        "IndexRange": string
+       },
+       "SimpleAttribute": {
+        "TypeId": "string",
+        "BrowsePaths": string,
+        "AtributeId": "string",
+        "IndexRange": string
+       }
+      }
+     ]
+    }
+   ]
   }
  ],
  "OpcAuthenticationMode": "Anonymous", // or "UsernamePassword"
@@ -64,7 +163,7 @@ Payload:
  "EndpointUrl": "string",
   "OpcNodes": [
    {
-	"ExpandedNodeId": "string"
+	"Id": "string"
    }
   ]
 }

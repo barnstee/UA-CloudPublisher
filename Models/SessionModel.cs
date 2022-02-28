@@ -1,7 +1,7 @@
 ﻿
 namespace UA.MQTT.Publisher.Models
 {
-    public class OpcSessionModel
+    public class SessionModel
     {
         public string SessionId { get; set; }
 

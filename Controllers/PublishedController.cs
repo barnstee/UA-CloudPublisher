@@ -72,24 +72,24 @@ namespace UA.MQTT.Publisher.Controllers
 
         private async Task<string[]> GeneratePublishedNodesArray()
         {
-            IEnumerable<ConfigurationFileEntryModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
+            IEnumerable<PublishNodesInterfaceModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
 
             List<string> publishedNodesDisplay = new List<string>();
-            foreach (ConfigurationFileEntryModel entry in publishedNodes)
+            foreach (PublishNodesInterfaceModel entry in publishedNodes)
             {
                 if (entry.OpcEvents != null)
                 {
-                    foreach (OpcEventOnEndpointModel node in entry.OpcEvents)
+                    foreach (EventModel node in entry.OpcEvents)
                     {
-                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Event: " + node.Id + " Name: " + node.DisplayName);
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Event: " + node.ExpandedNodeId + " Name: " + node.DisplayName);
                     }
                 }
 
                 if (entry.OpcNodes != null)
                 {
-                    foreach (OpcNodeOnEndpointModel node in entry.OpcNodes)
+                    foreach (VariableModel node in entry.OpcNodes)
                     {
-                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Variable: " + node.ExpandedNodeId + " Name: " + node.DisplayName);
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Variable: " + node.Id + " Name: " + node.DisplayName);
                     }
                 }
             }

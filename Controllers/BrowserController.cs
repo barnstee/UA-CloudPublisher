@@ -31,7 +31,7 @@ namespace UA.MQTT.Publisher.Controllers
         [HttpGet]
         public ActionResult Index()
         {
-            OpcSessionModel sessionModel = new OpcSessionModel();
+            SessionModel sessionModel = new SessionModel();
             sessionModel.SessionId = HttpContext.Session.Id;
 
             OpcSessionCacheData entry = null;
@@ -48,7 +48,7 @@ namespace UA.MQTT.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> Connect(string endpointUrl)
         {
-            OpcSessionModel sessionModel = new OpcSessionModel { EndpointUrl = endpointUrl };
+            SessionModel sessionModel = new SessionModel { EndpointUrl = endpointUrl };
 
             try
             {
@@ -78,7 +78,7 @@ namespace UA.MQTT.Publisher.Controllers
                 // do nothing
             }
 
-            return View("Index", new OpcSessionModel());
+            return View("Index", new SessionModel());
         }
 
         [HttpPost]
@@ -109,7 +109,7 @@ namespace UA.MQTT.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                OpcSessionModel sessionModel = new OpcSessionModel();
+                SessionModel sessionModel = new SessionModel();
                 sessionModel.StatusMessage = ex.Message;
                 sessionModel.SessionId = HttpContext.Session.Id;
                 sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
@@ -322,7 +322,7 @@ namespace UA.MQTT.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                OpcSessionModel sessionModel = new OpcSessionModel();
+                SessionModel sessionModel = new SessionModel();
                 sessionModel.StatusMessage = ex.Message;
                 sessionModel.SessionId = HttpContext.Session.Id;
                 sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
@@ -373,7 +373,7 @@ namespace UA.MQTT.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                OpcSessionModel sessionModel = new OpcSessionModel();
+                SessionModel sessionModel = new SessionModel();
                 sessionModel.StatusMessage = ex.Message;
                 sessionModel.SessionId = HttpContext.Session.Id;
                 sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
@@ -396,9 +396,9 @@ namespace UA.MQTT.Publisher.Controllers
                     ExpandedNodeId = new ExpandedNodeId(nodeId, session.NamespaceUris.ToArray()[nodeId.NamespaceIndex]),
                     EndpointUrl = endpointUrl,
                     SkipFirst = false,
-                    UseSecurity = true,
-                    AuthCredential = null,
-                    OpcAuthenticationMode = OpcSessionUserAuthenticationMode.Anonymous
+                    Username = null,
+                    Password = null,
+                    OpcAuthenticationMode = UserAuthModeEnum.Anonymous
                 };
 
                 await _client.PublishNodeAsync(node).ConfigureAwait(false);
@@ -407,7 +407,7 @@ namespace UA.MQTT.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                OpcSessionModel sessionModel = new OpcSessionModel();
+                SessionModel sessionModel = new SessionModel();
                 sessionModel.StatusMessage = ex.Message;
                 sessionModel.SessionId = HttpContext.Session.Id;
                 sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");

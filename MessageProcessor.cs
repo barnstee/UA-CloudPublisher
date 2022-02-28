@@ -125,8 +125,8 @@ namespace UA.MQTT.Publisher
                         Diagnostics.Singleton.Info.MonitoredItemsQueueCount--;
                     }
 
-                    // check if we should send the new item straight away
-                    if (_singleMessageSend)
+                    // check if we should send the new item straight away (single message send case or if there are events)
+                    if (_singleMessageSend || (messageData.EventValues.Count > 0))
                     {
                         BatchMessage(JsonEncodeMessage(messageData));
                         SendBatch(FinishBatch());

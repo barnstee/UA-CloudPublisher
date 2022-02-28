@@ -4,10 +4,10 @@ namespace UA.MQTT.Publisher.Models
     using Newtonsoft.Json;
     using System.Collections.Generic;
 
-    public class OpcEventOnEndpointModel
+    public class EventModel
     {
         [JsonProperty(Required = Required.Always)]
-        public string Id { get; set; }
+        public string ExpandedNodeId { get; set; }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string DisplayName { get; set; }
@@ -16,6 +16,6 @@ namespace UA.MQTT.Publisher.Models
         public List<SelectClauseModel> SelectClauses { get; set; }
 
         [JsonProperty(Required = Required.Always)]
-        public List<WhereClauseElementModel> WhereClauses { get; set; }
+        public List<WhereClauseModel> WhereClauses { get; set; }
     }
 }

@@ -11,6 +11,7 @@ namespace UA.MQTT.Publisher.Configuration
     using MQTTnet.Packets;
     using MQTTnet.Protocol;
     using Newtonsoft.Json;
+    using Opc.Ua;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
@@ -23,7 +24,7 @@ namespace UA.MQTT.Publisher.Configuration
     using System.Web;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
-    using DiagnosticInfo = Models.DiagnosticInfo;
+    using DiagnosticsModel = Models.DiagnosticsModel;
 
     public class MQTTSubscriber : IMQTTSubscriber
     {
@@ -204,39 +205,56 @@ namespace UA.MQTT.Publisher.Configuration
 
         public byte[] PublishNodes(string payload)
         {
-            OpcSessionUserAuthenticationMode desiredAuthenticationMode = OpcSessionUserAuthenticationMode.Anonymous;
+            UserAuthModeEnum desiredAuthenticationMode = UserAuthModeEnum.Anonymous;
             List<string> statusResponse = new List<string>();
 
-            PublishNodesMethodRequestModel publishNodesMethodData = JsonConvert.DeserializeObject<PublishNodesMethodRequestModel>(payload);
+            PublishNodesInterfaceModel publishNodesMethodData = JsonConvert.DeserializeObject<PublishNodesInterfaceModel>(payload);
 
-            if (publishNodesMethodData.OpcAuthenticationMode == OpcSessionUserAuthenticationMode.UsernamePassword)
+            if (publishNodesMethodData.OpcAuthenticationMode == UserAuthModeEnum.UsernamePassword)
             {
                 if (string.IsNullOrWhiteSpace(publishNodesMethodData.UserName) && string.IsNullOrWhiteSpace(publishNodesMethodData.Password))
                 {
-                    throw new ArgumentException($"If {nameof(publishNodesMethodData.OpcAuthenticationMode)} is set to '{OpcSessionUserAuthenticationMode.UsernamePassword}', you have to specify '{nameof(publishNodesMethodData.UserName)}' and/or '{nameof(publishNodesMethodData.Password)}'.");
+                    throw new ArgumentException($"If {nameof(publishNodesMethodData.OpcAuthenticationMode)} is set to '{UserAuthModeEnum.UsernamePassword}', you have to specify username and password.");
                 }
-
-                desiredAuthenticationMode = OpcSessionUserAuthenticationMode.UsernamePassword;
             }
 
-            foreach (OpcNodeOnEndpointModel nodeOnEndpoint in publishNodesMethodData.OpcNodes)
+            // check for events
+            if (publishNodesMethodData.OpcEvents != null)
+            {
+                foreach (EventModel opcEvent in publishNodesMethodData.OpcEvents)
+                {
+                    ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId);
+                    NodePublishingModel publishingInfo = new NodePublishingModel()
+                    {
+                        ExpandedNodeId = expandedNodeId,
+                        EndpointUrl = publishNodesMethodData.EndpointUrl,
+                        DisplayName = opcEvent.DisplayName
+                    };
+
+                    publishingInfo.SelectClauses = new List<SelectClauseModel>();
+                    publishingInfo.SelectClauses.AddRange(opcEvent.SelectClauses);
+
+                    publishingInfo.WhereClauses = new List<WhereClauseModel>();
+                    publishingInfo.WhereClauses.AddRange(opcEvent.WhereClauses);
+
+                    _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                }
+            }
+
+            foreach (VariableModel nodeOnEndpoint in publishNodesMethodData.OpcNodes)
             {
                 NodePublishingModel node = new NodePublishingModel {
-                    ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
+                    ExpandedNodeId = nodeOnEndpoint.Id,
                     EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
                     SkipFirst = nodeOnEndpoint.SkipFirst,
                     DisplayName = nodeOnEndpoint.DisplayName,
                     HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
                     OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
                     OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,
-                    AuthCredential = null,
+                    Username = publishNodesMethodData.UserName,
+                    Password = publishNodesMethodData.Password,
                     OpcAuthenticationMode = desiredAuthenticationMode
                 };
-
-                if (desiredAuthenticationMode == OpcSessionUserAuthenticationMode.UsernamePassword)
-                {
-                    node.AuthCredential = new NetworkCredential(publishNodesMethodData.UserName, publishNodesMethodData.Password);
-                }
 
                 _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
 
@@ -252,12 +270,12 @@ namespace UA.MQTT.Publisher.Configuration
         {
             List<string> statusResponse = new List<string>();
 
-            UnpublishNodesMethodRequestModel unpublishNodesMethodData = JsonConvert.DeserializeObject<UnpublishNodesMethodRequestModel>(payload);
+            UnpublishNodesInterfaceModel unpublishNodesMethodData = JsonConvert.DeserializeObject<UnpublishNodesInterfaceModel>(payload);
 
-            foreach (OpcNodeOnEndpointModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
+            foreach (VariableModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
             {
                 NodePublishingModel node = new NodePublishingModel {
-                    ExpandedNodeId = nodeOnEndpoint.ExpandedNodeId,
+                    ExpandedNodeId = nodeOnEndpoint.Id,
                     EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
                 };
 
@@ -280,13 +298,7 @@ namespace UA.MQTT.Publisher.Configuration
 
         public byte[] GetInfo()
         {
-            DiagnosticInfoMethodResponseModel diagnosticInfoResponse = new DiagnosticInfoMethodResponseModel();
-            List<DiagnosticInfo> diagnosticInfos = new List<DiagnosticInfo>();
-
-            diagnosticInfos.Add(Diagnostics.Singleton.Info);
-            diagnosticInfoResponse.DiagnosticInfos = diagnosticInfos;
-
-            return BuildResponseAndTruncateResult(diagnosticInfoResponse);
+            return BuildResponseAndTruncateResult(Diagnostics.Singleton.Info);
         }
 
         private byte[] BuildResponseAndCropStatus(List<string> statusResponse)

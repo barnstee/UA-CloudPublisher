@@ -3,10 +3,9 @@ namespace UA.MQTT.Publisher.Models
 {
     using Newtonsoft.Json;
 
-    public class OpcNodeOnEndpointModel
+    public class VariableModel
     {
-        public OpcNodeOnEndpointModel(
-            string id,
+        public VariableModel(
             string expandedNodeId = null,
             int opcSamplingInterval = 1000,
             int opcPublishingInterval = 0,
@@ -14,8 +13,7 @@ namespace UA.MQTT.Publisher.Models
             int heartbeatInterval = 0,
             bool skipFirst = false)
         {
-            Id = id;
-            ExpandedNodeId = expandedNodeId;
+            Id = expandedNodeId;
             OpcSamplingInterval = opcSamplingInterval;
             OpcPublishingInterval = opcPublishingInterval;
             DisplayName = displayName;
@@ -23,13 +21,8 @@ namespace UA.MQTT.Publisher.Models
             SkipFirst = skipFirst;
         }
 
-        // Id can be:
-        // a NodeId ("ns=")
-        // an ExpandedNodeId ("nsu=")
+        [JsonProperty(Required = Required.Always)]
         public string Id { get; set; }
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public string ExpandedNodeId { get; set; }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public int OpcSamplingInterval { get; set; }

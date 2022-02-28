@@ -4,7 +4,7 @@ namespace UA.MQTT.Publisher.Models
     using Newtonsoft.Json;
     using System;
 
-    public class DiagnosticInfo
+    public class DiagnosticsModel
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public DateTime PublisherStartTime { get; set; } = DateTime.UtcNow;

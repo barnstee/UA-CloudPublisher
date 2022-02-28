@@ -47,7 +47,7 @@ namespace UA.MQTT.Publisher
        
         }
 
-        public DiagnosticInfo Info { get; set; } = new DiagnosticInfo();
+        public DiagnosticsModel Info { get; set; } = new DiagnosticsModel();
 
         private void Clear()
         {
