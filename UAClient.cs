@@ -526,7 +526,6 @@ namespace UA.MQTT.Publisher
                 MonitoredItem newMonitoredItem = new MonitoredItem(opcSubscription.DefaultItem) {
                     StartNodeId = resolvedNodeId,
                     AttributeId = Attributes.Value,
-                    DisplayName = nodeToPublish.DisplayName,
                     SamplingInterval = opcSamplingIntervalForNode
                 };
 
@@ -541,13 +540,6 @@ namespace UA.MQTT.Publisher
                 {
                     // data change
                     newMonitoredItem.Notification += _trigger.DataChangedNotificationHandler;
-                }
-
-                // fetch display name (needed for PubSub)
-                Opc.Ua.Node node = session.ReadNode(resolvedNodeId);
-                if (string.IsNullOrEmpty(nodeToPublish.DisplayName) && node != null)
-                {
-                    newMonitoredItem.DisplayName = node.DisplayName.Text;
                 }
 
                 opcSubscription.AddItem(newMonitoredItem);
@@ -675,19 +667,12 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        public async Task<IEnumerable<PublishNodesInterfaceModel>> GetListofPublishedNodesAsync(CancellationToken cancellationToken = default)
+        public IEnumerable<PublishNodesInterfaceModel> GetListofPublishedNodes()
         {
             List<PublishNodesInterfaceModel> publisherConfigurationFileEntries = new List<PublishNodesInterfaceModel>();
 
             try
             {
-                // load private key
-                X509Certificate2 privateKey = await _app.GetAppConfig()
-                    .SecurityConfiguration
-                    .ApplicationCertificate
-                    .LoadPrivateKey(null)
-                    .ConfigureAwait(false);
-
                 // loop through all sessions
                 lock (_sessions)
                 {
@@ -722,9 +707,8 @@ namespace UA.MQTT.Publisher
                                 VariableModel opcNodeOnEndpoint = new VariableModel(monitoredItem.ResolvedNodeId.ToString()) {
                                     OpcPublishingInterval = subscription.PublishingInterval,
                                     OpcSamplingInterval = monitoredItem.SamplingInterval,
-                                    DisplayName = monitoredItem.DisplayName,
                                     Id = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
-                                HeartbeatInterval = 0,
+                                    HeartbeatInterval = 0,
                                     SkipFirst = false
                                 };
 
@@ -768,7 +752,7 @@ namespace UA.MQTT.Publisher
             try
             {
                 // iterate through all sessions, subscriptions and monitored items and create config file entries
-                IEnumerable<PublishNodesInterfaceModel> publisherNodeConfiguration = await GetListofPublishedNodesAsync(cancellationToken).ConfigureAwait(false);
+                IEnumerable<PublishNodesInterfaceModel> publisherNodeConfiguration = GetListofPublishedNodes();
 
                 // update the persistency file
                 if (await _storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)), cancellationToken).ConfigureAwait(false) == null)

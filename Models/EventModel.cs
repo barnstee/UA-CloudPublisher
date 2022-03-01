@@ -9,9 +9,6 @@ namespace UA.MQTT.Publisher.Models
         [JsonProperty(Required = Required.Always)]
         public string ExpandedNodeId { get; set; }
 
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public string DisplayName { get; set; }
-
         [JsonProperty(Required = Required.Always)]
         public List<SelectClauseModel> SelectClauses { get; set; }
 

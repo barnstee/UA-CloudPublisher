@@ -64,7 +64,6 @@ namespace UA.MQTT.Publisher.Configuration
                                 {
                                     ExpandedNodeId = expandedNodeId,
                                     EndpointUrl = configFileEntry.EndpointUrl,
-                                    DisplayName = opcEvent.DisplayName
                                 };
 
                                 publishingInfo.SelectClauses = new List<SelectClauseModel>();
@@ -86,7 +85,6 @@ namespace UA.MQTT.Publisher.Configuration
                                 EndpointUrl = configFileEntry.EndpointUrl,
                                 OpcPublishingInterval = opcNode.OpcPublishingInterval,
                                 OpcSamplingInterval = opcNode.OpcSamplingInterval,
-                                DisplayName = opcNode.DisplayName,
                                 HeartbeatInterval = opcNode.HeartbeatInterval,
                                 SkipFirst = opcNode.SkipFirst,
                                 OpcAuthenticationMode = configFileEntry.OpcAuthenticationMode,

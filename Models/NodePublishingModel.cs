@@ -10,8 +10,6 @@ namespace UA.MQTT.Publisher.Models
 
         public ExpandedNodeId ExpandedNodeId { get; set; }
 
-        public string DisplayName { get; set; }
-
         public int OpcSamplingInterval { get; set; }
 
         public int OpcPublishingInterval { get; set; }

@@ -250,7 +250,6 @@ namespace UA.MQTT.Publisher.Configuration
                     {
                         ExpandedNodeId = expandedNodeId,
                         EndpointUrl = publishNodesMethodData.EndpointUrl,
-                        DisplayName = opcEvent.DisplayName
                     };
 
                     publishingInfo.SelectClauses = new List<SelectClauseModel>();
@@ -269,7 +268,6 @@ namespace UA.MQTT.Publisher.Configuration
                     ExpandedNodeId = nodeOnEndpoint.Id,
                     EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
                     SkipFirst = nodeOnEndpoint.SkipFirst,
-                    DisplayName = nodeOnEndpoint.DisplayName,
                     HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
                     OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
                     OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,

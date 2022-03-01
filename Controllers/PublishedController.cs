@@ -29,13 +29,13 @@ namespace UA.MQTT.Publisher.Controllers
             _storage = storage;
         }
 
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            return View(await GeneratePublishedNodesArray().ConfigureAwait(false));
+            return View(GeneratePublishedNodesArray());
         }
 
         [HttpPost]
-        public async Task<IActionResult> Load(IFormFile file)
+        public IActionResult Load(IFormFile file)
         {
             try
             {
@@ -61,7 +61,7 @@ namespace UA.MQTT.Publisher.Controllers
                     }
                 }
                 
-                return View("Index", await GeneratePublishedNodesArray().ConfigureAwait(false));
+                return View("Index", GeneratePublishedNodesArray());
             }
             catch (Exception ex)
             {
@@ -70,9 +70,9 @@ namespace UA.MQTT.Publisher.Controllers
             }
         }
 
-        private async Task<string[]> GeneratePublishedNodesArray()
+        private string[] GeneratePublishedNodesArray()
         {
-            IEnumerable<PublishNodesInterfaceModel> publishedNodes = await _client.GetListofPublishedNodesAsync().ConfigureAwait(false);
+            IEnumerable<PublishNodesInterfaceModel> publishedNodes = _client.GetListofPublishedNodes();
 
             List<string> publishedNodesDisplay = new List<string>();
             foreach (PublishNodesInterfaceModel entry in publishedNodes)
@@ -81,7 +81,7 @@ namespace UA.MQTT.Publisher.Controllers
                 {
                     foreach (EventModel node in entry.OpcEvents)
                     {
-                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Event: " + node.ExpandedNodeId + " Name: " + node.DisplayName);
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Event: " + node.ExpandedNodeId);
                     }
                 }
 
@@ -89,7 +89,7 @@ namespace UA.MQTT.Publisher.Controllers
                 {
                     foreach (VariableModel node in entry.OpcNodes)
                     {
-                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Variable: " + node.Id + " Name: " + node.DisplayName);
+                        publishedNodesDisplay.Add("Endpoint: " + entry.EndpointUrl.ToString() + " Variable: " + node.Id);
                     }
                 }
             }

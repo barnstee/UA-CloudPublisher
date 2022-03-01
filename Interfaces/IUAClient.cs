@@ -15,6 +15,6 @@ namespace UA.MQTT.Publisher.Interfaces
 
         void UnpublishAllNodes();
 
-        Task<IEnumerable<PublishNodesInterfaceModel>> GetListofPublishedNodesAsync(CancellationToken cancellationToken = default);
+        IEnumerable<PublishNodesInterfaceModel> GetListofPublishedNodes();
     }
 }
