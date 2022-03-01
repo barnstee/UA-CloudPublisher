@@ -6,7 +6,6 @@ namespace UA.MQTT.Publisher
     using Opc.Ua.Client;
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
@@ -50,10 +49,10 @@ namespace UA.MQTT.Publisher
                     EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
                     ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     DisplayName = monitoredItem.DisplayName,
-                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString()
+                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                    DataSetWriterId = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString(),
+                    MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext
                 };
-                messageData.DataSetWriterId = messageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
-                messageData.MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext;
 
                 foreach (ExtensionObject eventList in notificationData)
                 {
@@ -76,33 +75,6 @@ namespace UA.MQTT.Publisher
                     }
                 }
 
-                _logger.LogDebug($"   ApplicationUri: {messageData.ApplicationUri}");
-                _logger.LogDebug($"   EndpointUrl: {messageData.EndpointUrl}");
-                _logger.LogDebug($"   DisplayName: {messageData.DisplayName}");
-                _logger.LogDebug($"   Value: {messageData.Value}");
-
-                if (monitoredItem.Subscription == null)
-                {
-                    _logger.LogDebug($"Subscription already removed");
-                }
-                else
-                {
-                    _logger.LogDebug($"Enqueue a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
-                    _logger.LogDebug($" with publishing interval: {monitoredItem?.Subscription?.PublishingInterval} and sampling interval: {monitoredItem?.SamplingInterval}):");
-                }
-
-                // add message to fifo send queue
-                if (monitoredItem.Subscription == null)
-                {
-                    _logger.LogDebug($"Subscription already removed");
-                }
-                else
-                {
-                    _logger.LogDebug($"Enqueue a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
-                    _logger.LogDebug($" with publishing interval: {monitoredItem?.Subscription?.PublishingInterval} and sampling interval: {monitoredItem?.SamplingInterval}):");
-                }
-
-                // enqueue the telemetry event
                 MessageProcessor.Enqueue(messageData);
             }
             catch (Exception ex)
@@ -142,28 +114,15 @@ namespace UA.MQTT.Publisher
                     EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
                     ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     DisplayName = monitoredItem.DisplayName,
-                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString()
+                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                    DataSetWriterId = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString(),
+                    MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
+                    Value = value
                 };
-                messageData.DataSetWriterId = messageData.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString();
-                messageData.MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext;
-                messageData.Value = value;
-                messageData.Value.ServerTimestamp = DateTime.MinValue; // remove server timestamp to save message payload space
 
-                _logger.LogDebug($"   ApplicationUri: {messageData.ApplicationUri}");
-                _logger.LogDebug($"   EndpointUrl: {messageData.EndpointUrl}");
-                _logger.LogDebug($"   DisplayName: {messageData.DisplayName}");
-                _logger.LogDebug($"   Value: {messageData.Value}");
-
-                if (monitoredItem.Subscription == null)
-                {
-                    _logger.LogDebug($"Subscription already removed");
-                }
-                else
-                {
-                    _logger.LogDebug($"Enqueue a new message from subscription {(monitoredItem.Subscription == null ? "removed" : monitoredItem.Subscription.Id.ToString(CultureInfo.InvariantCulture))}");
-                    _logger.LogDebug($" with publishing interval: {monitoredItem?.Subscription?.PublishingInterval} and sampling interval: {monitoredItem?.SamplingInterval}):");
-                }
-
+                // remove server timestamp to save message payload space
+                messageData.Value.ServerTimestamp = DateTime.MinValue;
+                   
                 // skip event if needed
                 if (SkipFirst.ContainsKey(messageData.ExpandedNodeId) && SkipFirst[messageData.ExpandedNodeId])
                 {
@@ -172,7 +131,6 @@ namespace UA.MQTT.Publisher
                 }
                 else
                 {
-                    // enqueue the telemetry event
                     MessageProcessor.Enqueue(messageData);
                 }
             }
