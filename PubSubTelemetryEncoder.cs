@@ -73,7 +73,7 @@ namespace UA.MQTT.Publisher
                 {
                     FieldMetaData fieldData = new FieldMetaData()
                     {
-                        Name = messageData.DisplayName,
+                        Name = messageData.ExpandedNodeId,
                         DataSetFieldId = new Uuid(Guid.NewGuid()),
                         BuiltInType = (byte)messageData.Value.WrappedValue.TypeInfo.BuiltInType,
                         DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
@@ -128,7 +128,7 @@ namespace UA.MQTT.Publisher
                 }
                 else
                 {
-                    encoder.WriteDataValue(messageData.DisplayName, messageData.Value);
+                    encoder.WriteDataValue(messageData.ExpandedNodeId, messageData.Value);
                 }
 
                 encoder.PopStructure();

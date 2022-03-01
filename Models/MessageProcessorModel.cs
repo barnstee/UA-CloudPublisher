@@ -6,13 +6,7 @@ namespace UA.MQTT.Publisher.Models
 
     public class MessageProcessorModel
     {
-        public string EndpointUrl { get; set; }
-
         public string ExpandedNodeId { get; set; }
-
-        public string ApplicationUri { get; set; }
-
-        public string DisplayName { get; set; }
 
         public string DataSetWriterId { get; set; }
 

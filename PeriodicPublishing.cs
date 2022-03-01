@@ -13,7 +13,6 @@ namespace UA.MQTT.Publisher
 
         private readonly ILogger _logger;
         private readonly Timer _timer;
-        private string _displayName;
 
         public Session HeartBeatSession { get; }
 
@@ -56,30 +55,18 @@ namespace UA.MQTT.Publisher
         {
             try
             {
-                MessageProcessorModel messageData = new MessageProcessorModel();
-                messageData.EndpointUrl = HeartBeatSession.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                messageData.ApplicationUri = HeartBeatSession.Endpoint.Server.ApplicationUri;
-                messageData.ExpandedNodeId = NodeId.ToExpandedNodeId(HeartBeatNodeId, HeartBeatSession.NamespaceUris).ToString();
-                messageData.DataSetWriterId = messageData.ApplicationUri + ":" + (HeartBeatInterval * 1000).ToString();
-                messageData.MessageContext = HeartBeatSession.MessageContext;
+                MessageProcessorModel messageData = new MessageProcessorModel
+                {
+                    ExpandedNodeId = NodeId.ToExpandedNodeId(HeartBeatNodeId, HeartBeatSession.NamespaceUris).ToString(),
+                    DataSetWriterId = HeartBeatSession.Endpoint.Server.ApplicationUri + ":" + (HeartBeatInterval * 1000).ToString(),
+                    MessageContext = HeartBeatSession.MessageContext
+                };
 
                 DataValue value = HeartBeatSession.ReadValue(HeartBeatNodeId);
                 if (value != null)
                 {
                     messageData.Value = value;
                 }
-
-                // read display name and cache it
-                if (_displayName == null)
-                {
-                    VariableNode node = (VariableNode)HeartBeatSession.ReadNode(HeartBeatNodeId);
-                    if (node != null)
-                    {
-                        _displayName = node.DisplayName.Text;
-                    }
-                }
-
-                messageData.DisplayName = _displayName;
 
                 // enqueue the message
                 MessageProcessor.Enqueue(messageData);

@@ -46,9 +46,6 @@ namespace UA.MQTT.Publisher
 
                 MessageProcessorModel messageData = new MessageProcessorModel
                 {
-                    EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
-                    ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
-                    DisplayName = monitoredItem.DisplayName,
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
                     DataSetWriterId = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString(),
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext
@@ -111,9 +108,6 @@ namespace UA.MQTT.Publisher
 
                 MessageProcessorModel messageData = new MessageProcessorModel
                 {
-                    EndpointUrl = monitoredItem.Subscription.Session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri,
-                    ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
-                    DisplayName = monitoredItem.DisplayName,
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
                     DataSetWriterId = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString(),
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
@@ -126,7 +120,7 @@ namespace UA.MQTT.Publisher
                 // skip event if needed
                 if (SkipFirst.ContainsKey(messageData.ExpandedNodeId) && SkipFirst[messageData.ExpandedNodeId])
                 {
-                    _logger.LogInformation($"Skipping first telemetry event for node '{messageData.DisplayName}'.");
+                    _logger.LogInformation($"Skipping first telemetry event for node '{messageData.ExpandedNodeId}'.");
                     SkipFirst[messageData.ExpandedNodeId] = false;
                 }
                 else

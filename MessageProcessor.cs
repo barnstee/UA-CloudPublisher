@@ -275,7 +275,7 @@ namespace UA.MQTT.Publisher
             if (Settings.Singleton.SendUAMetadata)
             {
                 string metadataMessage = _encoder.EncodeMetadata(messageData);
-                int metadataKey = messageData.DataSetWriterId.GetHashCode() ^ messageData.DisplayName.GetHashCode();
+                int metadataKey = messageData.DataSetWriterId.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode();
                 if (!_metadataMessages.ContainsKey(metadataKey))
                 {
                     _metadataMessages.Add(metadataKey, metadataMessage);
