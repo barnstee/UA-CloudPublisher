@@ -58,19 +58,19 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
       "Operands": [
        {
         "Element": 0,
-        "Literal": string,
+        "Literal": "string",
         "Attribute": {
-         "NodeId": string,
-         "Alias": string,
-         "BrowsePath": string,
-         "AttributeId": string,
-         "IndexRange": string
+         "NodeId": "string",
+         "Alias": "string",
+         "BrowsePath": "string",
+         "AttributeId": "string",
+         "IndexRange": "string"
         },
         "SimpleAttribute": {
          "TypeId": "string",
-         "BrowsePaths": string,
+         "BrowsePaths": "string",
          "AtributeId": "string",
-         "IndexRange": string
+         "IndexRange": "string"
         }
        }
       ]
@@ -121,19 +121,19 @@ Payload:
      "Operands": [
       {
        "Element": 0,
-       "Literal": string,
+       "Literal": "string",
        "Attribute": {
-        "NodeId": string,
-        "Alias": string,
-        "BrowsePath": string,
-        "AttributeId": string,
-        "IndexRange": string
+        "NodeId": "string",
+        "Alias": "string",
+        "BrowsePath": "string",
+        "AttributeId": "string",
+        "IndexRange": "string"
        },
        "SimpleAttribute": {
         "TypeId": "string",
-        "BrowsePaths": string,
+        "BrowsePaths": "string",
         "AtributeId": "string",
-        "IndexRange": string
+        "IndexRange": "string"
        }
       }
      ]
