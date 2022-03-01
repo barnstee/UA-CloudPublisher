@@ -28,11 +28,23 @@
     </p>
     <p>
         MQTT Message Topic (<b>required</b>, for Azure IoT Hub, this is devices/[ClientName]/messages/events/)<br />
-        @Html.TextBox("MQTTTopic", @Model.MQTTMessageTopic, new { style = "width:100%;" })<br />
+        @Html.TextBox("MQTTMessageTopic", @Model.MQTTMessageTopic, new { style = "width:100%;" })<br />
+    </p>
+    <p>
+        MQTT Metadata Topic (for Azure IoT Hub, this is also devices/[ClientName]/messages/events/)<br />
+        @Html.TextBox("MQTTMetadataTopic", @Model.MQTTMetadataTopic, new { style = "width:100%;" })<br />
+    </p>
+     <p>
+        Send OPC UA Metadata<br />
+        @Html.CheckBox("SendUAMetadata", @Model.SendUAMetadata)<br />
+    </p>
+    <p>
+        Metadata Send Interval in Seconds<br />
+        @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { style = "width:100%;" })<br />
     </p>
      <p>
         MQTT Command Topic (<b>required</b>, for Azure IoT Hub, this is $iothub/methods/POST/#)<br />
-        @Html.TextBox("MQTTTopic", @Model.MQTTCommandTopic, new { style = "width:100%;" })<br />
+        @Html.TextBox("MQTTCommandTopic", @Model.MQTTCommandTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
         MQTT Command Response Topic (<b>required</b>, for Azure IoT Hub, this is $iothub/methods/res/{status}/?$rid={request id})<br />

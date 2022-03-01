@@ -83,7 +83,6 @@ namespace UA.MQTT.Publisher
             ILogger logger = loggerFactory.CreateLogger("Settings");
             IFileStorage storage = (IFileStorage)Program.AppHost.Services.GetService(typeof(IFileStorage));
 
-            // store app cert
             if (await storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(this, Formatting.Indented))).ConfigureAwait(false) == null)
             {
                 logger.LogError("Could not store settings file. Settings won't be persisted!");
@@ -100,12 +99,18 @@ namespace UA.MQTT.Publisher
 
         public string MQTTMessageTopic { get; set; }
 
+        public string MQTTMetadataTopic { get; set; }
+
+        public bool SendUAMetadata { get; set; } = false;
+
+        public uint MetadataSendInterval { get; set; } = 10; // seconds
+        
         public string MQTTCommandTopic { get; set; }
 
         public string MQTTResponseTopic { get; set; }
 
         public uint MQTTMessageSize { get; set; } = HubMessageSizeMax;
-
+                
         public bool CreateMQTTSASToken { get; set; } = true;
 
         public string PublisherName { get; set; } = "UA-MQTT-Publisher";

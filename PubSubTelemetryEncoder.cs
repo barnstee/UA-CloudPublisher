@@ -133,9 +133,6 @@ namespace UA.MQTT.Publisher
 
                 encoder.PopStructure();
 
-                // TODO: Send metadata to another MQTT topic
-                string testMetadataMessageEncoding = EncodeMetadata(messageData);
-
                 return encoder.CloseAndReturnText();
             }
             catch (Exception e)

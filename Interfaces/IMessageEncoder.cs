@@ -8,5 +8,7 @@ namespace UA.MQTT.Publisher.Interfaces
         string EncodeHeader(ulong messageID, bool isMetadata = false);
 
         string EncodePayload(MessageProcessorModel messageData);
+
+        string EncodeMetadata(MessageProcessorModel messageData);
     }
 }

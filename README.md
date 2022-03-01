@@ -17,6 +17,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * Supports publishednodes.json imput file format
 * Support for storing configuration files locally or in the cloud
 * Support for Store & Forward during Internet connection outages
+* Support for sending OPC UA metadata
 
 ## Optional Environment Variables
 * LOG_FILE_PATH - path to the log file to use. Default is ./Logs/UA-MQTT-Publisher.log.

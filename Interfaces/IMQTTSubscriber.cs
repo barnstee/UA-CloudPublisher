@@ -6,5 +6,7 @@ namespace UA.MQTT.Publisher.Interfaces
         void Connect();
 
         void Publish(byte[] payload);
+
+        void PublishMetadata(byte[] metadata);
     }
 }

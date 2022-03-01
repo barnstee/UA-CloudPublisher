@@ -16,7 +16,6 @@ namespace UA.MQTT.Publisher.Configuration
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
-    using System.Net;
     using System.Security.Cryptography;
     using System.Text;
     using System.Threading;
@@ -24,7 +23,6 @@ namespace UA.MQTT.Publisher.Configuration
     using System.Web;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
-    using DiagnosticsModel = Models.DiagnosticsModel;
 
     public class MQTTSubscriber : IMQTTSubscriber
     {
@@ -43,6 +41,14 @@ namespace UA.MQTT.Publisher.Configuration
         {
             try
             {
+                // disconnect if still connected
+                if ((_client != null) && _client.IsConnected)
+                {
+                    _client.DisconnectAsync().GetAwaiter().GetResult();
+                    _client.Dispose();
+                    _client = null;
+                }
+
                 // create MQTT password
                 string password = Settings.Singleton.MQTTPassword;
                 if (Settings.Singleton.CreateMQTTSASToken)
@@ -76,9 +82,12 @@ namespace UA.MQTT.Publisher.Configuration
                 {
                     _logger.LogWarning($"Disconnected from MQTT broker: {disconnectArgs.Reason}");
 
-                    // wait a second, then simply reconnect again
-                    Task.Delay(TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
-                    Connect();
+                    // wait a 5 seconds, then simply reconnect again, if needed
+                    Task.Delay(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+                    if (!_client.IsConnected)
+                    {
+                        Connect();
+                    }
                 });
 
                 try
@@ -102,6 +111,8 @@ namespace UA.MQTT.Publisher.Configuration
                     {
                         throw new ApplicationException("Failed to subscribe");
                     }
+
+                    _logger.LogInformation("Connected to MQTT broker.");
                 }
                 catch (MqttConnectingFailedException ex)
                 {
@@ -126,6 +137,17 @@ namespace UA.MQTT.Publisher.Configuration
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                 .WithTopic(Settings.Singleton.MQTTMessageTopic)
+                .WithPayload(payload)
+                .Build();
+
+            _client.PublishAsync(message).GetAwaiter().GetResult();
+        }
+
+        public void PublishMetadata(byte[] payload)
+        {
+            MqttApplicationMessage message = new MqttApplicationMessageBuilder()
+                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                .WithTopic(Settings.Singleton.MQTTMetadataTopic)
                 .WithPayload(payload)
                 .Build();
 

@@ -22,6 +22,35 @@ namespace UA.MQTT.Publisher
             _client = subscriber;
         }
 
+        public bool SendMetadata(byte[] message)
+        {
+            bool success = false;
+
+            try
+            {
+                if (_client != null)
+                {
+                    _client.PublishMetadata(message);
+                    success = true;
+                }
+                else
+                {
+                    _logger.LogError("MQTT client not available for sending message.");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex is AggregateException)
+                {
+                    ex = ((AggregateException)ex).Flatten();
+                }
+
+                _logger.LogError(ex, "Error while sending metadata message.");
+            }
+
+            return success;
+        }
+
         public bool SendMessage(byte[] message)
         {
             bool success = false;
@@ -77,7 +106,7 @@ namespace UA.MQTT.Publisher
                 }
                 else
                 {
-                    _logger.LogError("MQTT client not available for sending message.");
+                    throw new Exception("MQTT client not available for sending message.");
                 }
             }
             catch (Exception ex)

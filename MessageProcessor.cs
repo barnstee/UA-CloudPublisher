@@ -2,7 +2,6 @@
 namespace UA.MQTT.Publisher
 {
     using Microsoft.Extensions.Logging;
-    using Opc.Ua;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -17,7 +16,7 @@ namespace UA.MQTT.Publisher
         private static ulong _messageID = 0;
         private bool _batchEmpty = true;
         private bool _singleMessageSend = false;
-        private int _messageClosingParenthesisSize = 1;
+        private int _messageClosingParenthesisSize = 2;
         DateTime _nextSendTime = DateTime.UtcNow;
 
         private Queue<long> _lastNotificationInBatch = new Queue<long>();
@@ -25,6 +24,8 @@ namespace UA.MQTT.Publisher
 
         MemoryStream _batchBuffer = new MemoryStream();
         private static BlockingCollection<MessageProcessorModel> _monitoredItemsDataQueue;
+        private Dictionary<int, string> _metadataMessages = new Dictionary<int, string>();
+        private Timer _metadataTimer;
         private bool _isRunning = false;
 
         private static ILogger _logger;
@@ -39,6 +40,7 @@ namespace UA.MQTT.Publisher
             _logger = loggerFactory.CreateLogger("MessageProcessor");
             _encoder = encoder;
             _sink = sink;
+            _metadataTimer = new Timer(SendMetadata, null, (int)Settings.Singleton.MetadataSendInterval * 1000, (int)Settings.Singleton.MetadataSendInterval * 1000);
         }
 
         public void Dispose()
@@ -185,8 +187,6 @@ namespace UA.MQTT.Publisher
 
             _singleMessageSend = Settings.Singleton.DefaultSendIntervalSeconds == 0 && Settings.Singleton.MQTTMessageSize == 0;
 
-            _messageClosingParenthesisSize = 2;
-            
             InitBatch();
 
             // init our send time
@@ -242,9 +242,46 @@ namespace UA.MQTT.Publisher
             _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Singleton.DefaultSendIntervalSeconds);
         }
 
+        private void SendMetadata(object state)
+        {
+            if (_metadataMessages.Count > 0)
+            {
+                using (MemoryStream buffer = new MemoryStream())
+                {
+                    string pubSubJSONNetworkMessageHeader = _encoder.EncodeHeader(_messageID++, true);
+                    buffer.Write(Encoding.UTF8.GetBytes(pubSubJSONNetworkMessageHeader));
+
+                    foreach (KeyValuePair<int, string> metadataMessage in _metadataMessages)
+                    {
+                        buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
+                        buffer.Write(Encoding.UTF8.GetBytes(","));
+                    }
+
+                    buffer.Position -= 1;
+                    buffer.Write(Encoding.UTF8.GetBytes("]}"));
+
+                    if (_sink.SendMetadata(buffer.ToArray()))
+                    {
+                        _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                    }
+                }
+            }
+        }
+
         private string JsonEncodeMessage(MessageProcessorModel messageData)
         {
             string jsonMessage = _encoder.EncodePayload(messageData);
+
+            if (Settings.Singleton.SendUAMetadata)
+            {
+                string metadataMessage = _encoder.EncodeMetadata(messageData);
+                int metadataKey = messageData.DataSetWriterId.GetHashCode() ^ messageData.DisplayName.GetHashCode();
+                if (!_metadataMessages.ContainsKey(metadataKey))
+                {
+                    _metadataMessages.Add(metadataKey, metadataMessage);
+                    SendMetadata(null);
+                }
+            }
             
             Diagnostics.Singleton.Info.NumberOfEvents++;
 
