@@ -120,20 +120,29 @@ namespace UA.MQTT.Publisher
 
                 encoder.WriteString("DataSetWriterId", messageData.DataSetWriterId);
 
-                encoder.WriteDateTime("Timestamp", messageData.Value.SourceTimestamp);
+                if ((messageData.EventValues == null) || (messageData.EventValues.Count == 0))
+                {
+                    encoder.WriteDateTime("Timestamp", messageData.Value.SourceTimestamp);
+                }
 
                 encoder.PushStructure("Payload");
                                 
-                if (messageData.EventValues != null && messageData.EventValues.Count > 0)
+                if ((messageData.EventValues != null) && (messageData.EventValues.Count > 0))
                 {
                     // process events
                     foreach (EventValueModel eventValue in messageData.EventValues)
                     {
-                        // filter timestamps before encoding as we already specified it
-                        eventValue.Value.SourceTimestamp = DateTime.MinValue;
+                        // filter server timestamp before encoding
                         eventValue.Value.ServerTimestamp = DateTime.MinValue;
 
-                        encoder.WriteVariant(eventValue.Name, eventValue.Value);
+                        if (Settings.Singleton.ReversiblePubSubEncoding)
+                        {
+                            encoder.WriteVariant(eventValue.Name, eventValue.Value.WrappedValue);
+                        }
+                        else
+                        {
+                            encoder.WriteVariant(eventValue.Name, eventValue.Value);
+                        }
                     }
                 }
                 else
@@ -142,7 +151,14 @@ namespace UA.MQTT.Publisher
                     messageData.Value.SourceTimestamp = DateTime.MinValue;
                     messageData.Value.ServerTimestamp = DateTime.MinValue;
 
-                    encoder.WriteVariant(messageData.ExpandedNodeId, messageData.Value);
+                    if (Settings.Singleton.ReversiblePubSubEncoding)
+                    {
+                        encoder.WriteVariant(messageData.ExpandedNodeId, messageData.Value.WrappedValue);
+                    }
+                    else
+                    {
+                        encoder.WriteVariant(messageData.ExpandedNodeId, messageData.Value);
+                    }
                 }
 
                 encoder.PopStructure();
