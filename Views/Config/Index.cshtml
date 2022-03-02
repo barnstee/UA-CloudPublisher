@@ -58,6 +58,10 @@
         Create MQTT SAS Token<br />
         @Html.CheckBox("CreateMQTTSASToken", @Model.CreateMQTTSASToken)<br />
     </p>
+     <p>
+        Use TLS with MQTT<br />
+        @Html.CheckBox("UseTLS", @Model.UseTLS)<br />
+    </p>
     <p>
         Publisher Name<br />
         @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;" })<br />

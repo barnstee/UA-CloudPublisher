@@ -69,8 +69,8 @@ namespace UA.MQTT.Publisher.Configuration
                 var clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(opt => opt.NoDelay = true)
                     .WithClientId(Settings.Singleton.MQTTClientName)
-                    .WithTcpServer(Settings.Singleton.MQTTBrokerName, 8883)
-                    .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = true })
+                    .WithTcpServer(Settings.Singleton.MQTTBrokerName, Settings.Singleton.UseTLS? 8883 : 1883)
+                    .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Singleton.UseTLS })
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                     .WithCommunicationTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
@@ -84,7 +84,7 @@ namespace UA.MQTT.Publisher.Configuration
 
                     // wait a 5 seconds, then simply reconnect again, if needed
                     Task.Delay(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
-                    if (!_client.IsConnected)
+                    if ((_client == null) || !_client.IsConnected)
                     {
                         Connect();
                     }

@@ -248,21 +248,16 @@ namespace UA.MQTT.Publisher
             {
                 using (MemoryStream buffer = new MemoryStream())
                 {
-                    string pubSubJSONNetworkMessageHeader = _encoder.EncodeHeader(_messageID++, true);
-                    buffer.Write(Encoding.UTF8.GetBytes(pubSubJSONNetworkMessageHeader));
-
                     foreach (KeyValuePair<int, string> metadataMessage in _metadataMessages)
                     {
-                        buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
+                        buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(_messageID++, true)));
                         buffer.Write(Encoding.UTF8.GetBytes(","));
-                    }
+                        buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
 
-                    buffer.Position -= 1;
-                    buffer.Write(Encoding.UTF8.GetBytes("]}"));
-
-                    if (_sink.SendMetadata(buffer.ToArray()))
-                    {
-                        _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                        if (_sink.SendMetadata(buffer.ToArray()))
+                        {
+                            _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                        }
                     }
                 }
             }
@@ -279,7 +274,18 @@ namespace UA.MQTT.Publisher
                 if (!_metadataMessages.ContainsKey(metadataKey))
                 {
                     _metadataMessages.Add(metadataKey, metadataMessage);
-                    SendMetadata(null);
+
+                    using (MemoryStream buffer = new MemoryStream())
+                    {
+                        buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(_messageID++, true)));
+                        buffer.Write(Encoding.UTF8.GetBytes(","));
+                        buffer.Write(Encoding.UTF8.GetBytes(metadataMessage));
+
+                        if (_sink.SendMetadata(buffer.ToArray()))
+                        {
+                            _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                        }
+                    }
                 }
             }
             

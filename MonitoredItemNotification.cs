@@ -65,7 +65,6 @@ namespace UA.MQTT.Publisher
 
                             // use the Value as reported in the notification event argument
                             eventValue.Value = new DataValue(eventField);
-                            eventValue.Value.ServerTimestamp = DateTime.MinValue; // remove server timestamp to save message payload space
 
                             messageData.EventValues.Add(eventValue);
                         }
@@ -114,9 +113,6 @@ namespace UA.MQTT.Publisher
                     Value = value
                 };
 
-                // remove server timestamp to save message payload space
-                messageData.Value.ServerTimestamp = DateTime.MinValue;
-                   
                 // skip event if needed
                 if (SkipFirst.ContainsKey(messageData.ExpandedNodeId) && SkipFirst[messageData.ExpandedNodeId])
                 {

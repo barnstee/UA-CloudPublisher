@@ -113,6 +113,8 @@ namespace UA.MQTT.Publisher
                 
         public bool CreateMQTTSASToken { get; set; } = true;
 
+        public bool UseTLS { get; set; } = true;
+
         public string PublisherName { get; set; } = "UA-MQTT-Publisher";
 
         public uint InternalQueueCapacity { get; set; } = 1000; // records

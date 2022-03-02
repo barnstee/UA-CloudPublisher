@@ -20,7 +20,7 @@ namespace UA.MQTT.Publisher
         {
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
             // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
-            JsonEncoder encoder = new JsonEncoder(new ServiceMessageContext(), Settings.Singleton.ReversiblePubSubEncoding);
+            JsonEncoder encoder = new JsonEncoder(ServiceMessageContext.GlobalContext, Settings.Singleton.ReversiblePubSubEncoding);
 
             encoder.WriteString("MessageId", messageID.ToString());
             
@@ -34,8 +34,11 @@ namespace UA.MQTT.Publisher
             }
 
             encoder.WriteString("PublisherId", Settings.Singleton.PublisherName);
-            
-            encoder.PushArray("Messages");
+
+            if (!isMetaData)
+            {
+                encoder.PushArray("Messages");
+            }
 
             // remove the closing bracket as we will add this later
             return encoder.CloseAndReturnText().TrimEnd('}');
@@ -45,6 +48,10 @@ namespace UA.MQTT.Publisher
         {
             try
             {
+                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Singleton.ReversiblePubSubEncoding);
+
+                encoder.WriteString("DataSetWriterId", messageData.DataSetWriterId);
+
                 DataSetMetaDataType dataSetMetaData = new DataSetMetaDataType();
 
                 dataSetMetaData.Name = "telemetry";
@@ -92,13 +99,10 @@ namespace UA.MQTT.Publisher
 
                 dataSetMetaData.Description = LocalizedText.Null;
 
-                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Singleton.ReversiblePubSubEncoding);
-
-                encoder.WriteString("DataSetWriterId", messageData.DataSetWriterId);
-
                 encoder.WriteEncodeable("MetaData", dataSetMetaData, typeof(DataSetMetaDataType));
 
-                return encoder.CloseAndReturnText();
+                // remove the opening bracket as we need to stitch this together with the header
+                return encoder.CloseAndReturnText().TrimStart('{');
             }
             catch (Exception e)
             {
@@ -116,6 +120,8 @@ namespace UA.MQTT.Publisher
 
                 encoder.WriteString("DataSetWriterId", messageData.DataSetWriterId);
 
+                encoder.WriteDateTime("Timestamp", messageData.Value.SourceTimestamp);
+
                 encoder.PushStructure("Payload");
                                 
                 if (messageData.EventValues != null && messageData.EventValues.Count > 0)
@@ -123,12 +129,20 @@ namespace UA.MQTT.Publisher
                     // process events
                     foreach (EventValueModel eventValue in messageData.EventValues)
                     {
-                        encoder.WriteDataValue(eventValue.Name, eventValue.Value);
+                        // filter timestamps before encoding as we already specified it
+                        eventValue.Value.SourceTimestamp = DateTime.MinValue;
+                        eventValue.Value.ServerTimestamp = DateTime.MinValue;
+
+                        encoder.WriteVariant(eventValue.Name, eventValue.Value);
                     }
                 }
                 else
                 {
-                    encoder.WriteDataValue(messageData.ExpandedNodeId, messageData.Value);
+                    // filter timestamps before encoding as we already specified it
+                    messageData.Value.SourceTimestamp = DateTime.MinValue;
+                    messageData.Value.ServerTimestamp = DateTime.MinValue;
+
+                    encoder.WriteVariant(messageData.ExpandedNodeId, messageData.Value);
                 }
 
                 encoder.PopStructure();
