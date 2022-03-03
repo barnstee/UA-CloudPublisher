@@ -55,7 +55,7 @@ namespace UA.MQTT.Publisher
 
                 DataSetMetaDataType dataSetMetaData = new DataSetMetaDataType();
 
-                dataSetMetaData.Name = "telemetry";
+                dataSetMetaData.Name = messageData.ApplicationUri + ":" + messageData.ExpandedNodeId;
 
                 dataSetMetaData.Fields = new FieldMetaDataCollection();
                 
