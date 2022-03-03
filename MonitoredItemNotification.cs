@@ -47,7 +47,7 @@ namespace UA.MQTT.Publisher
                 MessageProcessorModel messageData = new MessageProcessorModel
                 {
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
-                    DataSetWriterId = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString(),
+                    ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext
                 };
 
@@ -108,7 +108,7 @@ namespace UA.MQTT.Publisher
                 MessageProcessorModel messageData = new MessageProcessorModel
                 {
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
-                    DataSetWriterId = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri + ":" + monitoredItem.Subscription.CurrentPublishingInterval.ToString(),
+                    ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
                     Value = value
                 };

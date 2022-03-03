@@ -24,7 +24,7 @@ namespace UA.MQTT.Publisher
 
         MemoryStream _batchBuffer = new MemoryStream();
         private static BlockingCollection<MessageProcessorModel> _monitoredItemsDataQueue;
-        private Dictionary<int, string> _metadataMessages = new Dictionary<int, string>();
+        private Dictionary<ushort, string> _metadataMessages = new Dictionary<ushort, string>();
         private Timer _metadataTimer;
         private bool _isRunning = false;
 
@@ -246,9 +246,9 @@ namespace UA.MQTT.Publisher
         {
             if (_metadataMessages.Count > 0)
             {
-                using (MemoryStream buffer = new MemoryStream())
+                foreach (KeyValuePair<ushort, string> metadataMessage in _metadataMessages)
                 {
-                    foreach (KeyValuePair<int, string> metadataMessage in _metadataMessages)
+                    using (MemoryStream buffer = new MemoryStream())
                     {
                         buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(_messageID++, true)));
                         buffer.Write(Encoding.UTF8.GetBytes(","));
@@ -265,15 +265,15 @@ namespace UA.MQTT.Publisher
 
         private string JsonEncodeMessage(MessageProcessorModel messageData)
         {
-            string jsonMessage = _encoder.EncodePayload(messageData);
+            ushort hash;
+            string jsonMessage = _encoder.EncodePayload(messageData, out hash);
 
             if (Settings.Singleton.SendUAMetadata)
             {
                 string metadataMessage = _encoder.EncodeMetadata(messageData);
-                int metadataKey = messageData.DataSetWriterId.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode();
-                if (!_metadataMessages.ContainsKey(metadataKey))
+                if (!_metadataMessages.ContainsKey(hash))
                 {
-                    _metadataMessages.Add(metadataKey, metadataMessage);
+                    _metadataMessages.Add(hash, metadataMessage);
 
                     using (MemoryStream buffer = new MemoryStream())
                     {

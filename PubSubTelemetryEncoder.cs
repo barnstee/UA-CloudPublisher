@@ -50,7 +50,8 @@ namespace UA.MQTT.Publisher
             {
                 JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Singleton.ReversiblePubSubEncoding);
 
-                encoder.WriteString("DataSetWriterId", messageData.DataSetWriterId);
+                ushort datasetWriterId = (ushort)(messageData.ApplicationUri.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode());
+                encoder.WriteUInt16("DataSetWriterId", datasetWriterId);
 
                 DataSetMetaDataType dataSetMetaData = new DataSetMetaDataType();
 
@@ -107,18 +108,18 @@ namespace UA.MQTT.Publisher
             catch (Exception e)
             {
                 _logger.LogError(e, "Generation of JSON PubSub metadata message failed.");
+                return string.Empty;
             }
-
-            return string.Empty;
         }
 
-        public string EncodePayload(MessageProcessorModel messageData)
+        public string EncodePayload(MessageProcessorModel messageData, out ushort hash)
         {
             try
             {
                 JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Singleton.ReversiblePubSubEncoding);
 
-                encoder.WriteString("DataSetWriterId", messageData.DataSetWriterId);
+                hash = (ushort)(messageData.ApplicationUri.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode());
+                encoder.WriteUInt16("DataSetWriterId", hash);
 
                 if ((messageData.EventValues == null) || (messageData.EventValues.Count == 0))
                 {
@@ -168,9 +169,9 @@ namespace UA.MQTT.Publisher
             catch (Exception e)
             {
                 _logger.LogError(e, "Generation of JSON PubSub data message failed.");
+                hash = 0;
+                return string.Empty;
             }
-
-            return string.Empty;
         }
     }
 }

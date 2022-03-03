@@ -8,7 +8,7 @@ namespace UA.MQTT.Publisher.Models
     {
         public string ExpandedNodeId { get; set; }
 
-        public string DataSetWriterId { get; set; }
+        public string ApplicationUri { get; set; }
 
         public DataValue Value { get; set; }
 

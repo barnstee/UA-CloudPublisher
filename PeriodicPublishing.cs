@@ -58,7 +58,7 @@ namespace UA.MQTT.Publisher
                 MessageProcessorModel messageData = new MessageProcessorModel
                 {
                     ExpandedNodeId = NodeId.ToExpandedNodeId(HeartBeatNodeId, HeartBeatSession.NamespaceUris).ToString(),
-                    DataSetWriterId = HeartBeatSession.Endpoint.Server.ApplicationUri + ":" + (HeartBeatInterval * 1000).ToString(),
+                    ApplicationUri = HeartBeatSession.Endpoint.Server.ApplicationUri,
                     MessageContext = HeartBeatSession.MessageContext
                 };
 
