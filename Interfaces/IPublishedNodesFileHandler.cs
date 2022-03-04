@@ -5,6 +5,6 @@ namespace UA.MQTT.Publisher.Interfaces
 
     public interface IPublishedNodesFileHandler
     {
-        bool ParseFile(byte[] content, X509Certificate2 cert);
+        void ParseFile(byte[] content);
     }
 }

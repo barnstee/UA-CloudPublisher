@@ -10,7 +10,7 @@ namespace UA.MQTT.Publisher.Models
         [JsonProperty(Required = Required.Always)]
         public string EndpointUrl { get; set; }
 
-        [JsonProperty(Required = Required.Always)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<VariableModel> OpcNodes { get; set; }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

@@ -36,7 +36,6 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
     "Id": "string",
     "OpcSamplingInterval": 1000,
     "OpcPublishingInterval": 1000,
-    "DisplayName": "string"
     "HeartbeatInterval": 0,
     "SkipFirst": false
    }
@@ -44,11 +43,12 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
   "OpcEvents": [
    {
     "ExpandedNodeId": "string",
-    "DisplayName": "string",
     "SelectClauses": [
      {
       "TypeId": "string",
-      "BrowsePaths": "string",
+      "BrowsePaths": [
+       "string"
+      ],
       "AttributeId": "string",
       "IndexRange": "string"
      }
@@ -99,7 +99,6 @@ Payload:
    "Id": "string",
    "OpcSamplingInterval": 1000,
    "OpcPublishingInterval": 1000,
-   "DisplayName": "string",
    "HeartbeatInterval": 0,
    "SkipFirst": false
   }
@@ -107,11 +106,12 @@ Payload:
  "OpcEvents": [
   {
    "ExpandedNodeId": "string",
-   "DisplayName": "string",
    "SelectClauses": [
     {
      "TypeId": "string",
-     "BrowsePaths": "string",
+     "BrowsePaths": [
+      "string"
+     ],
      "AttributeId": "string",
      "IndexRange": "string"
     }

@@ -246,41 +246,50 @@ namespace UA.MQTT.Publisher.Configuration
                 foreach (EventModel opcEvent in publishNodesMethodData.OpcEvents)
                 {
                     ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId);
-                    NodePublishingModel publishingInfo = new NodePublishingModel()
+                    NodePublishingModel node = new NodePublishingModel()
                     {
                         ExpandedNodeId = expandedNodeId,
                         EndpointUrl = publishNodesMethodData.EndpointUrl,
                     };
 
-                    publishingInfo.SelectClauses = new List<SelectClauseModel>();
-                    publishingInfo.SelectClauses.AddRange(opcEvent.SelectClauses);
+                    node.SelectClauses = new List<SelectClauseModel>();
+                    node.SelectClauses.AddRange(opcEvent.SelectClauses);
 
-                    publishingInfo.WhereClauses = new List<WhereClauseModel>();
-                    publishingInfo.WhereClauses.AddRange(opcEvent.WhereClauses);
+                    node.WhereClauses = new List<WhereClauseModel>();
+                    node.WhereClauses.AddRange(opcEvent.WhereClauses);
 
-                    _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                    _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
+
+                    string statusMessage = $"Event {node.ExpandedNodeId} on endpoint {node.EndpointUrl} published successfully.";
+                    statusResponse.Add(statusMessage);
+                    _logger.LogInformation(statusMessage);
                 }
             }
 
-            foreach (VariableModel nodeOnEndpoint in publishNodesMethodData.OpcNodes)
+            // check for variables
+            if (publishNodesMethodData.OpcNodes != null)
             {
-                NodePublishingModel node = new NodePublishingModel {
-                    ExpandedNodeId = nodeOnEndpoint.Id,
-                    EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
-                    SkipFirst = nodeOnEndpoint.SkipFirst,
-                    HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
-                    OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
-                    OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,
-                    Username = publishNodesMethodData.UserName,
-                    Password = publishNodesMethodData.Password,
-                    OpcAuthenticationMode = desiredAuthenticationMode
-                };
+                foreach (VariableModel nodeOnEndpoint in publishNodesMethodData.OpcNodes)
+                {
+                    NodePublishingModel node = new NodePublishingModel
+                    {
+                        ExpandedNodeId = nodeOnEndpoint.Id,
+                        EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
+                        SkipFirst = nodeOnEndpoint.SkipFirst,
+                        HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
+                        OpcPublishingInterval = nodeOnEndpoint.OpcPublishingInterval,
+                        OpcSamplingInterval = nodeOnEndpoint.OpcSamplingInterval,
+                        Username = publishNodesMethodData.UserName,
+                        Password = publishNodesMethodData.Password,
+                        OpcAuthenticationMode = desiredAuthenticationMode
+                    };
 
-                _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
+                    _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
 
-                string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} published successfully.";
-                statusResponse.Add(statusMessage);
-                _logger.LogInformation(statusMessage);
+                    string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} published successfully.";
+                    statusResponse.Add(statusMessage);
+                    _logger.LogInformation(statusMessage);
+                }
             }
 
             return BuildResponseAndCropStatus(statusResponse);

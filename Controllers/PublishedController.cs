@@ -54,11 +54,7 @@ namespace UA.MQTT.Publisher.Controllers
                     byte[] bytes = new byte[file.Length];
                     content.Read(bytes, 0, (int)file.Length);
 
-                    X509Certificate2 certWithPrivateKey = _app.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
-                    if (!_publishedNodesFileHandler.ParseFile(bytes, certWithPrivateKey))
-                    {
-                        throw new Exception("Could not parse publishednodes file and publish its nodes!");
-                    }
+                    _publishedNodesFileHandler.ParseFile(bytes);
                 }
                 
                 return View("Index", GeneratePublishedNodesArray());

@@ -9,7 +9,6 @@ namespace UA.MQTT.Publisher
     using Microsoft.Extensions.Logging;
     using System;
     using System.IO;
-    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using UA.MQTT.Publisher.Configuration;
     using UA.MQTT.Publisher.Interfaces;
@@ -130,15 +129,8 @@ namespace UA.MQTT.Publisher
                 else
                 {
                     logger.LogInformation($"Parsing persistency file...");
-                    X509Certificate2 certWithPrivateKey = uaApp.GetAppConfig().SecurityConfiguration.ApplicationCertificate.LoadPrivateKey(null).GetAwaiter().GetResult();
-                    if (!publishedNodesFileHandler.ParseFile(persistencyFile, certWithPrivateKey))
-                    {
-                        logger.LogInformation("Could not parse persistency file!");
-                    }
-                    else
-                    {
-                        logger.LogInformation("Persistency file parsed successfully.");
-                    }
+                    publishedNodesFileHandler.ParseFile(persistencyFile);
+                    logger.LogInformation("Persistency file parsed successfully.");
                 }
             }
             catch (Exception ex)
