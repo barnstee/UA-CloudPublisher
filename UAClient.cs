@@ -408,11 +408,6 @@ namespace UA.MQTT.Publisher
                 throw new Exception($"Could not create session for endpoint {nodeToPublish.EndpointUrl}!");
             }
 
-            _logger.LogDebug("PublishNode: Request to monitor item with ExpandedNodeId {expandedNodeId} (Publishing Interval: {publishingInterval}, Sampling Interval: {samplingInterval})",
-                nodeToPublish.ExpandedNodeId,
-                nodeToPublish.OpcPublishingInterval.ToString()?? "--",
-                nodeToPublish.OpcSamplingInterval.ToString() ?? "--");
-            
             Subscription opcSubscription = null;
             try
             {
@@ -438,85 +433,47 @@ namespace UA.MQTT.Publisher
 
                 // resolve all node and namespace references in the select and where clauses
                 EventFilter eventFilter = new EventFilter();
+                List<NodeId> typeDefinitions = new List<NodeId>();
                 if (nodeToPublish.SelectClauses != null)
                 {
                     foreach (SelectClauseModel selectClause in nodeToPublish.SelectClauses)
                     {
-                        SimpleAttributeOperand simpleAttributeOperand = new SimpleAttributeOperand();
-                        simpleAttributeOperand.AttributeId = selectClause.AttributeId.ResolveAttributeId();
-                        simpleAttributeOperand.IndexRange = selectClause.IndexRange;
-                        NodeId typeId = selectClause.TypeId.ToNodeId(session.NamespaceUris);
-                        simpleAttributeOperand.TypeDefinitionId = new NodeId(typeId);
-                        QualifiedNameCollection browsePaths = new QualifiedNameCollection();
-                        foreach (string browsePath in selectClause.BrowsePaths)
+                        if (!string.IsNullOrEmpty(selectClause.TypeId))
                         {
-                            browsePaths.Add(QualifiedName.Parse(browsePath));
-                        }
-                        simpleAttributeOperand.BrowsePath = browsePaths;
-                        eventFilter.SelectClauses.Add(simpleAttributeOperand);
-                    }
-                }
-                if (nodeToPublish.WhereClauses != null)
-                {
-                    foreach (WhereClauseModel whereClauseElement in nodeToPublish.WhereClauses)
-                    {
-                        ContentFilterElement contentFilterElement = new ContentFilterElement();
-                        contentFilterElement.FilterOperator = whereClauseElement.Operator.ResolveFilterOperator();
-                        switch (contentFilterElement.FilterOperator)
-                        {
-                            case FilterOperator.OfType:
-                            case FilterOperator.InView:
-                                if (whereClauseElement.Operands.Count != 1)
-                                {
-                                    _logger.LogError("The WHERE clause element {whereClauseElement} must contain 1 operand.", whereClauseElement);
-                                    continue;
-                                }
-                                FilterOperand[] filterOperands = new FilterOperand[1];
-                                TypeInfo typeInfo = new TypeInfo(BuiltInType.NodeId, ValueRanks.Scalar);
-                                filterOperands[0] = whereClauseElement.Operands[0].GetOperand(typeInfo);
-                                eventFilter.WhereClause.Push(contentFilterElement.FilterOperator, filterOperands);
-                                break;
-                            case FilterOperator.Equals:
-                            case FilterOperator.IsNull:
-                            case FilterOperator.GreaterThan:
-                            case FilterOperator.LessThan:
-                            case FilterOperator.GreaterThanOrEqual:
-                            case FilterOperator.LessThanOrEqual:
-                            case FilterOperator.Like:
-                            case FilterOperator.Not:
-                            case FilterOperator.Between:
-                            case FilterOperator.InList:
-                            case FilterOperator.And:
-                            case FilterOperator.Or:
-                            case FilterOperator.Cast:
-                            case FilterOperator.BitwiseAnd:
-                            case FilterOperator.BitwiseOr:
-                            case FilterOperator.RelatedTo:
-                            default:
-                                _logger.LogError("The operator {filterOperator} is not supported.", contentFilterElement.FilterOperator);
-                                break;
+                            typeDefinitions.Add(selectClause.TypeId.ToNodeId(session.NamespaceUris));
                         }
                     }
                 }
 
-                // generate the resolved NodeId we need for publishing
+                eventFilter.SelectClauses = new FilterUtils().ConstructSelectClauses(session, typeDefinitions.ToArray());
+                    
+                // if no nodeid was specified, select the server object root
                 NodeId resolvedNodeId;
-                if (nodeToPublish.ExpandedNodeId.ToString().StartsWith("nsu="))
+                if (nodeToPublish.ExpandedNodeId.Identifier == null)
                 {
-                    resolvedNodeId = ExpandedNodeId.ToNodeId(nodeToPublish.ExpandedNodeId, session.NamespaceUris);
+                    _logger.LogWarning("Selecting server root as no expanded node ID specified to publish!");
+                    resolvedNodeId = ObjectIds.Server;
                 }
                 else
                 {
-                    resolvedNodeId = new NodeId(nodeToPublish.ExpandedNodeId.Identifier, nodeToPublish.ExpandedNodeId.NamespaceIndex);
+                    // generate the resolved NodeId we need for publishing
+                    if (nodeToPublish.ExpandedNodeId.ToString().StartsWith("nsu="))
+                    {
+                        resolvedNodeId = ExpandedNodeId.ToNodeId(nodeToPublish.ExpandedNodeId, session.NamespaceUris);
+                    }
+                    else
+                    {
+                        resolvedNodeId = new NodeId(nodeToPublish.ExpandedNodeId.Identifier, nodeToPublish.ExpandedNodeId.NamespaceIndex);
+                    }
                 }
 
-                // if it is already published, we do nothing, else we create a new monitored item
+                // if it is already published, we unpublish first, then we create a new monitored item
                 foreach (MonitoredItem monitoredItem in opcSubscription.MonitoredItems)
                 {
                     if (monitoredItem.ResolvedNodeId == resolvedNodeId)
                     {
-                        _logger.LogInformation("PublishNode: Node with Id {expandedNodeId} is already monitored.", nodeToPublish.ExpandedNodeId);
-                        return;
+                        opcSubscription.RemoveItem(monitoredItem);
+                        opcSubscription.ApplyChanges();
                     }
                 }
 
@@ -695,40 +652,74 @@ namespace UA.MQTT.Publisher
                             OpcAuthenticationMode = authenticationMode,
                             UserName = username,
                             Password = password,
-                            OpcNodes = new List<VariableModel>()
+                            OpcNodes = new List<VariableModel>(),
+                            OpcEvents = new List<EventModel>()
                         };
 
                         foreach (Subscription subscription in session.Subscriptions)
                         {
                             foreach (MonitoredItem monitoredItem in subscription.MonitoredItems)
                             {
-                                VariableModel opcNodeOnEndpoint = new VariableModel(monitoredItem.ResolvedNodeId.ToString()) {
-                                    OpcPublishingInterval = subscription.PublishingInterval,
-                                    OpcSamplingInterval = monitoredItem.SamplingInterval,
-                                    Id = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
-                                    HeartbeatInterval = 0,
-                                    SkipFirst = false
-                                };
-
-                                lock (_periodicPublishingList)
+                                if (monitoredItem.Filter != null)
                                 {
-                                    foreach (PeriodicPublishing heartbeat in _periodicPublishingList)
+                                    // event
+                                    EventModel publishedEvent = new EventModel()
                                     {
-                                        if ((heartbeat.HeartBeatSession == session) && (heartbeat.HeartBeatNodeId == monitoredItem.ResolvedNodeId))
+                                        ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                                        SelectClauses = new List<SelectClauseModel>()
+                                    };
+
+                                    if (monitoredItem.Filter is EventFilter)
+                                    {
+                                        EventFilter filter = (EventFilter)monitoredItem.Filter;
+                                        if ((filter.SelectClauses != null) && filter.SelectClauses.Count > 0)
                                         {
-                                            opcNodeOnEndpoint.HeartbeatInterval = (int)heartbeat.HeartBeatInterval;
-                                            break;
+                                            foreach (SimpleAttributeOperand operand in filter.SelectClauses)
+                                            {
+                                                SelectClauseModel selectClause = new SelectClauseModel()
+                                                {
+                                                    TypeId = operand.TypeId.ToString()
+                                                };
+
+                                                publishedEvent.SelectClauses.Add(selectClause);
+                                            }
                                         }
                                     }
-                                }
 
-                                ExpandedNodeId expandedNode = new ExpandedNodeId(monitoredItem.ResolvedNodeId);
-                                if (_trigger.SkipFirst.ContainsKey(expandedNode.ToString()))
+                                    publisherConfigurationFileEntry.OpcEvents.Add(publishedEvent);
+                                }
+                                else
                                 {
-                                    opcNodeOnEndpoint.SkipFirst = true;
-                                }
+                                    // variable
+                                    VariableModel publishedVariable = new VariableModel()
+                                    {
+                                        Id = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                                        OpcSamplingInterval = monitoredItem.SamplingInterval,
+                                        OpcPublishingInterval = subscription.PublishingInterval,
+                                        HeartbeatInterval = 0,
+                                        SkipFirst = false
+                                    };
 
-                                publisherConfigurationFileEntry.OpcNodes.Add(opcNodeOnEndpoint);
+                                    lock (_periodicPublishingList)
+                                    {
+                                        foreach (PeriodicPublishing heartbeat in _periodicPublishingList)
+                                        {
+                                            if ((heartbeat.HeartBeatSession == session) && (heartbeat.HeartBeatNodeId == monitoredItem.ResolvedNodeId))
+                                            {
+                                                publishedVariable.HeartbeatInterval = (int)heartbeat.HeartBeatInterval;
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    ExpandedNodeId expandedNode = new ExpandedNodeId(monitoredItem.ResolvedNodeId);
+                                    if (_trigger.SkipFirst.ContainsKey(expandedNode.ToString()))
+                                    {
+                                        publishedVariable.SkipFirst = true;
+                                    }
+
+                                    publisherConfigurationFileEntry.OpcNodes.Add(publishedVariable);
+                                }
                             }
                         }
 

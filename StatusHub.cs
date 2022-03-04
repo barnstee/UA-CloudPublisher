@@ -29,13 +29,16 @@ namespace UA.MQTT.Publisher
 
         public void AddOrUpdateTableEntry(string key, string value, bool addToChart = false)
         {
-            if (TableEntries.ContainsKey(key))
+            lock (TableEntries)
             {
-                TableEntries[key] = new Tuple<string, bool>(value, addToChart);
-            }
-            else
-            {
-                TableEntries.Add(key, new Tuple<string, bool>(value, addToChart));
+                if (TableEntries.ContainsKey(key))
+                {
+                    TableEntries[key] = new Tuple<string, bool>(value, addToChart);
+                }
+                else
+                {
+                    TableEntries.Add(key, new Tuple<string, bool>(value, addToChart));
+                }
             }
         }
 
@@ -84,12 +87,15 @@ namespace UA.MQTT.Publisher
             sb.Append("</tr>");
 
             // rows
-            foreach (KeyValuePair<string, Tuple<string,bool>> item in TableEntries)
+            lock (TableEntries)
             {
-                sb.Append("<tr>");
-                sb.Append("<td style='width:400px'>" + item.Key + "</td>");
-                sb.Append("<td style='width:200px'>" + item.Value.Item1 + "</td>");
-                sb.Append("</tr>");
+                foreach (KeyValuePair<string, Tuple<string, bool>> item in TableEntries)
+                {
+                    sb.Append("<tr>");
+                    sb.Append("<td style='width:400px'>" + item.Key + "</td>");
+                    sb.Append("<td style='width:200px'>" + item.Value.Item1 + "</td>");
+                    sb.Append("</tr>");
+                }
             }
 
             sb.Append("</table>");

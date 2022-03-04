@@ -255,9 +255,6 @@ namespace UA.MQTT.Publisher.Configuration
                     node.SelectClauses = new List<SelectClauseModel>();
                     node.SelectClauses.AddRange(opcEvent.SelectClauses);
 
-                    node.WhereClauses = new List<WhereClauseModel>();
-                    node.WhereClauses.AddRange(opcEvent.WhereClauses);
-
                     _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
 
                     string statusMessage = $"Event {node.ExpandedNodeId} on endpoint {node.EndpointUrl} published successfully.";

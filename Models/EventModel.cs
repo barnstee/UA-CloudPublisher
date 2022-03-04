@@ -6,13 +6,10 @@ namespace UA.MQTT.Publisher.Models
 
     public class EventModel
     {
-        [JsonProperty(Required = Required.Always)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string ExpandedNodeId { get; set; }
 
         [JsonProperty(Required = Required.Always)]
         public List<SelectClauseModel> SelectClauses { get; set; }
-
-        [JsonProperty(Required = Required.Always)]
-        public List<WhereClauseModel> WhereClauses { get; set; }
     }
 }

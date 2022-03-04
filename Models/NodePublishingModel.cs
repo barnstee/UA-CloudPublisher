@@ -25,7 +25,5 @@ namespace UA.MQTT.Publisher.Models
         public string Password { get; set; }
 
         public List<SelectClauseModel> SelectClauses { get; set; }
-
-        public List<WhereClauseModel> WhereClauses { get; set; }
     }
 }

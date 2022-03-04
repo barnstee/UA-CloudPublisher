@@ -246,17 +246,20 @@ namespace UA.MQTT.Publisher
         {
             if (_metadataMessages.Count > 0)
             {
-                foreach (KeyValuePair<ushort, string> metadataMessage in _metadataMessages)
+                lock (_metadataMessages)
                 {
-                    using (MemoryStream buffer = new MemoryStream())
+                    foreach (KeyValuePair<ushort, string> metadataMessage in _metadataMessages)
                     {
-                        buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(_messageID++, true)));
-                        buffer.Write(Encoding.UTF8.GetBytes(","));
-                        buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
-
-                        if (_sink.SendMetadata(buffer.ToArray()))
+                        using (MemoryStream buffer = new MemoryStream())
                         {
-                            _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                            buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(_messageID++, true)));
+                            buffer.Write(Encoding.UTF8.GetBytes(","));
+                            buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
+
+                            if (_sink.SendMetadata(buffer.ToArray()))
+                            {
+                                _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                            }
                         }
                     }
                 }
@@ -273,7 +276,10 @@ namespace UA.MQTT.Publisher
                 string metadataMessage = _encoder.EncodeMetadata(messageData);
                 if (!_metadataMessages.ContainsKey(hash))
                 {
-                    _metadataMessages.Add(hash, metadataMessage);
+                    lock (_metadataMessages)
+                    {
+                        _metadataMessages.Add(hash, metadataMessage);
+                    }
 
                     using (MemoryStream buffer = new MemoryStream())
                     {

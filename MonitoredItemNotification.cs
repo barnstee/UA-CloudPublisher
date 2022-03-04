@@ -24,22 +24,34 @@ namespace UA.MQTT.Publisher
         {
             try
             {
-                if (e == null || e.NotificationValue == null || monitoredItem == null || monitoredItem.Subscription == null || monitoredItem.Subscription.Session == null)
+                EventFieldList notification = e.NotificationValue as EventFieldList;
+                if (notification == null)
                 {
                     return;
                 }
 
-                if (!(e.NotificationValue is EventFieldList notificationValue))
+                NodeId eventTypeId = EventUtils.FindEventType(monitoredItem, notification);
+                if (NodeId.IsNull(eventTypeId))
                 {
                     return;
                 }
 
-                if (!(notificationValue.Message is NotificationMessage message))
+                if (eventTypeId == ObjectTypeIds.RefreshStartEventType)
                 {
                     return;
                 }
 
-                if (!(message.NotificationData is ExtensionObjectCollection notificationData) || notificationData.Count == 0)
+                if (eventTypeId == ObjectTypeIds.RefreshEndEventType)
+                {
+                    return;
+                }
+
+                ConditionState condition = EventUtils.ConstructEvent(
+                    monitoredItem.Subscription.Session,
+                    monitoredItem,
+                    notification,
+                    new Dictionary<NodeId, NodeId>()) as ConditionState;
+                if (condition == null)
                 {
                     return;
                 }
@@ -51,27 +63,119 @@ namespace UA.MQTT.Publisher
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext
                 };
 
-                foreach (ExtensionObject eventList in notificationData)
+                // Source
+                if (condition.SourceName != null)
                 {
-                    EventNotificationList eventNotificationList = eventList.Body as EventNotificationList;
-                    foreach (EventFieldList eventFieldList in eventNotificationList.Events)
+                    EventValueModel eventValue = new EventValueModel()
                     {
-                        int i = 0;
-                        foreach (Variant eventField in eventFieldList.EventFields)
-                        {
-                            // prepare event field values
-                            EventValueModel eventValue = new EventValueModel();
-                            eventValue.Name = monitoredItem.GetFieldName(i++);
+                        Name = "Source",
+                        Value = new DataValue(condition.SourceName.Value.ToString())
+                    };
 
-                            // use the Value as reported in the notification event argument
-                            eventValue.Value = new DataValue(eventField);
-
-                            messageData.EventValues.Add(eventValue);
-                        }
-                    }
+                    messageData.EventValues.Add(eventValue);
                 }
 
-                MessageProcessor.Enqueue(messageData);
+                // Condition
+                if (condition.ConditionName != null)
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "Condition",
+                        Value = new DataValue(condition.ConditionName.Value.ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+                
+                // Branch
+                if (condition.BranchId != null && !NodeId.IsNull(condition.BranchId.Value))
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "Branch",
+                        Value = new DataValue(condition.BranchId.Value.ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+
+                // Type
+                INode type = monitoredItem.Subscription.Session.NodeCache.Find(condition.TypeDefinitionId);
+                if (type != null)
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "Type",
+                        Value = new DataValue(type.ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+               
+                // Severity
+                if (condition.Severity != null)
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "Severity",
+                        Value = new DataValue(((EventSeverity)condition.Severity.Value).ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+
+                // Time
+                if (condition.Time != null)
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "Time",
+                        Value = new DataValue(condition.Time.Value.ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+
+                // State
+                if (condition.EnabledState != null && condition.EnabledState.EffectiveDisplayName != null)
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "State",
+                        Value = new DataValue(condition.EnabledState.EffectiveDisplayName.Value.ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+
+                // Message
+                if (condition.Message != null)
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "Message",
+                        Value = new DataValue(condition.Message.Value.ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+               
+                // Comment
+                if (condition.Comment != null)
+                {
+                    EventValueModel eventValue = new EventValueModel()
+                    {
+                        Name = "Comment",
+                        Value = new DataValue(condition.Comment.Value.ToString())
+                    };
+
+                    messageData.EventValues.Add(eventValue);
+                }
+                               
+                if (messageData.EventValues.Count > 0)
+                {
+                    MessageProcessor.Enqueue(messageData);
+                }
             }
             catch (Exception ex)
             {

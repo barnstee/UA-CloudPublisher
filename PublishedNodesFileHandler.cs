@@ -56,9 +56,6 @@ namespace UA.MQTT.Publisher.Configuration
                             publishingInfo.SelectClauses = new List<SelectClauseModel>();
                             publishingInfo.SelectClauses.AddRange(opcEvent.SelectClauses);
 
-                            publishingInfo.WhereClauses = new List<WhereClauseModel>();
-                            publishingInfo.WhereClauses.AddRange(opcEvent.WhereClauses);
-
                             _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                         }
                     }

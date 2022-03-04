@@ -45,36 +45,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
     "ExpandedNodeId": "string",
     "SelectClauses": [
      {
-      "TypeId": "string",
-      "BrowsePaths": [
-       "string"
-      ],
-      "AttributeId": "string",
-      "IndexRange": "string"
-     }
-    ],
-    "WhereClauses": [
-     {
-      "Operator": "string",
-      "Operands": [
-       {
-        "Element": 0,
-        "Literal": "string",
-        "Attribute": {
-         "NodeId": "string",
-         "Alias": "string",
-         "BrowsePath": "string",
-         "AttributeId": "string",
-         "IndexRange": "string"
-        },
-        "SimpleAttribute": {
-         "TypeId": "string",
-         "BrowsePaths": "string",
-         "AtributeId": "string",
-         "IndexRange": "string"
-        }
-       }
-      ]
+      "TypeId": "string" // Event Type ID, e.g. "i=2915" for Alarms
      }
     ]
    }
@@ -108,36 +79,7 @@ Payload:
    "ExpandedNodeId": "string",
    "SelectClauses": [
     {
-     "TypeId": "string",
-     "BrowsePaths": [
-      "string"
-     ],
-     "AttributeId": "string",
-     "IndexRange": "string"
-    }
-   ],
-   "WhereClauses": [
-    {
-     "Operator": "string",
-     "Operands": [
-      {
-       "Element": 0,
-       "Literal": "string",
-       "Attribute": {
-        "NodeId": "string",
-        "Alias": "string",
-        "BrowsePath": "string",
-        "AttributeId": "string",
-        "IndexRange": "string"
-       },
-       "SimpleAttribute": {
-        "TypeId": "string",
-        "BrowsePaths": "string",
-        "AtributeId": "string",
-        "IndexRange": "string"
-       }
-      }
-     ]
+     "TypeId": "string" // Event Type ID, e.g. "i=2915" for Alarms
     }
    ]
   }
