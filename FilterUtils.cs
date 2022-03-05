@@ -42,10 +42,9 @@ namespace UA.MQTT.Publisher
                     CollectFields(session, eventTypeIds[ii], selectClauses);
                 }
             }
-
-            // use BaseEventType as the default if no EventTypes specified.
             else
             {
+                // use BaseEventType as the default if no EventTypes specified.
                 CollectFields(session, ObjectTypeIds.BaseEventType, selectClauses);
             }
 

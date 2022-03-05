@@ -438,9 +438,9 @@ namespace UA.MQTT.Publisher
                 {
                     foreach (SelectClauseModel selectClause in nodeToPublish.SelectClauses)
                     {
-                        if (!string.IsNullOrEmpty(selectClause.TypeId))
+                        if (!string.IsNullOrEmpty(selectClause.TypeDefinitionId))
                         {
-                            typeDefinitions.Add(selectClause.TypeId.ToNodeId(session.NamespaceUris));
+                            typeDefinitions.Add(selectClause.TypeDefinitionId.ToNodeId(session.NamespaceUris));
                         }
                     }
                 }
@@ -676,12 +676,25 @@ namespace UA.MQTT.Publisher
                                         {
                                             foreach (SimpleAttributeOperand operand in filter.SelectClauses)
                                             {
-                                                SelectClauseModel selectClause = new SelectClauseModel()
+                                                bool found = false;
+                                                foreach (SelectClauseModel selectClause in publishedEvent.SelectClauses)
                                                 {
-                                                    TypeId = operand.TypeId.ToString()
-                                                };
+                                                    if (selectClause.TypeDefinitionId == operand.TypeDefinitionId.ToString())
+                                                    {
+                                                        found = true;
+                                                        break;
+                                                    }
+                                                }
 
-                                                publishedEvent.SelectClauses.Add(selectClause);
+                                                if (!found)
+                                                {
+                                                    SelectClauseModel newSelectClause = new SelectClauseModel()
+                                                    {
+                                                        TypeDefinitionId = operand.TypeDefinitionId.ToString()
+                                                    };
+
+                                                    publishedEvent.SelectClauses.Add(newSelectClause);
+                                                }
                                             }
                                         }
                                     }

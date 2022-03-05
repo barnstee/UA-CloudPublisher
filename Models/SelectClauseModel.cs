@@ -6,6 +6,6 @@ namespace UA.MQTT.Publisher.Models
     public class SelectClauseModel
     {
         [JsonProperty(Required = Required.Always)]
-        public string TypeId { get; set; }
+        public string TypeDefinitionId { get; set; }
     }
 }

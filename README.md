@@ -8,7 +8,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * Uses OPC UA PubSub JSON encoding
 * Uses plain MQTT broker as publishing endpoint
 * OPC UA Variables publishing
-* OPC UA Alarms & Events publishing
+* OPC UA Alarms, Conditions & other events publishing
 * OPC UA Complex Types publishing
 * OPC UA metadata publishing
 * UI for displaying the list of publishes nodes
@@ -45,7 +45,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
     "ExpandedNodeId": "string",
     "SelectClauses": [
      {
-      "TypeId": "string" // Event Type ID, e.g. "i=2915" for Alarms
+      "TypeDefinitionId": "string" // Event Type Definition ID, e.g. "i=2915" for Alarms
      }
     ]
    }
@@ -79,7 +79,7 @@ Payload:
    "ExpandedNodeId": "string",
    "SelectClauses": [
     {
-     "TypeId": "string" // Event Type ID, e.g. "i=2915" for Alarms
+     "TypeDefinitionId": "string" // Event Type Definition ID, e.g. "i=2915" for Alarms
     }
    ]
   }
