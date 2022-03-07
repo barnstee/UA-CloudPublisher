@@ -3,10 +3,15 @@
 @model SessionModel
 
 @{
-    ViewData["Title"] = "Browse & Select Telemetry for Publishing to the Cloud";
+    ViewData["Title"] = "Browse, Read & Select Telemetry for Publishing to the Cloud";
 }
 
 <h1>@ViewData["Title"]</h1>
+
+<br />
+Right-click a node to read or publish it.
+<br />
+<br />
 
 <div class="container-fluid browser_browse_container">
    <div class="row browser_top_container">
@@ -34,7 +39,9 @@
         </div>
     </div>
     <div class="row browser_browse_status_message_container">
-        <p class="alert alert-light"><div class="alert alert-light" id="message">@Model.StatusMessage</div></p>
+        <div class="alert alert-light" id="message">
+            @Model.StatusMessage
+        </div>
     </div>
     <div class="row browser_browse_disconnect_button">
         @using (Html.BeginForm("Disconnect", "Browser"))
