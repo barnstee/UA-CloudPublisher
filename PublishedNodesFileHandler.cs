@@ -53,8 +53,8 @@ namespace UA.MQTT.Publisher.Configuration
                                 EndpointUrl = configFileEntry.EndpointUrl,
                             };
 
-                            publishingInfo.SelectClauses = new List<SelectClauseModel>();
-                            publishingInfo.SelectClauses.AddRange(opcEvent.SelectClauses);
+                            publishingInfo.Filter = new List<FilterModel>();
+                            publishingInfo.Filter.AddRange(opcEvent.Filter);
 
                             _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                         }

@@ -10,6 +10,6 @@ namespace UA.MQTT.Publisher.Models
         public string ExpandedNodeId { get; set; }
 
         [JsonProperty(Required = Required.Always)]
-        public List<SelectClauseModel> SelectClauses { get; set; }
+        public List<FilterModel> Filter { get; set; }
     }
 }

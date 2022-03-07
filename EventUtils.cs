@@ -26,13 +26,13 @@ namespace UA.MQTT.Publisher
 
             if (filter != null)
             {
-                for (int ii = 0; ii < filter.SelectClauses.Count; ii++)
+                for (int i = 0; i < filter.SelectClauses.Count; i++)
                 {
-                    SimpleAttributeOperand clause = filter.SelectClauses[ii];
+                    SimpleAttributeOperand clause = filter.SelectClauses[i];
 
                     if (clause.BrowsePath.Count == 1 && clause.BrowsePath[0] == BrowseNames.EventType)
                     {
-                        return notification.EventFields[ii].Value as NodeId;
+                        return notification.EventFields[i].Value as NodeId;
                     }
                 }
             }
@@ -60,9 +60,9 @@ namespace UA.MQTT.Publisher
             if (!eventTypeMappings.TryGetValue(eventTypeId, out knownTypeId))
             {
                 // check for a known type
-                for (int jj = 0; jj < KnownEventTypes.Length; jj++)
+                for (int j = 0; j < KnownEventTypes.Length; j++)
                 {
-                    if (KnownEventTypes[jj] == eventTypeId)
+                    if (KnownEventTypes[j] == eventTypeId)
                     {
                         knownTypeId = eventTypeId;
                         eventTypeMappings.Add(eventTypeId, eventTypeId);
@@ -82,13 +82,13 @@ namespace UA.MQTT.Publisher
                     }
 
                     // find the first supertype that matches a known event type.
-                    for (int ii = 0; ii < supertypes.Count; ii++)
+                    for (int i = 0; i < supertypes.Count; i++)
                     {
-                        for (int jj = 0; jj < KnownEventTypes.Length; jj++)
+                        for (int j = 0; j < KnownEventTypes.Length; j++)
                         {
-                            if (KnownEventTypes[jj] == supertypes[ii].NodeId)
+                            if (KnownEventTypes[j] == supertypes[i].NodeId)
                             {
-                                knownTypeId = KnownEventTypes[jj];
+                                knownTypeId = KnownEventTypes[j];
                                 eventTypeMappings.Add(eventTypeId, knownTypeId);
                                 break;
                             }
@@ -181,9 +181,9 @@ namespace UA.MQTT.Publisher
                     }
 
                     // process results.
-                    for (int ii = 0; ii < results[0].References.Count; ii++)
+                    for (int i = 0; i < results[0].References.Count; i++)
                     {
-                        references.Add(results[0].References[ii]);
+                        references.Add(results[0].References[i]);
                     }
 
                     // check if all references have been fetched.

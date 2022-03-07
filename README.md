@@ -9,6 +9,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * Uses plain MQTT broker as publishing endpoint
 * OPC UA Variables publishing
 * OPC UA Alarms, Conditions & other events publishing
+* OPC UA Event filtering
 * OPC UA Complex Types publishing
 * OPC UA metadata publishing
 * UI for displaying the list of publishes nodes
@@ -43,9 +44,9 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
   "OpcEvents": [
    {
     "ExpandedNodeId": "string",
-    "SelectClauses": [
+    "Filter": [
      {
-      "TypeDefinitionId": "string" // Event Type Definition ID, e.g. "i=2915" for Alarms
+      "OfType": "string" // Event type to filter by
      }
     ]
    }
@@ -77,9 +78,9 @@ Payload:
  "OpcEvents": [
   {
    "ExpandedNodeId": "string",
-   "SelectClauses": [
+   "Filter": [
     {
-     "TypeDefinitionId": "string" // Event Type Definition ID, e.g. "i=2915" for Alarms
+     "OfType": "string" // Event type to filter by
     }
    ]
   }

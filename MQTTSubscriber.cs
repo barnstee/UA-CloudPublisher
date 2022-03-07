@@ -252,8 +252,8 @@ namespace UA.MQTT.Publisher.Configuration
                         EndpointUrl = publishNodesMethodData.EndpointUrl,
                     };
 
-                    node.SelectClauses = new List<SelectClauseModel>();
-                    node.SelectClauses.AddRange(opcEvent.SelectClauses);
+                    node.Filter = new List<FilterModel>();
+                    node.Filter.AddRange(opcEvent.Filter);
 
                     _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
 

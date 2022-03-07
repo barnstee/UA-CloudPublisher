@@ -3,9 +3,9 @@ namespace UA.MQTT.Publisher.Models
 {
     using Newtonsoft.Json;
 
-    public class SelectClauseModel
+    public class FilterModel
     {
         [JsonProperty(Required = Required.Always)]
-        public string TypeDefinitionId { get; set; }
+        public string OfType { get; set; }
     }
 }

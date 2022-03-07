@@ -7,19 +7,7 @@ namespace UA.MQTT.Publisher
 
     public class FilterUtils
     {
-        public NodeId AreaId;
-
-        public EventSeverity Severity;
-        
-        public IList<NodeId> EventTypes;
-
-        public bool IgnoreSuppressedOrShelved;
-        
-        public SimpleAttributeOperandCollection SelectClauses;
-
-        public SimpleAttributeOperandCollection ConstructSelectClauses(
-            Session session,
-            params NodeId[] eventTypeIds)
+        public static SimpleAttributeOperandCollection ConstructSelectClauses(Session session)
         {
             // browse the type model in the server address space to find the fields available for the event type.
             SimpleAttributeOperandCollection selectClauses = new SimpleAttributeOperandCollection();
@@ -35,23 +23,73 @@ namespace UA.MQTT.Publisher
             selectClauses.Add(operand);
 
             // add the fields for the selected EventTypes.
-            if (eventTypeIds != null)
-            {
-                for (int ii = 0; ii < eventTypeIds.Length; ii++)
-                {
-                    CollectFields(session, eventTypeIds[ii], selectClauses);
-                }
-            }
-            else
-            {
-                // use BaseEventType as the default if no EventTypes specified.
-                CollectFields(session, ObjectTypeIds.BaseEventType, selectClauses);
-            }
-
+            CollectFields(session, ObjectTypeIds.BaseEventType, selectClauses);
+            
             return selectClauses;
         }
 
-        private void CollectFields(Session session, NodeId eventTypeId, SimpleAttributeOperandCollection eventFields)
+        public static ContentFilter ConstructWhereClause(IList<NodeId> eventTypes, EventSeverity severity)
+        {
+            ContentFilter whereClause = new ContentFilter();
+
+            // the code below constructs a filter that looks like this:
+            // (Severity >= X OR LastSeverity >= X) AND (SuppressedOrShelved == False) AND (OfType(A) OR OfType(B))
+
+            // add the severity.
+            ContentFilterElement element1 = null;
+            ContentFilterElement element2 = null;
+
+            if (severity > EventSeverity.Min)
+            {
+                // select the Severity property of the event.
+                SimpleAttributeOperand operand1 = new SimpleAttributeOperand();
+                operand1.TypeDefinitionId = ObjectTypeIds.BaseEventType;
+                operand1.BrowsePath.Add(BrowseNames.Severity);
+                operand1.AttributeId = Attributes.Value;
+
+                // specify the value to compare the Severity property with.
+                LiteralOperand operand2 = new LiteralOperand();
+                operand2.Value = new Variant((ushort)severity);
+
+                // specify that the Severity property must be GreaterThanOrEqual the value specified.
+                element1 = whereClause.Push(FilterOperator.GreaterThanOrEqual, operand1, operand2);
+            }
+
+            // add the event types.
+            if (eventTypes != null && eventTypes.Count > 0)
+            {
+                element2 = null;
+
+                // save the last element.
+                for (int i = 0; i < eventTypes.Count; i++)
+                {
+                    // we uses the 'OfType' operator to limit events to thoses with specified event type. 
+                    LiteralOperand operand1 = new LiteralOperand();
+                    operand1.Value = new Variant(eventTypes[i]);
+                    ContentFilterElement element3 = whereClause.Push(FilterOperator.OfType, operand1);
+
+                    // need to chain multiple types together with an OR clause.
+                    if (element2 != null)
+                    {
+                        element2 = whereClause.Push(FilterOperator.Or, element2, element3);
+                    }
+                    else
+                    {
+                        element2 = element3;
+                    }
+                }
+
+                // need to link the set of event types with the previous filters.
+                if (element1 != null)
+                {
+                    whereClause.Push(FilterOperator.And, element1, element2);
+                }
+            }
+
+            return whereClause;
+        }
+
+        private static void CollectFields(Session session, NodeId eventTypeId, SimpleAttributeOperandCollection eventFields)
         {
             // get the supertypes.
             ReferenceDescriptionCollection supertypes = EventUtils.BrowseSuperTypes(session, eventTypeId, false);
@@ -65,16 +103,16 @@ namespace UA.MQTT.Publisher
             Dictionary<NodeId,QualifiedNameCollection> foundNodes = new Dictionary<NodeId, QualifiedNameCollection>();
             QualifiedNameCollection parentPath = new QualifiedNameCollection();
 
-            for (int ii = supertypes.Count-1; ii >= 0; ii--)
+            for (int i = supertypes.Count - 1; i >= 0; i--)
             {
-                CollectFields(session, (NodeId)supertypes[ii].NodeId, parentPath, eventFields, foundNodes);
+                CollectFields(session, (NodeId)supertypes[i].NodeId, parentPath, eventFields, foundNodes);
             }
 
             // collect the fields for the selected type.
             CollectFields(session, eventTypeId, parentPath, eventFields, foundNodes);
         }
 
-        private void CollectFields(
+        private static void CollectFields(
             Session session,
             NodeId nodeId,
             QualifiedNameCollection parentPath,
@@ -99,9 +137,9 @@ namespace UA.MQTT.Publisher
             }
 
             // process the children.
-            for (int ii = 0; ii < children.Count; ii++)
+            for (int i = 0; i < children.Count; i++)
             {
-                ReferenceDescription child = children[ii];
+                ReferenceDescription child = children[i];
 
                 if (child.NodeId.IsAbsolute)
                 {
@@ -136,11 +174,11 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        private bool ContainsPath(SimpleAttributeOperandCollection selectClause, QualifiedNameCollection browsePath)
+        private static bool ContainsPath(SimpleAttributeOperandCollection selectClause, QualifiedNameCollection browsePath)
         {
-            for (int ii = 0; ii < selectClause.Count; ii++)
+            for (int i = 0; i < selectClause.Count; i++)
             {
-                SimpleAttributeOperand field = selectClause[ii];
+                SimpleAttributeOperand field = selectClause[i];
 
                 if (field.BrowsePath.Count != browsePath.Count)
                 {
@@ -149,9 +187,9 @@ namespace UA.MQTT.Publisher
 
                 bool match = true;
 
-                for (int jj = 0; jj < field.BrowsePath.Count; jj++)
+                for (int j = 0; j < field.BrowsePath.Count; j++)
                 {
-                    if (field.BrowsePath[jj] != browsePath[jj])
+                    if (field.BrowsePath[j] != browsePath[j])
                     {
                         match = false;
                         break;

@@ -433,20 +433,21 @@ namespace UA.MQTT.Publisher
 
                 // resolve all node and namespace references in the select and where clauses
                 EventFilter eventFilter = new EventFilter();
-                List<NodeId> typeDefinitions = new List<NodeId>();
-                if (nodeToPublish.SelectClauses != null)
+                if ((nodeToPublish.Filter != null) && (nodeToPublish.Filter.Count > 0))
                 {
-                    foreach (SelectClauseModel selectClause in nodeToPublish.SelectClauses)
+                    List<NodeId> ofTypes = new List<NodeId>();
+                    foreach (FilterModel filter in nodeToPublish.Filter)
                     {
-                        if (!string.IsNullOrEmpty(selectClause.TypeDefinitionId))
+                        if (!string.IsNullOrEmpty(filter.OfType))
                         {
-                            typeDefinitions.Add(selectClause.TypeDefinitionId.ToNodeId(session.NamespaceUris));
+                            ofTypes.Add(filter.OfType.ToNodeId(session.NamespaceUris));
                         }
                     }
+
+                    eventFilter.SelectClauses = FilterUtils.ConstructSelectClauses(session);
+                    eventFilter.WhereClause = FilterUtils.ConstructWhereClause(ofTypes, EventSeverity.Min);
                 }
 
-                eventFilter.SelectClauses = new FilterUtils().ConstructSelectClauses(session, typeDefinitions.ToArray());
-                    
                 // if no nodeid was specified, select the server object root
                 NodeId resolvedNodeId;
                 if (nodeToPublish.ExpandedNodeId.Identifier == null)
@@ -666,34 +667,27 @@ namespace UA.MQTT.Publisher
                                     EventModel publishedEvent = new EventModel()
                                     {
                                         ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
-                                        SelectClauses = new List<SelectClauseModel>()
+                                        Filter = new List<FilterModel>()
                                     };
 
                                     if (monitoredItem.Filter is EventFilter)
                                     {
-                                        EventFilter filter = (EventFilter)monitoredItem.Filter;
-                                        if ((filter.SelectClauses != null) && filter.SelectClauses.Count > 0)
+                                        EventFilter eventFilter = (EventFilter)monitoredItem.Filter;
+                                        if (eventFilter.WhereClause != null)
                                         {
-                                            foreach (SimpleAttributeOperand operand in filter.SelectClauses)
+                                            foreach (ContentFilterElement whereClauseElement in eventFilter.WhereClause.Elements)
                                             {
-                                                bool found = false;
-                                                foreach (SelectClauseModel selectClause in publishedEvent.SelectClauses)
+                                                if (whereClauseElement.FilterOperator == FilterOperator.OfType)
                                                 {
-                                                    if (selectClause.TypeDefinitionId == operand.TypeDefinitionId.ToString())
+                                                    foreach (ExtensionObject operand in whereClauseElement.FilterOperands)
                                                     {
-                                                        found = true;
-                                                        break;
+                                                        FilterModel filter = new FilterModel()
+                                                        {
+                                                            OfType = operand.Body.ToString()
+                                                        };
+
+                                                        publishedEvent.Filter.Add(filter);
                                                     }
-                                                }
-
-                                                if (!found)
-                                                {
-                                                    SelectClauseModel newSelectClause = new SelectClauseModel()
-                                                    {
-                                                        TypeDefinitionId = operand.TypeDefinitionId.ToString()
-                                                    };
-
-                                                    publishedEvent.SelectClauses.Add(newSelectClause);
                                                 }
                                             }
                                         }
