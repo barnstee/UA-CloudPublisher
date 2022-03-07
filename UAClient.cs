@@ -273,73 +273,78 @@ namespace UA.MQTT.Publisher
                 try
                 {
                     string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                    if (!ServiceResult.IsGood(eventArgs.Status))
+
+                    lock (_missedKeepAlives)
                     {
-                        _logger.LogWarning("Session endpoint: {endpointUrl} has Status: {status}", session.ConfiguredEndpoint.EndpointUrl, eventArgs.Status);
-                        _logger.LogInformation("Outstanding requests: {outstandingRequestCount}, Defunct requests: {defunctRequestCount}", session.OutstandingRequestCount, session.DefunctRequestCount);
-                        _logger.LogInformation("Good publish requests: {goodPublishRequestCount}, KeepAlive interval: {keepAliveInterval}", session.GoodPublishRequestCount, session.KeepAliveInterval);
-                        _logger.LogInformation("SessionId: {sessionId}", session.SessionId);
-                        _logger.LogInformation("Session State: {connected}", session.Connected);
-
-                        if (session.Connected)
+                        if (!ServiceResult.IsGood(eventArgs.Status))
                         {
-                            if (!_missedKeepAlives.ContainsKey(endpoint))
-                            {
-                                _missedKeepAlives[endpoint] = 0;
-                            }
+                            _logger.LogWarning("Session endpoint: {endpointUrl} has Status: {status}", session.ConfiguredEndpoint.EndpointUrl, eventArgs.Status);
+                            _logger.LogInformation("Outstanding requests: {outstandingRequestCount}, Defunct requests: {defunctRequestCount}", session.OutstandingRequestCount, session.DefunctRequestCount);
+                            _logger.LogInformation("Good publish requests: {goodPublishRequestCount}, KeepAlive interval: {keepAliveInterval}", session.GoodPublishRequestCount, session.KeepAliveInterval);
+                            _logger.LogInformation("SessionId: {sessionId}", session.SessionId);
+                            _logger.LogInformation("Session State: {connected}", session.Connected);
 
-                            _missedKeepAlives[endpoint]++;
-                            _logger.LogInformation("Missed Keep-Alives: {missedKeepAlives}", _missedKeepAlives[endpoint]);
-                        }
-
-                        // start reconnect if there are 3 missed keep alives
-                        if (_missedKeepAlives[endpoint] >= 3)
-                        {
-                            // check if a reconnection is already in progress
-                            bool reconnectInProgress = false;
-                            lock (_reconnectHandlers)
+                            if (session.Connected)
                             {
-                                foreach (SessionReconnectHandler handler in _reconnectHandlers)
+                                // add a new entry, if required
+                                if (!_missedKeepAlives.ContainsKey(endpoint))
                                 {
-                                    if (ReferenceEquals(handler.Session, session))
-                                    {
-                                        reconnectInProgress = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (!reconnectInProgress)
-                            {
-                                lock (_sessions)
-                                {
-                                    _sessions.Remove(session);
+                                    _missedKeepAlives.Add(endpoint, 0);
                                 }
 
-                                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
-                                _logger.LogInformation($"RECONNECTING session {session.SessionId}...");
-                                SessionReconnectHandler reconnectHandler = new SessionReconnectHandler();
+                                _missedKeepAlives[endpoint]++;
+                                _logger.LogInformation("Missed Keep-Alives: {missedKeepAlives}", _missedKeepAlives[endpoint]);
+                            }
+
+                            // start reconnect if there are 3 missed keep alives
+                            if (_missedKeepAlives[endpoint] >= 3)
+                            {
+                                // check if a reconnection is already in progress
+                                bool reconnectInProgress = false;
                                 lock (_reconnectHandlers)
                                 {
-                                    _reconnectHandlers.Add(reconnectHandler);
+                                    foreach (SessionReconnectHandler handler in _reconnectHandlers)
+                                    {
+                                        if (ReferenceEquals(handler.Session, session))
+                                        {
+                                            reconnectInProgress = true;
+                                            break;
+                                        }
+                                    }
                                 }
-                                reconnectHandler.BeginReconnect(session, 10000, ReconnectCompleteHandler);
+
+                                if (!reconnectInProgress)
+                                {
+                                    lock (_sessions)
+                                    {
+                                        _sessions.Remove(session);
+                                    }
+
+                                    Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
+                                    _logger.LogInformation($"RECONNECTING session {session.SessionId}...");
+                                    SessionReconnectHandler reconnectHandler = new SessionReconnectHandler();
+                                    lock (_reconnectHandlers)
+                                    {
+                                        _reconnectHandlers.Add(reconnectHandler);
+                                    }
+                                    reconnectHandler.BeginReconnect(session, 10000, ReconnectCompleteHandler);
+                                }
                             }
                         }
-                    }
-                    else
-                    {
-                        if (_missedKeepAlives.ContainsKey(endpoint) && _missedKeepAlives[endpoint] != 0)
+                        else
                         {
-                            // Reset missed keep alive count
-                            _logger.LogInformation("Session endpoint: {endpoint} got a keep alive after {missedKeepAlives} {verb} missed.",
-                                endpoint,
-                                _missedKeepAlives[endpoint],
-                                _missedKeepAlives[endpoint] == 1 ? "was" : "were");
+                            if (_missedKeepAlives.ContainsKey(endpoint) && (_missedKeepAlives[endpoint] != 0))
+                            {
+                                // Reset missed keep alive count
+                                _logger.LogInformation("Session endpoint: {endpoint} got a keep alive after {missedKeepAlives} {verb} missed.",
+                                    endpoint,
+                                    _missedKeepAlives[endpoint],
+                                    _missedKeepAlives[endpoint] == 1 ? "was" : "were");
 
-                            _missedKeepAlives[session.ConfiguredEndpoint.EndpointUrl.ToString()] = 0;
+                                _missedKeepAlives[endpoint] = 0;
+                            }
                         }
-                    }
+                    }   
                 }
                 catch (Exception e)
                 {
