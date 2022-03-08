@@ -131,6 +131,8 @@ namespace UA.MQTT.Publisher
 
         public bool ReversiblePubSubEncoding { get; set; } = false;
 
+        public bool AutoLoadPersistedNodes { get; set; } = false;
+
         public const int MaxResponsePayloadLength = (128 * 1024) - 256;
         public const uint HubMessageSizeMax = 256 * 1024;
     }

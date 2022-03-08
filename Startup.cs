@@ -117,25 +117,28 @@ namespace UA.MQTT.Publisher
             _ = Task.Run(() => engine.Run());
 
             // load our persistency file
-            try
+            if (Settings.Singleton.AutoLoadPersistedNodes)
             {
-                string persistencyFilePath = storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
-                byte[] persistencyFile = storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
-                if (persistencyFile == null)
+                try
                 {
-                    // no file persisted yet
-                    logger.LogInformation("Persistency file not found.");
+                    string persistencyFilePath = storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
+                    byte[] persistencyFile = storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
+                    if (persistencyFile == null)
+                    {
+                        // no file persisted yet
+                        logger.LogInformation("Persistency file not found.");
+                    }
+                    else
+                    {
+                        logger.LogInformation($"Parsing persistency file...");
+                        publishedNodesFileHandler.ParseFile(persistencyFile);
+                        logger.LogInformation("Persistency file parsed successfully.");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    logger.LogInformation($"Parsing persistency file...");
-                    publishedNodesFileHandler.ParseFile(persistencyFile);
-                    logger.LogInformation("Persistency file parsed successfully.");
+                    logger.LogError(ex, "Persistency file not loaded!");
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogInformation(ex, "Persistency file not loaded!");
             }
         }
     }

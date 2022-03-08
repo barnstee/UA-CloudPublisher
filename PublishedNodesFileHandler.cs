@@ -46,10 +46,9 @@ namespace UA.MQTT.Publisher.Configuration
                     {
                         foreach (EventModel opcEvent in configFileEntry.OpcEvents)
                         {
-                            ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId);
                             NodePublishingModel publishingInfo = new NodePublishingModel()
                             {
-                                ExpandedNodeId = expandedNodeId,
+                                ExpandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId),
                                 EndpointUrl = configFileEntry.EndpointUrl,
                             };
 
@@ -65,10 +64,9 @@ namespace UA.MQTT.Publisher.Configuration
                     {
                         foreach (VariableModel opcNode in configFileEntry.OpcNodes)
                         {
-                            ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcNode.Id);
                             NodePublishingModel publishingInfo = new NodePublishingModel()
                             {
-                                ExpandedNodeId = expandedNodeId,
+                                ExpandedNodeId = ExpandedNodeId.Parse(opcNode.Id),
                                 EndpointUrl = configFileEntry.EndpointUrl,
                                 OpcPublishingInterval = opcNode.OpcPublishingInterval,
                                 OpcSamplingInterval = opcNode.OpcSamplingInterval,

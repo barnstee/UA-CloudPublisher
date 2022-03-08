@@ -445,7 +445,7 @@ namespace UA.MQTT.Publisher
                     {
                         if (!string.IsNullOrEmpty(filter.OfType))
                         {
-                            ofTypes.Add(filter.OfType.ToNodeId(session.NamespaceUris));
+                            ofTypes.Add(NodeId.Parse(filter.OfType));
                         }
                     }
 
@@ -598,33 +598,30 @@ namespace UA.MQTT.Publisher
             // loop through all subscriptions of the session
             foreach (Subscription subscription in session.Subscriptions)
             {
-                if (nodeToUnpublish.OpcPublishingInterval == subscription.PublishingInterval)
+                // loop through all monitored items
+                foreach (MonitoredItem monitoredItem in subscription.MonitoredItems)
                 {
-                    // loop through all monitored items
-                    foreach (MonitoredItem monitoredItem in subscription.MonitoredItems)
+                    if (monitoredItem.ResolvedNodeId == resolvedNodeId)
                     {
-                        if (monitoredItem.ResolvedNodeId == resolvedNodeId)
+                        subscription.RemoveItem(monitoredItem);
+                        subscription.ApplyChanges();
+
+                        Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
+
+                        // cleanup empty subscriptions and sessions
+                        if (subscription.MonitoredItemCount == 0)
                         {
-                            subscription.RemoveItem(monitoredItem);
-                            subscription.ApplyChanges();
-
-                            Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
-
-                            // cleanup empty subscriptions and sessions
-                            if (subscription.MonitoredItemCount == 0)
-                            {
-                                session.RemoveSubscription(subscription);
-                                Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
-                            }
-
-                            // update our persistency
-                            PersistPublishedNodesAsync().GetAwaiter().GetResult();
-
-                            return;
+                            session.RemoveSubscription(subscription);
+                            Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
                         }
+
+                        // update our persistency
+                        PersistPublishedNodesAsync().GetAwaiter().GetResult();
+
+                        return;
                     }
-                    break;
                 }
+                break;
             }
         }
 

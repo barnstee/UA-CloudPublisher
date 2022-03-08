@@ -245,10 +245,9 @@ namespace UA.MQTT.Publisher.Configuration
             {
                 foreach (EventModel opcEvent in publishNodesMethodData.OpcEvents)
                 {
-                    ExpandedNodeId expandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId);
                     NodePublishingModel node = new NodePublishingModel()
                     {
-                        ExpandedNodeId = expandedNodeId,
+                        ExpandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId),
                         EndpointUrl = publishNodesMethodData.EndpointUrl,
                     };
 
@@ -270,7 +269,7 @@ namespace UA.MQTT.Publisher.Configuration
                 {
                     NodePublishingModel node = new NodePublishingModel
                     {
-                        ExpandedNodeId = nodeOnEndpoint.Id,
+                        ExpandedNodeId = ExpandedNodeId.Parse(nodeOnEndpoint.Id),
                         EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
                         SkipFirst = nodeOnEndpoint.SkipFirst,
                         HeartbeatInterval = nodeOnEndpoint.HeartbeatInterval,
@@ -301,7 +300,7 @@ namespace UA.MQTT.Publisher.Configuration
             foreach (VariableModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
             {
                 NodePublishingModel node = new NodePublishingModel {
-                    ExpandedNodeId = nodeOnEndpoint.Id,
+                    ExpandedNodeId = ExpandedNodeId.Parse(nodeOnEndpoint.Id),
                     EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
                 };
 

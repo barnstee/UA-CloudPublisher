@@ -95,6 +95,10 @@
         @Html.CheckBox("ReversiblePubSubEncoding", @Model.ReversiblePubSubEncoding)<br />
     </p>
     <p>
+        Auto-Load Persisted Nodes on Startup<br />
+        @Html.CheckBox("AutoLoadPersistedNodes", @Model.AutoLoadPersistedNodes)<br />
+    </p>
+    <p>
         <input type="submit" name="Update" value="Update" />
     </p>
 </form>

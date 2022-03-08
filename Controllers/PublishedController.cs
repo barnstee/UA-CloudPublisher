@@ -4,11 +4,10 @@ namespace UA.MQTT.Publisher.Controllers
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
+    using Opc.Ua;
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Security.Cryptography.X509Certificates;
-    using System.Threading.Tasks;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
@@ -16,15 +15,17 @@ namespace UA.MQTT.Publisher.Controllers
     {
         private readonly ILogger _logger;
         private readonly IPublishedNodesFileHandler _publishedNodesFileHandler;
-        private readonly IUAApplication _app;
         private readonly IUAClient _client;
         private readonly IFileStorage _storage;
 
-        public PublishedController(ILoggerFactory loggerFactory, IPublishedNodesFileHandler publishedNodesFileHandler, IUAApplication app, IUAClient client, IFileStorage storage)
+        public PublishedController(
+            ILoggerFactory loggerFactory,
+            IPublishedNodesFileHandler publishedNodesFileHandler,
+            IUAClient client,
+            IFileStorage storage)
         {
             _logger = loggerFactory.CreateLogger("PublishedController");
             _publishedNodesFileHandler = publishedNodesFileHandler;
-            _app = app;
             _client = client;
             _storage = storage;
         }
@@ -62,6 +63,63 @@ namespace UA.MQTT.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
+                return View("Index", new string[] { ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult LoadPersisted()
+        {
+            try
+            {
+                string persistencyFilePath = _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
+                byte[] persistencyFile = _storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
+                if (persistencyFile == null)
+                {
+                    // no file persisted yet
+                    _logger.LogInformation("Persistency file not found.");
+                }
+                else
+                {
+                    _logger.LogInformation($"Parsing persistency file...");
+                    _publishedNodesFileHandler.ParseFile(persistencyFile);
+                    _logger.LogInformation("Persistency file parsed successfully.");
+                }
+
+                return View("Index", GeneratePublishedNodesArray());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Persistency file not loaded!");
+                return View("Index", new string[] { ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult DeleteNode()
+        {
+            try
+            {
+                NodePublishingModel node = new NodePublishingModel();
+                foreach (string key in Request.Form.Keys)
+                {
+                    if (key.Contains("Endpoint:"))
+                    {
+                        string[] parts = key.Split(' ');
+                        node.EndpointUrl = parts[1];
+                        node.ExpandedNodeId = ExpandedNodeId.Parse(parts[3]);
+                        break;
+                    }
+                }
+
+                _client.UnpublishNode(node);
+                _logger.LogInformation($"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.");
+
+                return View("Index", GeneratePublishedNodesArray());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to unpublish node!");
                 return View("Index", new string[] { ex.Message });
             }
         }

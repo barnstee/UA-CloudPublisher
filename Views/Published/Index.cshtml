@@ -3,16 +3,28 @@
 @model string[]
 
 @{
-    ViewData["Title"] = "List of Currently Published OPC UA Nodes";
+    ViewData["Title"] = "Published OPC UA Nodes Management";
 }
 
 <h1>@ViewData["Title"]</h1>
 
-<form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Load">
-    <div class="container-fluid browser_connect_container">
+
+<div class="container-fluid browser_connect_container">
+    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="LoadPersisted">
         <br/>
         <p>
-            <h2>Open a local publishednodes.json file</h2>
+            <h3>Load persisted published nodes</h3>
+        </p>
+        <p>
+            <input class="btn btn-primary" type="submit" value="Load">
+        </p>
+    </form>
+    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Load">
+        <br />
+        <hr />
+        <br />
+        <p>
+            <h3>Open a local publishednodes.json file</h3>
         </p>
         <p>
             <input class="btn btn-primary" type="file" name="file">
@@ -20,14 +32,22 @@
         <p>
             <input class="btn btn-primary" type="submit" value="Open">
         </p>
+    </form>
         <br />
         <hr />
         <br />
+        <p>
+            <h3>List of Currently Published OPC UA Nodes</h3>
+        </p>
         <ul>
-        @foreach(var role in Model) 
-        {
-           <li>@role</li>
-        }
+            @foreach (var node in Model) 
+            {
+                <li>
+                    @node
+                    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
+                        <input name="@node" class="btn btn-primary" type="submit" value="Delete">
+                    </form>
+                </li>
+            }
         </ul>
-    </div>
-</form>
+</div>
