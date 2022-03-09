@@ -203,6 +203,10 @@ namespace UA.MQTT.Publisher.Configuration
                 {
                     responsePayload = UnpublishAllNodes();
                 }
+                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))
+                {
+                    responsePayload = GetPublishedNodes();
+                }
                 else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
                 {
                     responsePayload = GetInfo();
@@ -321,6 +325,11 @@ namespace UA.MQTT.Publisher.Configuration
             return BuildResponseAndTruncateResult("All nodes unpublished successfully.");
         }
 
+        public byte[] GetPublishedNodes()
+        {
+            return BuildResponseAndTruncateResult(_uaClient.GetPublishedNodes());
+        }
+
         public byte[] GetInfo()
         {
             return BuildResponseAndTruncateResult(Diagnostics.Singleton.Info);
@@ -346,7 +355,7 @@ namespace UA.MQTT.Publisher.Configuration
             if (maxIndex != statusResponse.Count())
             {
                 statusResponse.RemoveRange(maxIndex, statusResponse.Count() - maxIndex);
-                statusResponse.Add("Results have been cropped due to package size limitations.");
+                statusResponse.Add("Results have been cropped due to message size limitations!");
             }
 
             return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(statusResponse.GetRange(0, maxIndex)));
@@ -358,7 +367,7 @@ namespace UA.MQTT.Publisher.Configuration
 
             if (response.Length > Settings.MaxResponsePayloadLength)
             {
-                _logger.LogError("Response size is too long");
+                _logger.LogError("Results have been cropped due to message size limitations!");
                 Array.Resize(ref response, response.Length > Settings.MaxResponsePayloadLength ? Settings.MaxResponsePayloadLength : response.Length);
             }
 

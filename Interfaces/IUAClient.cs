@@ -15,6 +15,6 @@ namespace UA.MQTT.Publisher.Interfaces
 
         void UnpublishAllNodes();
 
-        IEnumerable<PublishNodesInterfaceModel> GetListofPublishedNodes();
+        IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes();
     }
 }

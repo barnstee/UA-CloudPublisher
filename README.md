@@ -136,6 +136,39 @@ Response:
 }
 ```
 
+### GetPublishedNodes
+
+Payload: None
+
+Response:
+```json
+[
+ {
+  "EndpointUrl": "string",
+  "OpcNodes": [
+   {
+    "Id": "string",
+    "OpcSamplingInterval": 1000,
+    "OpcPublishingInterval": 1000,
+    "HeartbeatInterval": 0,
+    "SkipFirst": false
+   }
+  ],
+  "OpcEvents": [
+   {
+    "ExpandedNodeId": "string",
+    "Filter": [
+     {
+      "OfType": "string"
+     }
+    ]
+   }
+  ],
+  "OpcAuthenticationMode": "string"
+ }
+]
+```
+
 ### GetInfo
 
 Payload: None

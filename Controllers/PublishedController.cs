@@ -126,7 +126,7 @@ namespace UA.MQTT.Publisher.Controllers
 
         private string[] GeneratePublishedNodesArray()
         {
-            IEnumerable<PublishNodesInterfaceModel> publishedNodes = _client.GetListofPublishedNodes();
+            IEnumerable<PublishNodesInterfaceModel> publishedNodes = _client.GetPublishedNodes();
 
             List<string> publishedNodesDisplay = new List<string>();
             foreach (PublishNodesInterfaceModel entry in publishedNodes)

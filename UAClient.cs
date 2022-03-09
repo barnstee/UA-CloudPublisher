@@ -625,7 +625,7 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        public IEnumerable<PublishNodesInterfaceModel> GetListofPublishedNodes()
+        public IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes()
         {
             List<PublishNodesInterfaceModel> publisherConfigurationFileEntries = new List<PublishNodesInterfaceModel>();
 
@@ -750,7 +750,7 @@ namespace UA.MQTT.Publisher
             try
             {
                 // iterate through all sessions, subscriptions and monitored items and create config file entries
-                IEnumerable<PublishNodesInterfaceModel> publisherNodeConfiguration = GetListofPublishedNodes();
+                IEnumerable<PublishNodesInterfaceModel> publisherNodeConfiguration = GetPublishedNodes();
 
                 // update the persistency file
                 if (await _storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)), cancellationToken).ConfigureAwait(false) == null)
