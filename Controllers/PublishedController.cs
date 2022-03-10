@@ -4,10 +4,12 @@ namespace UA.MQTT.Publisher.Controllers
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
+    using Newtonsoft.Json;
     using Opc.Ua;
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Text;
     using UA.MQTT.Publisher.Interfaces;
     using UA.MQTT.Publisher.Models;
 
@@ -63,6 +65,21 @@ namespace UA.MQTT.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
+                return View("Index", new string[] { ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult DownloadFile()
+        {
+            try
+            {
+                string json = JsonConvert.SerializeObject(_client.GetPublishedNodes(), Formatting.Indented);
+                return File(Encoding.UTF8.GetBytes(json), "APPLICATION/octet-stream", "publishednodes.json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not generate publishednodes.json file");
                 return View("Index", new string[] { ex.Message });
             }
         }
