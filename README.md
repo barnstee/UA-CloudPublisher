@@ -107,11 +107,17 @@ Payload:
 ```json
 {
  "EndpointUrl": "string",
-  "OpcNodes": [
+ "OpcNodes": [
    {
 	"Id": "string"
    }
-  ]
+ ],
+ "OpcEvents": [
+  {
+   "Id": "string"
+   ]
+  }
+ ]
 }
 ```
 

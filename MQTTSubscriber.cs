@@ -252,7 +252,10 @@ namespace UA.MQTT.Publisher.Configuration
                     NodePublishingModel node = new NodePublishingModel()
                     {
                         ExpandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId),
-                        EndpointUrl = publishNodesMethodData.EndpointUrl,
+                        EndpointUrl = new Uri(publishNodesMethodData.EndpointUrl).ToString(),
+                        Username = publishNodesMethodData.UserName,
+                        Password = publishNodesMethodData.Password,
+                        OpcAuthenticationMode = desiredAuthenticationMode
                     };
 
                     node.Filter = new List<FilterModel>();
@@ -301,18 +304,42 @@ namespace UA.MQTT.Publisher.Configuration
 
             UnpublishNodesInterfaceModel unpublishNodesMethodData = JsonConvert.DeserializeObject<UnpublishNodesInterfaceModel>(payload);
 
-            foreach (VariableModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
+            // check for events
+            if (unpublishNodesMethodData.OpcEvents != null)
             {
-                NodePublishingModel node = new NodePublishingModel {
-                    ExpandedNodeId = ExpandedNodeId.Parse(nodeOnEndpoint.Id),
-                    EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
-                };
+                foreach (EventModel opcEvent in unpublishNodesMethodData.OpcEvents)
+                {
+                    NodePublishingModel node = new NodePublishingModel()
+                    {
+                        ExpandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId),
+                        EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
+                    };
 
-                _uaClient.UnpublishNode(node);
+                    _uaClient.UnpublishNode(node);
 
-                string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.";
-                statusResponse.Add(statusMessage);
-                _logger.LogInformation(statusMessage);
+                    string statusMessage = $"Event {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.";
+                    statusResponse.Add(statusMessage);
+                    _logger.LogInformation(statusMessage);
+                }
+            }
+
+            // check for variables
+            if (unpublishNodesMethodData.OpcNodes != null)
+            {
+                foreach (VariableModel nodeOnEndpoint in unpublishNodesMethodData.OpcNodes)
+                {
+                    NodePublishingModel node = new NodePublishingModel
+                    {
+                        ExpandedNodeId = ExpandedNodeId.Parse(nodeOnEndpoint.Id),
+                        EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
+                    };
+
+                    _uaClient.UnpublishNode(node);
+
+                    string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.";
+                    statusResponse.Add(statusMessage);
+                    _logger.LogInformation(statusMessage);
+                }
             }
 
             return BuildResponseAndCropStatus(statusResponse);

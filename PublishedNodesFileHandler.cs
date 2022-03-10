@@ -49,7 +49,10 @@ namespace UA.MQTT.Publisher.Configuration
                             NodePublishingModel publishingInfo = new NodePublishingModel()
                             {
                                 ExpandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId),
-                                EndpointUrl = configFileEntry.EndpointUrl,
+                                EndpointUrl = new Uri(configFileEntry.EndpointUrl).ToString(),
+                                OpcAuthenticationMode = configFileEntry.OpcAuthenticationMode,
+                                Username = configFileEntry.UserName,
+                                Password = configFileEntry.Password
                             };
 
                             publishingInfo.Filter = new List<FilterModel>();
@@ -67,7 +70,7 @@ namespace UA.MQTT.Publisher.Configuration
                             NodePublishingModel publishingInfo = new NodePublishingModel()
                             {
                                 ExpandedNodeId = ExpandedNodeId.Parse(opcNode.Id),
-                                EndpointUrl = configFileEntry.EndpointUrl,
+                                EndpointUrl = new Uri(configFileEntry.EndpointUrl).ToString(),
                                 OpcPublishingInterval = opcNode.OpcPublishingInterval,
                                 OpcSamplingInterval = opcNode.OpcSamplingInterval,
                                 HeartbeatInterval = opcNode.HeartbeatInterval,

@@ -17,7 +17,7 @@ namespace UA.MQTT.Publisher.Controllers
     {
         private readonly ILogger _logger;
         private readonly IPublishedNodesFileHandler _publishedNodesFileHandler;
-        private readonly IUAClient _client;
+        private readonly IUAClient _uaclient;
         private readonly IFileStorage _storage;
 
         public PublishedController(
@@ -28,7 +28,7 @@ namespace UA.MQTT.Publisher.Controllers
         {
             _logger = loggerFactory.CreateLogger("PublishedController");
             _publishedNodesFileHandler = publishedNodesFileHandler;
-            _client = client;
+            _uaclient = client;
             _storage = storage;
         }
 
@@ -74,7 +74,7 @@ namespace UA.MQTT.Publisher.Controllers
         {
             try
             {
-                string json = JsonConvert.SerializeObject(_client.GetPublishedNodes(), Formatting.Indented);
+                string json = JsonConvert.SerializeObject(_uaclient.GetPublishedNodes(), Formatting.Indented);
                 return File(Encoding.UTF8.GetBytes(json), "APPLICATION/octet-stream", "publishednodes.json");
             }
             catch (Exception ex)
@@ -129,7 +129,7 @@ namespace UA.MQTT.Publisher.Controllers
                     }
                 }
 
-                _client.UnpublishNode(node);
+                _uaclient.UnpublishNode(node);
                 _logger.LogInformation($"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.");
 
                 return View("Index", GeneratePublishedNodesArray());
@@ -143,7 +143,7 @@ namespace UA.MQTT.Publisher.Controllers
 
         private string[] GeneratePublishedNodesArray()
         {
-            IEnumerable<PublishNodesInterfaceModel> publishedNodes = _client.GetPublishedNodes();
+            IEnumerable<PublishNodesInterfaceModel> publishedNodes = _uaclient.GetPublishedNodes();
 
             List<string> publishedNodesDisplay = new List<string>();
             foreach (PublishNodesInterfaceModel entry in publishedNodes)
