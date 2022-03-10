@@ -27,7 +27,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.
 
 ## PublishedNodes.json File Format
-
+(All intervals must be specified in milliseconds)
 ```json
 [
  {
@@ -46,7 +46,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
     "ExpandedNodeId": "string",
     "Filter": [
      {
-      "OfType": "string" // Event type to filter by
+      "OfType": "string" // Expanded node ID of event type to filter by
      }
     ]
    }
@@ -63,6 +63,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 ### PublishNodes
 
 Payload:
+(All intervals must be specified in milliseconds)
 ```json
 {
  "EndpointUrl": "string",
@@ -80,7 +81,7 @@ Payload:
    "ExpandedNodeId": "string",
    "Filter": [
     {
-     "OfType": "string" // Event type to filter by
+     "OfType": "string" // Expanded node ID of event type to filter by
     }
    ]
   }
@@ -141,6 +142,7 @@ Response:
 Payload: None
 
 Response:
+(All intervals are in milliseconds)
 ```json
 [
  {

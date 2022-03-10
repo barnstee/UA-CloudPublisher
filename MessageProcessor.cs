@@ -70,7 +70,7 @@ namespace UA.MQTT.Publisher
                 else
                 {
                     Diagnostics.Singleton.Info.EnqueueCount++;
-                    Diagnostics.Singleton.Info.MonitoredItemsQueueCount++;
+                    Diagnostics.Singleton.Info.MonitoredItemsQueueCount = _monitoredItemsDataQueue.Count;
                 }
             }
         }
@@ -124,7 +124,7 @@ namespace UA.MQTT.Publisher
                     }
                     else
                     {
-                        Diagnostics.Singleton.Info.MonitoredItemsQueueCount--;
+                        Diagnostics.Singleton.Info.MonitoredItemsQueueCount = _monitoredItemsDataQueue.Count;
                     }
 
                     // check if we should send the new item straight away (single message send case or if there are events)

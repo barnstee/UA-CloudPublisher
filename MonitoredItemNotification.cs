@@ -106,7 +106,7 @@ namespace UA.MQTT.Publisher
                     EventValueModel eventValue = new EventValueModel()
                     {
                         Name = "Type",
-                        Value = new DataValue(type.ToString())
+                        Value = new DataValue(type.ToString() + " (" + NodeId.ToExpandedNodeId(new NodeId(type.NodeId.ToString()), monitoredItem.Subscription.Session.NamespaceUris).ToString() + ")")
                     };
 
                     messageData.EventValues.Add(eventValue);

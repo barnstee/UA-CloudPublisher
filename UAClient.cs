@@ -445,7 +445,7 @@ namespace UA.MQTT.Publisher
                     {
                         if (!string.IsNullOrEmpty(filter.OfType))
                         {
-                            ofTypes.Add(NodeId.Parse(filter.OfType));
+                            ofTypes.Add(ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(filter.OfType), session.NamespaceUris));
                         }
                     }
 
@@ -685,7 +685,7 @@ namespace UA.MQTT.Publisher
                                                     {
                                                         FilterModel filter = new FilterModel()
                                                         {
-                                                            OfType = operand.Body.ToString()
+                                                            OfType = NodeId.ToExpandedNodeId(new NodeId(operand.ToString()), monitoredItem.Subscription.Session.NamespaceUris).ToString()
                                                         };
 
                                                         publishedEvent.Filter.Add(filter);

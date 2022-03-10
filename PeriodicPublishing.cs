@@ -32,12 +32,9 @@ namespace UA.MQTT.Publisher
             HeartBeatNodeId = nodeId;
             HeartBeatInterval = heartbeatInterval;
 
-            // setup heartbeat processing
             if (heartbeatInterval > 0)
             {
-                // setup the heartbeat timer
-                _timer = new Timer(HeartbeatSend, null, heartbeatInterval * 1000, heartbeatInterval * 1000);
-                _logger.LogDebug($"Setting up {heartbeatInterval} sec heartbeat for node '{nodeId}'.");
+                _timer = new Timer(HeartbeatSend, null, heartbeatInterval, heartbeatInterval);
             }
         }
 

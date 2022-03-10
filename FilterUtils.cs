@@ -34,11 +34,9 @@ namespace UA.MQTT.Publisher
 
             // the code below constructs a filter that looks like this:
             // (Severity >= X OR LastSeverity >= X) AND (SuppressedOrShelved == False) AND (OfType(A) OR OfType(B))
-
+                        
             // add the severity.
             ContentFilterElement element1 = null;
-            ContentFilterElement element2 = null;
-
             if (severity > EventSeverity.Min)
             {
                 // select the Severity property of the event.
@@ -56,10 +54,9 @@ namespace UA.MQTT.Publisher
             }
 
             // add the event types.
+            ContentFilterElement element2 = null;
             if (eventTypes != null && eventTypes.Count > 0)
             {
-                element2 = null;
-
                 // save the last element.
                 for (int i = 0; i < eventTypes.Count; i++)
                 {
