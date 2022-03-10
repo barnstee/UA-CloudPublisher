@@ -127,18 +127,14 @@ namespace UA.MQTT.Publisher
                     // write to the log at 10x slower than the UI diagnostics
                     if (ticks % 10 == 0)
                     {
-                        _logger.LogInformation("==========================================================================");
                         _logger.LogInformation($"UA-MQTT-Publisher started @ {Info.PublisherStartTime}");
-                        _logger.LogInformation("---------------------------------");
                         _logger.LogInformation($"OPC UA sessions: {Info.NumberOfOpcSessionsConnected}");
                         _logger.LogInformation($"OPC UA subscriptions: {Info.NumberOfOpcSubscriptionsConnected}");
                         _logger.LogInformation($"OPC UA monitored items: {Info.NumberOfOpcMonitoredItemsMonitored}");
-                        _logger.LogInformation("---------------------------------");
                         _logger.LogInformation($"OPC UA monitored items queue capacity: {Settings.Singleton.InternalQueueCapacity}");
                         _logger.LogInformation($"OPC UA monitored items queue current items: {Info.MonitoredItemsQueueCount}");
                         _logger.LogInformation($"OPC UA monitored item notifications enqueued: {Info.EnqueueCount}");
                         _logger.LogInformation($"OPC UA monitored item notifications enqueue failure: {Info.EnqueueFailureCount}");
-                        _logger.LogInformation("---------------------------------");
                         _logger.LogInformation($"Messages sent to MQTT broker: {Info.SentMessages}");
                         _logger.LogInformation($"Last successful MQTT broker message sent @: {Info.SentLastTime}");
                         _logger.LogInformation($"Total bytes sent to MQTT broker: {Info.SentBytes}");
@@ -151,11 +147,9 @@ namespace UA.MQTT.Publisher
                         _logger.LogInformation($"MQTT broker messages too large to send to MQTT broker: {Info.TooLargeCount}");
                         _logger.LogInformation($"Missed MQTT broker message send intervals: {Info.MissedSendIntervalCount}");
                         _logger.LogInformation($"Number of OPC UA notifications encoded: {Info.NumberOfEvents}");
-                        _logger.LogInformation("---------------------------------");
                         _logger.LogInformation($"Current working set in MB: {Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)}");
                         _logger.LogInformation($"MQTT broker send interval setting (s): {Settings.Singleton.DefaultSendIntervalSeconds}");
                         _logger.LogInformation($"MQTT broker message size setting (bytes): {Settings.Singleton.MQTTMessageSize}");
-                        _logger.LogInformation("==========================================================================");
                     }
 
                     _lastNumMessagesSent = Info.SentMessages;
