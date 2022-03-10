@@ -34,7 +34,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
   "EndpointUrl": "string",
   "OpcNodes": [
    {
-    "Id": "string",
+    "Id": "string", // Expanded Node Id
     "OpcSamplingInterval": 1000,
     "OpcPublishingInterval": 1000,
     "HeartbeatInterval": 0,
@@ -69,7 +69,7 @@ Payload:
  "EndpointUrl": "string",
  "OpcNodes": [
   {
-   "Id": "string",
+   "Id": "string", // Expanded Node Id
    "OpcSamplingInterval": 1000,
    "OpcPublishingInterval": 1000,
    "HeartbeatInterval": 0,
@@ -108,13 +108,13 @@ Payload:
 {
  "EndpointUrl": "string",
  "OpcNodes": [
-   {
-	"Id": "string"
-   }
+  {
+   "Id": "string" // Expanded Node Id
+  }
  ],
  "OpcEvents": [
   {
-   "Id": "string"
+   "ExpandedNodeId": "string"
    ]
   }
  ]
@@ -155,7 +155,7 @@ Response:
   "EndpointUrl": "string",
   "OpcNodes": [
    {
-    "Id": "string",
+    "Id": "string", // Expanded Node Id
     "OpcSamplingInterval": 1000,
     "OpcPublishingInterval": 1000,
     "HeartbeatInterval": 0,
