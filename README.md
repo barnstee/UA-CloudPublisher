@@ -21,6 +21,20 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * Support for storing configuration files locally or in the cloud
 * Support for Store & Forward during Internet connection outages
 
+## Usage
+Docker containers are automatically built and published. Simply run the UA-MQTT-Publisher on a Docker-enabled computer via:
+
+` docker run -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
+
+And then point your browser to <http://yourIPAddress>.
+
+### Persisting Settings
+UA-MQTT-Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:
+
+` docker run -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
+
+And then point your browser again to <http://yourIPAddress>.
+
 ## Optional Environment Variables
 * LOG_FILE_PATH - path to the log file to use. Default is ./Logs/UA-MQTT-Publisher.log.
 * STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (within the container).
