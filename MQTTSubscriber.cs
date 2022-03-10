@@ -57,10 +57,10 @@ namespace UA.MQTT.Publisher.Configuration
                     TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
                     int week = 60 * 60 * 24 * 7;
                     string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
-                    string stringToSign = HttpUtility.UrlEncode(Settings.Singleton.MQTTBrokerName + "/devices/" + Settings.Singleton.MQTTClientName) + "\n" + expiry;
+                    string stringToSign = HttpUtility.UrlEncode(Settings.Singleton.MQTTBrokerUrl + "/devices/" + Settings.Singleton.MQTTClientName) + "\n" + expiry;
                     HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
                     string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Singleton.MQTTBrokerName + "/devices/" + Settings.Singleton.MQTTClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
+                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Singleton.MQTTBrokerUrl + "/devices/" + Settings.Singleton.MQTTClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
                 }
 
                 // create MQTT client
@@ -69,7 +69,7 @@ namespace UA.MQTT.Publisher.Configuration
                 var clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(opt => opt.NoDelay = true)
                     .WithClientId(Settings.Singleton.MQTTClientName)
-                    .WithTcpServer(Settings.Singleton.MQTTBrokerName, Settings.Singleton.UseTLS? 8883 : 1883)
+                    .WithTcpServer(Settings.Singleton.MQTTBrokerUrl, (int?)Settings.Singleton.MQTTBrokerPort)
                     .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Singleton.UseTLS })
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                     .WithCommunicationTimeout(TimeSpan.FromSeconds(10))

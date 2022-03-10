@@ -91,7 +91,9 @@ namespace UA.MQTT.Publisher
 
         public string MQTTClientName { get; set; }
 
-        public string MQTTBrokerName { get; set; }
+        public string MQTTBrokerUrl { get; set; }
+
+        public uint MQTTBrokerPort { get; set; } = 8883;
 
         public string MQTTUsername { get; set; }
 

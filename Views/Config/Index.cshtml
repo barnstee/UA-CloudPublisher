@@ -15,8 +15,12 @@
         @Html.TextBox("MQTTClientName", @Model.MQTTClientName, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Broker Name (<b>required</b>, for Azure IoT Hub, this is the Azure IoT Hub Hostname)<br />
-        @Html.TextBox("MQTTBrokerName", @Model.MQTTBrokerName, new { style = "width:100%;" })<br />
+        MQTT Broker URL (<b>required</b>, for Azure IoT Hub, this is the Azure IoT Hub Hostname)<br />
+        @Html.TextBox("MQTTBrokerUrl", @Model.MQTTBrokerUrl, new { style = "width:100%;" })<br />
+    </p>
+    <p>
+        MQTT Broker Port (<b>required</b>, for Azure IoT Hub, this is 8883)<br />
+        @Html.TextBox("MQTTBrokerPort", @Model.MQTTBrokerPort, new { style = "width:100%;" })<br />
     </p>
     <p>
         MQTT Username (<b>required</b>, for Azure IoT Hub, this is [BrokerName]/[ClientName]/?api-version=2018-06-30)<br />
@@ -59,7 +63,7 @@
         @Html.CheckBox("CreateMQTTSASToken", @Model.CreateMQTTSASToken)<br />
     </p>
      <p>
-        Use TLS with MQTT<br />
+        Use TLS with MQTT (when switching off TLS, you will most likely also need to update the MQTT Broker Port)<br />
         @Html.CheckBox("UseTLS", @Model.UseTLS)<br />
     </p>
     <p>
