@@ -10,12 +10,16 @@
 
 
 <div class="container-fluid browser_connect_container">
+    <p>  
+        <div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="lblStatus">  
+        </div>
+    </p>
     <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="LoadPersisted">
         <br/>
         <p>
-            <h3>Load published nodes previously published</h3>
+            <h3>Load previously published nodes</h3>
         </p>
-        UA-MQTT-Publisher automatically stores the configuration of all successfully publishes nodes, either locally or in the cloud.<br />
+        If configured, UA-MQTT-Publisher stores its settings and the configuration of all publishes nodes in the cloud.<br />
         <br />
         <p>
             <input class="btn btn-primary" type="submit" value="Load">
@@ -49,13 +53,79 @@
         <ul>
             @foreach (var node in Model) 
             {
-                <li>
+                @if (node.StartsWith("Error"))
+                {
                     @node
-                    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
-                        <input name="@node" class="btn btn-primary" type="submit" value="Delete">
-                    </form>
-                    <hr />
-                </li>
+                }
+                else
+                {
+                    <li>
+                        @node
+                        <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
+                            <input name="@node" class="btn btn-primary" type="submit" value="Delete">
+                        </form>
+                        <hr />
+                    </li>
+                }
             }
         </ul>
 </div>
+
+@section scripts {
+      <script>
+
+            $(async function ()
+            {
+                // connection to SignalR hub
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/statusHub")
+                    .configureLogging(signalR.LogLevel.Information)
+                    .build();
+
+                // add dataset function
+                connection.on("addDatasetToChart", function(name)
+                {
+                    // do nothing
+                });
+
+                // add data function
+                connection.on("addDataToChart", function(timestamp, values)
+                {
+                   // do nothing
+                });
+
+                // add table function
+                connection.on("addTable", function(html)
+                {
+                    // do nothing
+                });
+
+                // update progress function
+                connection.on("updateProgress", function(percentage)
+                {
+                    var lblStatus = document.getElementById("lblStatus");  
+                    lblStatus.style.width = percentage + "%";  
+                    $("#lblStatus").text(percentage + '% Complete');  
+                });
+
+                // start/continue the connection
+                async function establishSignalRConnection()
+                {
+                    try
+                    {
+                        await connection.start();
+                        console.log("Connection to SignalR Status Hub successfull established.");
+                    } catch (err) {
+                        console.warn("Error creating SignalR connection, retry in 5 seconds %o", err);
+                        setTimeout(async () => { await establishSignalRConnection(); }, 5000);
+                    }
+                };
+
+                connection.onclose(async () => { await establishSignalRConnection(); });
+
+                // start the connection
+                await establishSignalRConnection();
+            });
+
+        </script>
+}

@@ -13,7 +13,7 @@ A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC
 * OPC UA Complex Types publishing
 * OPC UA metadata publishing
 * UI for displaying the list of publishes nodes
-* UI for diaplaying diagnostic infomration
+* UI for diaplaying diagnostic information
 * UI for configuration
 * Publishing from the cloud via a connected MQTT broker
 * Publishing on data changes or on regular intervals

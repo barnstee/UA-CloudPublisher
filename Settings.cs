@@ -29,7 +29,7 @@ namespace UA.MQTT.Publisher
                     {
                         if (_instance == null)
                         {
-                            _instance = Load().GetAwaiter().GetResult();
+                            _instance = LoadAsync().GetAwaiter().GetResult();
                         }
                     }
                 }
@@ -45,7 +45,7 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        private static async Task<Settings> Load()
+        private static async Task<Settings> LoadAsync()
         {
             ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
             ILogger logger = loggerFactory.CreateLogger("Settings");

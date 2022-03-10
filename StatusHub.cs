@@ -24,7 +24,7 @@ namespace UA.MQTT.Publisher
         {
             _hubContext = hubContext;
 
-            _ = Task.Run(() => SendMessageViaSignalR());
+            _ = Task.Run(() => UpdateClientTableAndChartTaskAsync());
         }
 
         public void AddOrUpdateTableEntry(string key, string value, bool addToChart = false)
@@ -47,7 +47,12 @@ namespace UA.MQTT.Publisher
             ChartEntries.Add(timeAxisEntry, valueAxisEntries);
         }
 
-        private async Task SendMessageViaSignalR()
+        public async Task UpdateClientProgressAsync(int percentage)
+        {
+            await _hubContext.Clients.All.SendAsync("updateProgress", percentage).ConfigureAwait(false);
+        }
+
+        private async Task UpdateClientTableAndChartTaskAsync()
         {
             while (true)
             {
@@ -55,21 +60,25 @@ namespace UA.MQTT.Publisher
 
                 lock (TableEntries)
                 {
-                    foreach (KeyValuePair<string, Tuple<string, bool>> entry in TableEntries)
+                    if (TableEntries.Count > 0)
                     {
-                        if (entry.Value.Item2 == true)
+                        foreach (KeyValuePair<string, Tuple<string, bool>> entry in TableEntries)
                         {
-                            _hubContext.Clients.All.SendAsync("addDatasetToChart", entry.Key).GetAwaiter().GetResult();
+                            if (entry.Value.Item2 == true)
+                            {
+                                _hubContext.Clients.All.SendAsync("addDatasetToChart", entry.Key).GetAwaiter().GetResult();
+                            }
                         }
-                    }
 
-                    foreach (KeyValuePair<string, string[]> entry in ChartEntries)
-                    {
-                        _hubContext.Clients.All.SendAsync("addDataToChart", entry.Key, entry.Value).GetAwaiter().GetResult();
-                    }
-                    ChartEntries.Clear();
+                        foreach (KeyValuePair<string, string[]> entry in ChartEntries)
+                        {
+                            _hubContext.Clients.All.SendAsync("addDataToChart", entry.Key, entry.Value).GetAwaiter().GetResult();
+                        }
 
-                    CreateTable();
+                        ChartEntries.Clear();
+
+                        CreateTable();
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 
 namespace UA.MQTT.Publisher.Configuration
 {
+    using Microsoft.AspNetCore.SignalR;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua;
@@ -14,6 +15,7 @@ namespace UA.MQTT.Publisher.Configuration
     {
         private readonly ILogger _logger;
         private readonly IUAClient _uaClient;
+        private readonly StatusHubClient _hubClient;
 
         public PublishedNodesFileHandler(
             ILoggerFactory loggerFactory,
@@ -21,6 +23,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             _logger = loggerFactory.CreateLogger("PublishedNodesFileHandler");
             _uaClient = client;
+            _hubClient = new StatusHubClient((IHubContext<StatusHub>)Program.AppHost.Services.GetService(typeof(IHubContext<StatusHub>)));
         }
 
         public void ParseFile(byte[] content)
@@ -31,6 +34,23 @@ namespace UA.MQTT.Publisher.Configuration
             if (_configurationFileEntries != null)
             {
                 _logger.LogInformation($"Loaded {_configurationFileEntries.Count} config file entry/entries.");
+
+                // figure out how many nodes there are in total
+                int totalNodeCount = 0;
+                foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
+                {
+                    if (configFileEntry.OpcEvents != null) 
+                    {
+                        totalNodeCount += configFileEntry.OpcEvents.Count;
+                    }
+
+                    if (configFileEntry.OpcNodes != null)
+                    {
+                        totalNodeCount += configFileEntry.OpcNodes.Count;
+                    }
+                }
+
+                int currentpublishedNodeCount = 0;
                 foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
                 {
                     if (configFileEntry.OpcAuthenticationMode == UserAuthModeEnum.UsernamePassword)
@@ -59,6 +79,9 @@ namespace UA.MQTT.Publisher.Configuration
                             publishingInfo.Filter.AddRange(opcEvent.Filter);
 
                             _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+
+                            currentpublishedNodeCount++;
+                            _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
                         }
                     }
 
@@ -81,6 +104,9 @@ namespace UA.MQTT.Publisher.Configuration
                             };
 
                             _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+
+                            currentpublishedNodeCount++;
+                            _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
                         }
                     }
                 }

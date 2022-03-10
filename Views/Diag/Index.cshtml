@@ -78,8 +78,9 @@
 
         var myChart = new Chart(document.getElementById('myChart'), config);
 
-        $(async function () {
-            //connection to SignalR hub
+        $(async function ()
+        {
+            // connection to SignalR hub
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl("/statusHub")
                 .configureLogging(signalR.LogLevel.Information)
@@ -142,9 +143,11 @@
                 $('#table').html(html);
             });
 
-            // Start/continue the connection
-            async function establishSignalRConnection() {
-                try {
+            // start/continue the connection
+            async function establishSignalRConnection()
+            {
+                try
+                {
                     await connection.start();
                     console.log("Connection to SignalR Status Hub successfull established.");
                 } catch (err) {

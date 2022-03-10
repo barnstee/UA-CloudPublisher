@@ -581,7 +581,7 @@ namespace UA.MQTT.Publisher
             Session session = FindSession(nodeToUnpublish.EndpointUrl);
             if (session == null)
             {
-                throw new ArgumentException("Session for endpoint {endpointUrl} no longer exists!", nodeToUnpublish.EndpointUrl);
+                throw new ArgumentException($"Session for endpoint {nodeToUnpublish.EndpointUrl} no longer exists!");
             }
 
             // generate the resolved NodeId we need for unpublishing

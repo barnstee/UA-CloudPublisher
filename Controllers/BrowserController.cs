@@ -46,7 +46,7 @@ namespace UA.MQTT.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> Connect(string endpointUrl)
+        public async Task<ActionResult> ConnectAsync(string endpointUrl)
         {
             SessionModel sessionModel = new SessionModel { EndpointUrl = endpointUrl };
 
@@ -82,7 +82,7 @@ namespace UA.MQTT.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GetRootNode()
+        public async Task<ActionResult> GetRootNodeAsync()
         {
             ReferenceDescriptionCollection references;
             byte[] continuationPoint;
@@ -118,7 +118,7 @@ namespace UA.MQTT.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GetChildren(string jstreeNode)
+        public async Task<ActionResult> GetChildrenAsync(string jstreeNode)
         {
             ReferenceDescriptionCollection references = null;
             byte[] continuationPoint;
@@ -331,7 +331,7 @@ namespace UA.MQTT.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> VariableRead(string jstreeNode)
+        public async Task<ActionResult> VariableReadAsync(string jstreeNode)
         {
             try
             { 
@@ -382,7 +382,7 @@ namespace UA.MQTT.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> VariablePublish(string jstreeNode)
+        public async Task<ActionResult> VariablePublishAsync(string jstreeNode)
         {
             try
             {

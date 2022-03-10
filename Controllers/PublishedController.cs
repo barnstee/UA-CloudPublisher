@@ -65,7 +65,7 @@ namespace UA.MQTT.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                return View("Index", new string[] { ex.Message });
+                return View("Index", new string[] { "Error: " + ex.Message });
             }
         }
 
@@ -80,7 +80,7 @@ namespace UA.MQTT.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Could not generate publishednodes.json file");
-                return View("Index", new string[] { ex.Message });
+                return View("Index", new string[] { "Error:" + ex.Message });
             }
         }
 
@@ -108,7 +108,7 @@ namespace UA.MQTT.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Persistency file not loaded!");
-                return View("Index", new string[] { ex.Message });
+                return View("Index", new string[] { "Error: " + ex.Message });
             }
         }
 
@@ -137,7 +137,7 @@ namespace UA.MQTT.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to unpublish node!");
-                return View("Index", new string[] { ex.Message });
+                return View("Index", new string[] { "Error: " + ex.Message });
             }
         }
 
