@@ -15,7 +15,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * OPC UA Complex Types publishing
 * OPC UA metadata publishing
 * UI for displaying the list of publishes nodes
-* UI for diaplaying diagnostic information
+* UI for displaying diagnostic information
 * UI for configuration
 * Publishing from the cloud via a connected MQTT broker
 * Publishing on data changes or on regular intervals
@@ -52,22 +52,22 @@ And then point your browser again to <http://yourIPAddress>.
 ```json
 [
  {
-  "EndpointUrl": "string",
+  "EndpointUrl": "string", // e.g. "opc.tcp://opcua.example.com/"
   "OpcNodes": [
    {
     "Id": "string", // Expanded Node Id
     "OpcSamplingInterval": 1000,
     "OpcPublishingInterval": 1000,
-    "HeartbeatInterval": 0,
+    "HeartbeatInterval": 0,  // e.g. set if you want to republish quasi static values
     "SkipFirst": false
    }
   ],
   "OpcEvents": [
    {
-    "ExpandedNodeId": "string",
+    "ExpandedNodeId": "string", // e.g. "nsu=http://example.com/Instance/;i=56643"
     "Filter": [
      {
-      "OfType": "string" // Expanded node ID of event type to filter by
+      "OfType": "string" // Expanded node ID of event type to filter by e.g. "nsu=http://opcfoundation.org/UA/MachineTool/;i=39"
      }
     ]
    }
@@ -139,7 +139,6 @@ Payload:
  "OpcEvents": [
   {
    "ExpandedNodeId": "string"
-   ]
   }
  ]
 }
