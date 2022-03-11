@@ -36,7 +36,7 @@ UA-MQTT-Publisher settings and published nodes configuration can be persisted in
 And then point your browser again to <http://yourIPAddress>.
 
 ## Optional Environment Variables
-* LOG_FILE_PATH - path to the log file to use. Default is ./Logs/UA-MQTT-Publisher.log.
+* LOG_FILE_PATH - path to the log file to use. Default is /app/Logs/UA-MQTT-Publisher.log (in the Docker container).
 * STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (within the container).
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.
 
