@@ -58,7 +58,7 @@ And then point your browser again to <http://yourIPAddress>.
     "Id": "string", // Expanded Node Id
     "OpcSamplingInterval": 1000,
     "OpcPublishingInterval": 1000,
-    "HeartbeatInterval": 0,  // e.g. set if you want to republish quasi static values
+    "HeartbeatInterval": 0,  // set to a value > 0 if you want to publish static values on regular intervals
     "SkipFirst": false
    }
   ],
