@@ -1,5 +1,5 @@
 # UA-MQTT-Publisher
-A cross-platform OPC UA cloud publisher reference impelementation leveraging OPC UA PubSub over MQTT, running in a Docker container or on Kubernetes and comes with an easy-to-use web user interface.
+A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT. It runs in a Docker container on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
 
 ## Features
 * Cross-plattform - Runs on Windows and Linux
