@@ -1,7 +1,9 @@
 # UA-MQTT-Publisher
+
 A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT. It runs in a Docker container on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
 
 ## Features
+
 * Cross-plattform - Runs on Windows and Linux
 * Runs inside a Docker container
 * UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server
@@ -22,26 +24,31 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Support for Store & Forward during Internet connection outages
 
 ## Usage
+
 Docker containers are automatically built and published. Simply run the UA-MQTT-Publisher on a Docker-enabled computer via:
 
-` docker run -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
+`docker run -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
 
 And then point your browser to <http://yourIPAddress>.
 
 ### Persisting Settings
+
 UA-MQTT-Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:
 
-` docker run -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
+`docker run -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
 
 And then point your browser again to <http://yourIPAddress>.
 
 ## Optional Environment Variables
+
 * LOG_FILE_PATH - path to the log file to use. Default is /app/Logs/UA-MQTT-Publisher.log (in the Docker container).
 * STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (under /app/settings/ within the container).
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.
 
 ## PublishedNodes.json File Format
+
 (All intervals must be specified in milliseconds)
+
 ```json
 [
  {
@@ -78,6 +85,7 @@ And then point your browser again to <http://yourIPAddress>.
 
 Payload:
 (All intervals must be specified in milliseconds)
+
 ```json
 {
  "EndpointUrl": "string",
@@ -107,6 +115,7 @@ Payload:
 ```
 
 Response:
+
 ```json
 {
  [
@@ -118,6 +127,7 @@ Response:
 ### UnpublishNodes
 
 Payload:
+
 ```json
 {
  "EndpointUrl": "string",
@@ -136,6 +146,7 @@ Payload:
 ```
 
 Response:
+
 ```json
 {
  [
@@ -149,6 +160,7 @@ Response:
 Payload: None
 
 Response:
+
 ```json
 {
  [
@@ -163,6 +175,7 @@ Payload: None
 
 Response:
 (All intervals are in milliseconds)
+
 ```json
 [
  {
@@ -196,6 +209,7 @@ Response:
 Payload: None
 
 Response:
+
 ```json
 {
  "DiagnosticInfos": [
