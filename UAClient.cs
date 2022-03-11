@@ -732,7 +732,10 @@ namespace UA.MQTT.Publisher
                             }
                         }
 
-                        publisherConfigurationFileEntries.Add(publisherConfigurationFileEntry);
+                        if ((publisherConfigurationFileEntry.OpcEvents.Count > 0) || (publisherConfigurationFileEntry.OpcNodes.Count > 0))
+                        {
+                            publisherConfigurationFileEntries.Add(publisherConfigurationFileEntry);
+                        }
                     }
                 }
             }
