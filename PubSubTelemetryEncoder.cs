@@ -123,7 +123,7 @@ namespace UA.MQTT.Publisher
 
                 if ((messageData.EventValues == null) || (messageData.EventValues.Count == 0))
                 {
-                    encoder.WriteDateTime("Timestamp", messageData.Value.SourceTimestamp);
+                    encoder.WriteDateTime("Timestamp", messageData.Value.ServerTimestamp);
                 }
 
                 encoder.PushStructure("Payload");
@@ -133,8 +133,8 @@ namespace UA.MQTT.Publisher
                     // process events
                     foreach (EventValueModel eventValue in messageData.EventValues)
                     {
-                        // filter server timestamp before encoding
-                        eventValue.Value.ServerTimestamp = DateTime.MinValue;
+                        // filter source timestamp before encoding
+                        eventValue.Value.SourceTimestamp = DateTime.MinValue;
 
                         if (Settings.Singleton.ReversiblePubSubEncoding)
                         {
@@ -148,7 +148,7 @@ namespace UA.MQTT.Publisher
                 }
                 else
                 {
-                    // filter timestamps before encoding as we already specified it
+                    // filter timestamps before encoding as we already encoded the server timestamp above
                     messageData.Value.SourceTimestamp = DateTime.MinValue;
                     messageData.Value.ServerTimestamp = DateTime.MinValue;
 
