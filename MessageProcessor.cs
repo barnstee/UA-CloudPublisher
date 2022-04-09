@@ -138,7 +138,7 @@ namespace UA.MQTT.Publisher
                         // batch message instead
                         string jsonMessage = JsonEncodeMessage(messageData);
                         int jsonMessageSize = Encoding.UTF8.GetByteCount(jsonMessage);
-                        uint hubMessageBufferSize = Settings.Singleton.MQTTMessageSize > 0 ? Settings.Singleton.MQTTMessageSize : Settings.HubMessageSizeMax;
+                        uint hubMessageBufferSize = Settings.Singleton.BrokerMessageSize > 0 ? Settings.Singleton.BrokerMessageSize : Settings.HubMessageSizeMax;
                         int encodedMessagePropertiesLengthMax = 512;
 
                         // reduce the message payload by the space occupied by the message properties
@@ -180,12 +180,12 @@ namespace UA.MQTT.Publisher
 
         private void Init()
         {
-            _logger.LogInformation($"Message processing configured with a send interval of {Settings.Singleton.DefaultSendIntervalSeconds} sec and a message buffer size of {Settings.Singleton.MQTTMessageSize} bytes.");
+            _logger.LogInformation($"Message processing configured with a send interval of {Settings.Singleton.DefaultSendIntervalSeconds} sec and a message buffer size of {Settings.Singleton.BrokerMessageSize} bytes.");
 
             // create the queue for monitored items
             _monitoredItemsDataQueue = new BlockingCollection<MessageProcessorModel>((int)Settings.Singleton.InternalQueueCapacity);
 
-            _singleMessageSend = Settings.Singleton.DefaultSendIntervalSeconds == 0 && Settings.Singleton.MQTTMessageSize == 0;
+            _singleMessageSend = Settings.Singleton.DefaultSendIntervalSeconds == 0 && Settings.Singleton.BrokerMessageSize == 0;
 
             InitBatch();
 

@@ -117,7 +117,7 @@ namespace UA.MQTT.Publisher
                     _hubClient.AddOrUpdateTableEntry("Number of OPC UA notifications encoded", Info.NumberOfEvents.ToString());
                     _hubClient.AddOrUpdateTableEntry("Current working set in MB", (Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)).ToString());
                     _hubClient.AddOrUpdateTableEntry("MQTT broker send interval setting (s)", Settings.Singleton.DefaultSendIntervalSeconds.ToString());
-                    _hubClient.AddOrUpdateTableEntry("MQTT broker message size setting (bytes)", Settings.Singleton.MQTTMessageSize.ToString());
+                    _hubClient.AddOrUpdateTableEntry("MQTT broker message size setting (bytes)", Settings.Singleton.BrokerMessageSize.ToString());
                     
                     chartValues.Add(Info.AverageMessageLatency.ToString());
                     chartValues.Add(messagesPerSecond.ToString());
@@ -149,7 +149,7 @@ namespace UA.MQTT.Publisher
                         _logger.LogInformation($"Number of OPC UA notifications encoded: {Info.NumberOfEvents}");
                         _logger.LogInformation($"Current working set in MB: {Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)}");
                         _logger.LogInformation($"MQTT broker send interval setting (s): {Settings.Singleton.DefaultSendIntervalSeconds}");
-                        _logger.LogInformation($"MQTT broker message size setting (bytes): {Settings.Singleton.MQTTMessageSize}");
+                        _logger.LogInformation($"MQTT broker message size setting (bytes): {Settings.Singleton.BrokerMessageSize}");
                     }
 
                     _lastNumMessagesSent = Info.SentMessages;

@@ -89,31 +89,31 @@ namespace UA.MQTT.Publisher
             }
         }
 
-        public string MQTTClientName { get; set; }
+        public string BrokerClientName { get; set; }
 
-        public string MQTTBrokerUrl { get; set; }
+        public string BrokerUrl { get; set; }
 
-        public uint MQTTBrokerPort { get; set; } = 8883;
+        public uint BrokerPort { get; set; } = 8883;
 
-        public string MQTTUsername { get; set; }
+        public string BrokerUsername { get; set; }
 
-        public string MQTTPassword { get; set; }
+        public string BrokerPassword { get; set; }
 
-        public string MQTTMessageTopic { get; set; }
+        public string BrokerMessageTopic { get; set; }
 
-        public string MQTTMetadataTopic { get; set; }
+        public string BrokerMetadataTopic { get; set; }
 
         public bool SendUAMetadata { get; set; } = false;
 
         public uint MetadataSendInterval { get; set; } = 10; // seconds
         
-        public string MQTTCommandTopic { get; set; }
+        public string BrokerCommandTopic { get; set; }
 
-        public string MQTTResponseTopic { get; set; }
+        public string BrokerResponseTopic { get; set; }
 
-        public uint MQTTMessageSize { get; set; } = HubMessageSizeMax;
+        public uint BrokerMessageSize { get; set; } = HubMessageSizeMax;
                 
-        public bool CreateMQTTSASToken { get; set; } = true;
+        public bool CreateBrokerSASToken { get; set; } = true;
 
         public bool UseTLS { get; set; } = true;
 

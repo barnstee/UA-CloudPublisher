@@ -46,15 +46,16 @@ namespace UA.MQTT.Publisher
             // add our singletons
             services.AddSingleton<IUAApplication, UAApplication>();
             services.AddSingleton<IUAClient, UAClient>();
-            services.AddSingleton<IMQTTSubscriber, MQTTSubscriber>();
+            services.AddSingleton<IBrokerClient, MQTTClient>();
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
+            services.AddSingleton<ICommandProcessor, CommandProcessor>();
             services.AddSingleton<OpcSessionHelper>();
 
             // add our message processing engine
             services.AddSingleton<IMessageProcessor, MessageProcessor>();
             services.AddSingleton<IMessageSource, MonitoredItemNotification>();
             services.AddSingleton<IMessageEncoder, PubSubTelemetryEncoder>();
-            services.AddSingleton<IMessagePublisher, MQTTPublisher>();
+            services.AddSingleton<IMessagePublisher, StoreForwardPublisher>();
 
             // setup file storage
             switch (Configuration["STORAGE_TYPE"])
@@ -70,7 +71,7 @@ namespace UA.MQTT.Publisher
                               ILoggerFactory loggerFactory,
                               IUAApplication uaApp,
                               IMessageProcessor engine,
-                              IMQTTSubscriber subscriber,
+                              IBrokerClient subscriber,
                               IPublishedNodesFileHandler publishedNodesFileHandler,
                               IFileStorage storage)
         {

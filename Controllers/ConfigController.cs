@@ -3,13 +3,12 @@ namespace UA.MQTT.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Mvc;
     using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
 
     public class ConfigController : Controller
     {
-        private readonly IMQTTSubscriber _subscriber;
+        private readonly IBrokerClient _subscriber;
 
-        public ConfigController(IMQTTSubscriber subscriber)
+        public ConfigController(IBrokerClient subscriber)
         {
             _subscriber = subscriber;
         }

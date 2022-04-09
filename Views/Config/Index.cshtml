@@ -11,32 +11,32 @@
 <form action="/Config/Update" method="post">
     <br />
     <p>
-        MQTT Client Name (<b>required</b>, for Azure IoT Hub, this is the Device ID)<br />
-        @Html.TextBox("MQTTClientName", @Model.MQTTClientName, new { style = "width:100%;" })<br />
+        Broker Client Name (<b>required</b>)<br />
+        @Html.TextBox("BrokerClientName", @Model.BrokerClientName, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Broker URL (<b>required</b>, for Azure IoT Hub, this is the Azure IoT Hub Hostname)<br />
-        @Html.TextBox("MQTTBrokerUrl", @Model.MQTTBrokerUrl, new { style = "width:100%;" })<br />
+        Broker URL (<b>required</b>)<br />
+        @Html.TextBox("BrokerUrl", @Model.BrokerUrl, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Broker Port (<b>required</b>, for Azure IoT Hub, this is 8883)<br />
-        @Html.TextBox("MQTTBrokerPort", @Model.MQTTBrokerPort, new { style = "width:100%;" })<br />
+        Broker Port (<b>required</b>)<br />
+        @Html.TextBox("BrokerPort", @Model.BrokerPort, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Username (<b>required</b>, for Azure IoT Hub, this is [BrokerName]/[ClientName]/?api-version=2018-06-30)<br />
-        @Html.TextBox("MQTTUsername", @Model.MQTTUsername, new { style = "width:100%;" })<br />
+        Broker Username (<b>required</b>)<br />
+        @Html.TextBox("BrokerUsername", @Model.BrokerUsername, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Password (<b>required</b>, for Azure IoT Hub, this is the Device's Primary Key)<br />
-        @Html.Password("MQTTPassword", @Model.MQTTPassword, new { style = "width:100%;" })<br />
+        Broker Password (<b>required</b>)<br />
+        @Html.Password("BrokerPassword", @Model.BrokerPassword, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Message Topic (<b>required</b>, for Azure IoT Hub, this is devices/[ClientName]/messages/events/)<br />
-        @Html.TextBox("MQTTMessageTopic", @Model.MQTTMessageTopic, new { style = "width:100%;" })<br />
+        Broker Message Topic (<b>required</b>)<br />
+        @Html.TextBox("BrokerMessageTopic", @Model.BrokerMessageTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Metadata Topic (for Azure IoT Hub, this is also devices/[ClientName]/messages/events/)<br />
-        @Html.TextBox("MQTTMetadataTopic", @Model.MQTTMetadataTopic, new { style = "width:100%;" })<br />
+        Broker Metadata Topic<br />
+        @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;" })<br />
     </p>
      <p>
         Send OPC UA Metadata<br />
@@ -47,23 +47,23 @@
         @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { style = "width:100%;" })<br />
     </p>
      <p>
-        MQTT Command Topic (<b>required</b>, for Azure IoT Hub, this is $iothub/methods/POST/#)<br />
-        @Html.TextBox("MQTTCommandTopic", @Model.MQTTCommandTopic, new { style = "width:100%;" })<br />
+        Broker Command Topic (<b>required</b>)<br />
+        @Html.TextBox("BrokerCommandTopic", @Model.BrokerCommandTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Command Response Topic (<b>required</b>, for Azure IoT Hub, this is $iothub/methods/res/{status}/?$rid={request id})<br />
-        @Html.TextBox("MQTTResponseTopic", @Model.MQTTResponseTopic, new { style = "width:100%;" })<br />
+        Broker Command Response Topic (<b>required</b>)<br />
+        @Html.TextBox("BrokerResponseTopic", @Model.BrokerResponseTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
-        MQTT Message Size<br />
-        @Html.TextBox("MQTTMessageSize", @Model.MQTTMessageSize, new { style = "width:100%;" })<br />
+        Broker Message Size<br />
+        @Html.TextBox("BrokerMessageSize", @Model.BrokerMessageSize, new { style = "width:100%;" })<br />
     </p>
     <p>
-        Create MQTT SAS Token<br />
-        @Html.CheckBox("CreateMQTTSASToken", @Model.CreateMQTTSASToken)<br />
+        Create Broker SAS Token<br />
+        @Html.CheckBox("CreateBrokerSASToken", @Model.CreateBrokerSASToken)<br />
     </p>
      <p>
-        Use TLS with MQTT (when switching off TLS, you will most likely also need to update the MQTT Broker Port)<br />
+        Use TLS with Broker (when switching off TLS, you will most likely also need to update the MQTT Broker Port)<br />
         @Html.CheckBox("UseTLS", @Model.UseTLS)<br />
     </p>
     <p>
