@@ -46,7 +46,16 @@ namespace UA.MQTT.Publisher
             // add our singletons
             services.AddSingleton<IUAApplication, UAApplication>();
             services.AddSingleton<IUAClient, UAClient>();
-            services.AddSingleton<IBrokerClient, MQTTClient>();
+            
+            if (!string.IsNullOrEmpty(Configuration["USE_KAFKA"]))
+            {
+                services.AddSingleton<IBrokerClient, KafkaClient>();
+            }
+            else
+            {
+                services.AddSingleton<IBrokerClient, MQTTClient>();
+            }
+
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
             services.AddSingleton<ICommandProcessor, CommandProcessor>();
             services.AddSingleton<OpcSessionHelper>();
