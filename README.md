@@ -81,7 +81,7 @@ And then point your browser again to <http://yourIPAddress>.
 ]
 ```
 
-## MQTT Sub-topics for Configuration from the Cloud
+## Sub-topics for Configuration from the Cloud
 
 ### PublishNodes
 
