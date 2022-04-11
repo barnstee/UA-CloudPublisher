@@ -70,7 +70,7 @@ namespace UA.MQTT.Publisher
 
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            if ( Settings.Singleton.DiagnosticsLoggingInterval == 0)
+            if ( Settings.Instance.DiagnosticsLoggingInterval == 0)
             {
                 // diagnostics are disabled
                 return;
@@ -90,16 +90,16 @@ namespace UA.MQTT.Publisher
 
                 try
                 {
-                    await Task.Delay((int)Settings.Singleton.DiagnosticsLoggingInterval * 100, cancellationToken).ConfigureAwait(false);
+                    await Task.Delay((int)Settings.Instance.DiagnosticsLoggingInterval * 100, cancellationToken).ConfigureAwait(false);
 
-                    float messagesPerSecond = ((float)(Info.SentMessages - _lastNumMessagesSent)) / Settings.Singleton.DiagnosticsLoggingInterval;
+                    float messagesPerSecond = ((float)(Info.SentMessages - _lastNumMessagesSent)) / Settings.Instance.DiagnosticsLoggingInterval;
                     List<string> chartValues = new List<string>();
 
                     _hubClient.AddOrUpdateTableEntry("Publisher Start Time", Info.PublisherStartTime.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA sessions", Info.NumberOfOpcSessionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA subscriptions", Info.NumberOfOpcSubscriptionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA monitored items", Info.NumberOfOpcMonitoredItemsMonitored.ToString());
-                    _hubClient.AddOrUpdateTableEntry("OPC UA monitored items queue capacity", Settings.Singleton.InternalQueueCapacity.ToString());
+                    _hubClient.AddOrUpdateTableEntry("OPC UA monitored items queue capacity", Settings.Instance.InternalQueueCapacity.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA monitored items queue current items", Info.MonitoredItemsQueueCount.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA monitored item notifications enqueued", Info.EnqueueCount.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA monitored item notifications enqueue failure", Info.EnqueueFailureCount.ToString());
@@ -116,8 +116,8 @@ namespace UA.MQTT.Publisher
                     _hubClient.AddOrUpdateTableEntry("Missed MQTT broker message send intervals", Info.MissedSendIntervalCount.ToString());
                     _hubClient.AddOrUpdateTableEntry("Number of OPC UA notifications encoded", Info.NumberOfEvents.ToString());
                     _hubClient.AddOrUpdateTableEntry("Current working set in MB", (Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)).ToString());
-                    _hubClient.AddOrUpdateTableEntry("MQTT broker send interval setting (s)", Settings.Singleton.DefaultSendIntervalSeconds.ToString());
-                    _hubClient.AddOrUpdateTableEntry("MQTT broker message size setting (bytes)", Settings.Singleton.BrokerMessageSize.ToString());
+                    _hubClient.AddOrUpdateTableEntry("MQTT broker send interval setting (s)", Settings.Instance.DefaultSendIntervalSeconds.ToString());
+                    _hubClient.AddOrUpdateTableEntry("MQTT broker message size setting (bytes)", Settings.Instance.BrokerMessageSize.ToString());
                     
                     chartValues.Add(Info.AverageMessageLatency.ToString());
                     chartValues.Add(messagesPerSecond.ToString());
@@ -131,7 +131,7 @@ namespace UA.MQTT.Publisher
                         _logger.LogInformation($"OPC UA sessions: {Info.NumberOfOpcSessionsConnected}");
                         _logger.LogInformation($"OPC UA subscriptions: {Info.NumberOfOpcSubscriptionsConnected}");
                         _logger.LogInformation($"OPC UA monitored items: {Info.NumberOfOpcMonitoredItemsMonitored}");
-                        _logger.LogInformation($"OPC UA monitored items queue capacity: {Settings.Singleton.InternalQueueCapacity}");
+                        _logger.LogInformation($"OPC UA monitored items queue capacity: {Settings.Instance.InternalQueueCapacity}");
                         _logger.LogInformation($"OPC UA monitored items queue current items: {Info.MonitoredItemsQueueCount}");
                         _logger.LogInformation($"OPC UA monitored item notifications enqueued: {Info.EnqueueCount}");
                         _logger.LogInformation($"OPC UA monitored item notifications enqueue failure: {Info.EnqueueFailureCount}");
@@ -148,8 +148,8 @@ namespace UA.MQTT.Publisher
                         _logger.LogInformation($"Missed MQTT broker message send intervals: {Info.MissedSendIntervalCount}");
                         _logger.LogInformation($"Number of OPC UA notifications encoded: {Info.NumberOfEvents}");
                         _logger.LogInformation($"Current working set in MB: {Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)}");
-                        _logger.LogInformation($"MQTT broker send interval setting (s): {Settings.Singleton.DefaultSendIntervalSeconds}");
-                        _logger.LogInformation($"MQTT broker message size setting (bytes): {Settings.Singleton.BrokerMessageSize}");
+                        _logger.LogInformation($"MQTT broker send interval setting (s): {Settings.Instance.DefaultSendIntervalSeconds}");
+                        _logger.LogInformation($"MQTT broker message size setting (bytes): {Settings.Instance.BrokerMessageSize}");
                     }
 
                     _lastNumMessagesSent = Info.SentMessages;

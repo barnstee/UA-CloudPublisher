@@ -127,7 +127,7 @@ namespace UA.MQTT.Publisher
             _ = Task.Run(() => engine.Run());
 
             // load our persistency file
-            if (Settings.Singleton.AutoLoadPersistedNodes)
+            if (Settings.Instance.AutoLoadPersistedNodes)
             {
                 try
                 {

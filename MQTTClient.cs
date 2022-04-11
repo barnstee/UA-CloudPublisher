@@ -48,17 +48,17 @@ namespace UA.MQTT.Publisher.Configuration
                 }
 
                 // create MQTT password
-                string password = Settings.Singleton.BrokerPassword;
-                if (Settings.Singleton.CreateBrokerSASToken)
+                string password = Settings.Instance.BrokerPassword;
+                if (Settings.Instance.CreateBrokerSASToken)
                 {
                     // create SAS token as password
                     TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
                     int week = 60 * 60 * 24 * 7;
                     string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
-                    string stringToSign = HttpUtility.UrlEncode(Settings.Singleton.BrokerUrl + "/devices/" + Settings.Singleton.BrokerClientName) + "\n" + expiry;
+                    string stringToSign = HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.BrokerClientName) + "\n" + expiry;
                     HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
                     string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Singleton.BrokerUrl + "/devices/" + Settings.Singleton.BrokerClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
+                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.BrokerClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
                 }
 
                 // create MQTT client
@@ -66,14 +66,14 @@ namespace UA.MQTT.Publisher.Configuration
                 _client.UseApplicationMessageReceivedHandler(msg => HandleMessageAsync(msg));
                 var clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(opt => opt.NoDelay = true)
-                    .WithClientId(Settings.Singleton.BrokerClientName)
-                    .WithTcpServer(Settings.Singleton.BrokerUrl, (int?)Settings.Singleton.BrokerPort)
-                    .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Singleton.UseTLS })
+                    .WithClientId(Settings.Instance.BrokerClientName)
+                    .WithTcpServer(Settings.Instance.BrokerUrl, (int?)Settings.Instance.BrokerPort)
+                    .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Instance.UseTLS })
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                     .WithCommunicationTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                     .WithCleanSession(true) // clear existing subscriptions 
-                    .WithCredentials(Settings.Singleton.BrokerUsername, password);
+                    .WithCredentials(Settings.Instance.BrokerUsername, password);
 
                 // setup disconnection handling
                 _client.UseDisconnectedHandler(disconnectArgs =>
@@ -100,7 +100,7 @@ namespace UA.MQTT.Publisher.Configuration
                     var subscribeResult = _client.SubscribeAsync(
                         new MqttTopicFilter
                         {
-                            Topic = Settings.Singleton.BrokerCommandTopic,
+                            Topic = Settings.Instance.BrokerCommandTopic,
                             QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
                         }).GetAwaiter().GetResult();
 
@@ -134,7 +134,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .WithTopic(Settings.Singleton.BrokerMessageTopic)
+                .WithTopic(Settings.Instance.BrokerMessageTopic)
                 .WithPayload(payload)
                 .Build();
 
@@ -145,7 +145,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                .WithTopic(Settings.Singleton.BrokerMetadataTopic)
+                .WithTopic(Settings.Instance.BrokerMetadataTopic)
                 .WithPayload(payload)
                 .Build();
 
@@ -154,7 +154,7 @@ namespace UA.MQTT.Publisher.Configuration
 
         private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)
         {
-            string responseTopic = Settings.Singleton.BrokerResponseTopic;
+            string responseTopic = Settings.Instance.BrokerResponseTopic;
 
             return new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
@@ -180,7 +180,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             _logger.LogInformation($"Received method call with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
 
-            string requestTopic = Settings.Singleton.BrokerCommandTopic;
+            string requestTopic = Settings.Instance.BrokerCommandTopic;
             string requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
 
             try

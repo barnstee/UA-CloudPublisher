@@ -44,10 +44,10 @@ namespace UA.MQTT.Publisher.Configuration
                 }
 
                 // read password
-                string password = Settings.Singleton.BrokerPassword;
+                string password = Settings.Instance.BrokerPassword;
 
                 // create Kafka client
-                var config = new ProducerConfig { BootstrapServers = Settings.Singleton.BrokerUrl + ":" + Settings.Singleton.BrokerPort };
+                var config = new ProducerConfig { BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort };
 
                 // If serializers are not specified, default serializers from
                 // `Confluent.Kafka.Serializers` will be automatically used where
@@ -59,7 +59,7 @@ namespace UA.MQTT.Publisher.Configuration
                 var conf = new ConsumerConfig
                 {
                     GroupId = "consumer-group",
-                    BootstrapServers = Settings.Singleton.BrokerUrl + ":" + Settings.Singleton.BrokerPort,
+                    BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
                     // Note: The AutoOffsetReset property determines the start offset in the event
                     // there are not yet any committed offsets for the consumer group for the
                     // topic/partitions of interest. By default, offsets are committed
@@ -70,7 +70,7 @@ namespace UA.MQTT.Publisher.Configuration
 
                 _consumer = new ConsumerBuilder<Ignore, string>(conf).Build();
 
-                _consumer.Subscribe(Settings.Singleton.BrokerCommandTopic);
+                _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
 
                 _timer = new Timer(HandleMessage, null, 1000, 1000);
 
@@ -87,7 +87,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             try
             {
-                _producer.ProduceAsync(Settings.Singleton.BrokerMessageTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
+                _producer.ProduceAsync(Settings.Instance.BrokerMessageTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
             }
             catch (ProduceException<Null, string> ex)
             {
@@ -100,7 +100,7 @@ namespace UA.MQTT.Publisher.Configuration
         {
             try
             {
-                _producer.ProduceAsync(Settings.Singleton.BrokerMetadataTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
+                _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
             }
             catch (ProduceException<Null, string> ex)
             {
@@ -118,7 +118,7 @@ namespace UA.MQTT.Publisher.Configuration
  
                 _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {result.Message.Value}");
 
-                string requestTopic = Settings.Singleton.BrokerCommandTopic;
+                string requestTopic = Settings.Instance.BrokerCommandTopic;
                 string requestID = result.Topic.Substring(result.Topic.IndexOf("?"));
 
                 string requestPayload = result.Message.Value;

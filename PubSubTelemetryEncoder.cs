@@ -20,7 +20,7 @@ namespace UA.MQTT.Publisher
         {
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
             // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
-            JsonEncoder encoder = new JsonEncoder(ServiceMessageContext.GlobalContext, Settings.Singleton.ReversiblePubSubEncoding);
+            JsonEncoder encoder = new JsonEncoder(ServiceMessageContext.GlobalContext, Settings.Instance.ReversiblePubSubEncoding);
 
             encoder.WriteString("MessageId", messageID.ToString());
             
@@ -33,7 +33,7 @@ namespace UA.MQTT.Publisher
                 encoder.WriteString("MessageType", "ua-data");
             }
 
-            encoder.WriteString("PublisherId", Settings.Singleton.PublisherName);
+            encoder.WriteString("PublisherId", Settings.Instance.PublisherName);
 
             if (!isMetaData)
             {
@@ -48,7 +48,7 @@ namespace UA.MQTT.Publisher
         {
             try
             {
-                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Singleton.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
 
                 ushort datasetWriterId = (ushort)(messageData.ApplicationUri.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode());
                 encoder.WriteUInt16("DataSetWriterId", datasetWriterId);
@@ -116,7 +116,7 @@ namespace UA.MQTT.Publisher
         {
             try
             {
-                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Singleton.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
 
                 hash = (ushort)(messageData.ApplicationUri.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode());
                 encoder.WriteUInt16("DataSetWriterId", hash);
@@ -136,7 +136,7 @@ namespace UA.MQTT.Publisher
                         // filter source timestamp before encoding
                         eventValue.Value.SourceTimestamp = DateTime.MinValue;
 
-                        if (Settings.Singleton.ReversiblePubSubEncoding)
+                        if (Settings.Instance.ReversiblePubSubEncoding)
                         {
                             encoder.WriteVariant(eventValue.Name, eventValue.Value.WrappedValue);
                         }
@@ -152,7 +152,7 @@ namespace UA.MQTT.Publisher
                     messageData.Value.SourceTimestamp = DateTime.MinValue;
                     messageData.Value.ServerTimestamp = DateTime.MinValue;
 
-                    if (Settings.Singleton.ReversiblePubSubEncoding)
+                    if (Settings.Instance.ReversiblePubSubEncoding)
                     {
                         encoder.WriteVariant(messageData.ExpandedNodeId, messageData.Value.WrappedValue);
                     }

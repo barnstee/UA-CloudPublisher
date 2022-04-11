@@ -15,7 +15,7 @@ namespace UA.MQTT.Publisher.Controllers
 
         public IActionResult Index()
         {
-            return View("Index", Settings.Singleton);
+            return View("Index", Settings.Instance);
         }
 
         [HttpPost]
@@ -23,14 +23,14 @@ namespace UA.MQTT.Publisher.Controllers
         {
             if (ModelState.IsValid)
             {
-                Settings.Singleton = settings;
-                Settings.Singleton.Save();
+                Settings.Instance = settings;
+                Settings.Instance.Save();
 
                 // reconnect to broker with new settings
                 _subscriber.Connect();
             }
 
-            return View("Index", Settings.Singleton);
+            return View("Index", Settings.Instance);
         }
     }
 }

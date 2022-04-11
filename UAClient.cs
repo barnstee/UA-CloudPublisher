@@ -417,7 +417,7 @@ namespace UA.MQTT.Publisher
             try
             {
                 // check if there is already a subscription with the same publishing interval, which can be used to monitor the node
-                int opcPublishingIntervalForNode = (nodeToPublish.OpcPublishingInterval == 0) ? (int)Settings.Singleton.DefaultOpcPublishingInterval : nodeToPublish.OpcPublishingInterval;
+                int opcPublishingIntervalForNode = (nodeToPublish.OpcPublishingInterval == 0) ? (int)Settings.Instance.DefaultOpcPublishingInterval : nodeToPublish.OpcPublishingInterval;
                 foreach (Subscription subscription in session.Subscriptions)
                 {
                     if (subscription.PublishingInterval == opcPublishingIntervalForNode)
@@ -483,7 +483,7 @@ namespace UA.MQTT.Publisher
                     }
                 }
 
-                int opcSamplingIntervalForNode = (nodeToPublish.OpcSamplingInterval == 0) ? (int)Settings.Singleton.DefaultOpcSamplingInterval : nodeToPublish.OpcSamplingInterval;
+                int opcSamplingIntervalForNode = (nodeToPublish.OpcSamplingInterval == 0) ? (int)Settings.Instance.DefaultOpcSamplingInterval : nodeToPublish.OpcSamplingInterval;
                 MonitoredItem newMonitoredItem = new MonitoredItem(opcSubscription.DefaultItem) {
                     StartNodeId = resolvedNodeId,
                     AttributeId = Attributes.Value,

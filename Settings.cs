@@ -19,7 +19,7 @@ namespace UA.MQTT.Publisher
         private static Settings _instance = null;
         private static object _instanceLock = new object();
 
-        public static Settings Singleton
+        public static Settings Instance
         {
             get
             {

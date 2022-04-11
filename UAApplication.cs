@@ -26,9 +26,9 @@ namespace UA.MQTT.Publisher
 
         public async Task CreateAsync(CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(Settings.Singleton.PublisherName))
+            if (string.IsNullOrEmpty(Settings.Instance.PublisherName))
             {
-                Settings.Singleton.PublisherName = "UA-MQTT-Publisher";
+                Settings.Instance.PublisherName = "UA-MQTT-Publisher";
             }
 
             try
@@ -83,15 +83,15 @@ namespace UA.MQTT.Publisher
             }
 
             _uaApplicationInstance = new ApplicationInstance {
-                ApplicationName = Settings.Singleton.PublisherName,
+                ApplicationName = Settings.Instance.PublisherName,
                 ApplicationType = ApplicationType.Client,
                 ConfigSectionName = "UA-MQTT-Publisher"
             };
 
             await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
-            _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Singleton.UAStackTraceMask;
+            _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Instance.UAStackTraceMask;
             Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
-            _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Singleton.UAStackTraceMask:X}");
+            _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Instance.UAStackTraceMask:X}");
 
             // check the application certificate.
             bool certOK = await _uaApplicationInstance.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
@@ -151,7 +151,7 @@ namespace UA.MQTT.Publisher
 
         private void OpcStackLoggingHandler(object sender, TraceEventArgs e)
         {
-            if ((e.TraceMask & Settings.Singleton.UAStackTraceMask) != 0)
+            if ((e.TraceMask & Settings.Instance.UAStackTraceMask) != 0)
             {
                 if (e.Arguments != null)
                 {
