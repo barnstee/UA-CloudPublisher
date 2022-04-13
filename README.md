@@ -36,7 +36,7 @@ And then point your browser to <http://yourIPAddress>.
 
 UA Cloud Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:
 
-`docker run -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/UACloudPublisher:main`
+`docker run -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 And then point your browser again to <http://yourIPAddress>.
 
