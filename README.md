@@ -28,7 +28,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 Docker containers are automatically built and published. Simply run the UA Cloud Publisher on a Docker-enabled computer via:
 
-`docker run -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
+`docker run -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 And then point your browser to <http://yourIPAddress>.
 
