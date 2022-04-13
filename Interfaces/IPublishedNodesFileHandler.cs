@@ -1,8 +1,6 @@
 ﻿
-namespace UA.MQTT.Publisher.Interfaces
+namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
-    using System.Security.Cryptography.X509Certificates;
-
     public interface IPublishedNodesFileHandler
     {
         void ParseFile(byte[] content);

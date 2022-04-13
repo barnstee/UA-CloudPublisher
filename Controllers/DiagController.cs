@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher.Controllers
+namespace Opc.Ua.Cloud.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Mvc;
 

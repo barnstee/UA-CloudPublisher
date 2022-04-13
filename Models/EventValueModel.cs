@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher.Models
+namespace Opc.Ua.Cloud.Publisher.Models
 {
     using Opc.Ua;
 

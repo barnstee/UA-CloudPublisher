@@ -1,12 +1,12 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Opc.Ua;
     using Opc.Ua.Client;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.Collections.Concurrent;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher.Interfaces;
 
     public class OpcSessionCacheData
     {

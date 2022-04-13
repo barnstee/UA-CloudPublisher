@@ -1,15 +1,15 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Configuration;
     using System;
     using System.Globalization;
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher.Interfaces;
 
     public class UAApplication : IUAApplication
     {
@@ -28,7 +28,7 @@ namespace UA.MQTT.Publisher
         {
             if (string.IsNullOrEmpty(Settings.Instance.PublisherName))
             {
-                Settings.Instance.PublisherName = "UA-MQTT-Publisher";
+                Settings.Instance.PublisherName = "UACloudPublisher";
             }
 
             try
@@ -85,7 +85,7 @@ namespace UA.MQTT.Publisher
             _uaApplicationInstance = new ApplicationInstance {
                 ApplicationName = Settings.Instance.PublisherName,
                 ApplicationType = ApplicationType.Client,
-                ConfigSectionName = "UA-MQTT-Publisher"
+                ConfigSectionName = "UACloudPublisher"
             };
 
             await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);

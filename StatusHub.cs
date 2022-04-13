@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.AspNetCore.SignalR;
     using System;

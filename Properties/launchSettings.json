@@ -15,7 +15,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "UA-MQTT-Publisher": {
+    "UACloudPublisher": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

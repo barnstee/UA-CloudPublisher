@@ -1,8 +1,8 @@
 ﻿
-namespace UA.MQTT.Publisher.Controllers
+namespace Opc.Ua.Cloud.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Mvc;
-    using UA.MQTT.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class ConfigController : Controller
     {

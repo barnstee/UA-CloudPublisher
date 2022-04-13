@@ -1,4 +1,4 @@
-# UA-MQTT-Publisher
+# UA Cloud Publisher
 
 A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT. It runs in a Docker container on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
 
@@ -9,7 +9,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server
 * Uses OPC UA PubSub JSON encoding
 * Uses plain MQTT broker as publishing endpoint
-* Can optionally use plain Kafka broker as publishing endpoint
+* Optionally uses plain Kafka broker as publishing endpoint
 * OPC UA Variables publishing
 * OPC UA Alarms, Conditions & other events publishing
 * OPC UA Event filtering
@@ -18,7 +18,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * UI for displaying the list of publishes nodes
 * UI for displaying diagnostic information
 * UI for configuration
-* Publishing from the cloud via a connected MQTT broker
+* Publishing from the cloud via a broker
 * Publishing on data changes or on regular intervals
 * Supports publishednodes.json imput file format
 * Support for storing configuration files locally or in the cloud
@@ -26,7 +26,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 ## Usage
 
-Docker containers are automatically built and published. Simply run the UA-MQTT-Publisher on a Docker-enabled computer via:
+Docker containers are automatically built and published. Simply run the UA Cloud Publisher on a Docker-enabled computer via:
 
 `docker run -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
 
@@ -34,15 +34,15 @@ And then point your browser to <http://yourIPAddress>.
 
 ### Persisting Settings
 
-UA-MQTT-Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:
+UA Cloud Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:
 
-`docker run -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-mqtt-publisher:main`
+`docker run -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/UACloudPublisher:main`
 
 And then point your browser again to <http://yourIPAddress>.
 
 ## Optional Environment Variables
 
-* LOG_FILE_PATH - path to the log file to use. Default is /app/Logs/UA-MQTT-Publisher.log (in the Docker container).
+* LOG_FILE_PATH - path to the log file to use. Default is /app/Logs/UACloudPublisher.log (in the Docker container).
 * STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (under /app/settings/ in the Docker container).
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.
 * USE_KAFKA - use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
@@ -238,4 +238,4 @@ Response:
 
 ## Build Status
 
-[![Docker](https://github.com/barnstee/UA-MQTT-Publisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-MQTT-Publisher/actions/workflows/docker-publish.yml)
+[![Docker](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml)

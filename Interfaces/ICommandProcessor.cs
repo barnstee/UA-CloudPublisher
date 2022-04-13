@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher.Interfaces
+namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     public interface ICommandProcessor
     {

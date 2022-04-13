@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
@@ -7,7 +7,7 @@ namespace UA.MQTT.Publisher
     using System.IO;
     using System.Text;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class Settings
     {
@@ -117,7 +117,7 @@ namespace UA.MQTT.Publisher
 
         public bool UseTLS { get; set; } = true;
 
-        public string PublisherName { get; set; } = "UA-MQTT-Publisher";
+        public string PublisherName { get; set; } = "UACloudPublisher";
 
         public uint InternalQueueCapacity { get; set; } = 1000; // records
 

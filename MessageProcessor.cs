@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using System;
@@ -8,8 +8,8 @@ namespace UA.MQTT.Publisher
     using System.IO;
     using System.Text;
     using System.Threading;
-    using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
 
     public class MessageProcessor : IMessageProcessor
     {

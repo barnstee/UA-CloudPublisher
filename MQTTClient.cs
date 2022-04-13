@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher.Configuration
+namespace Opc.Ua.Cloud.Publisher.Configuration
 {
     using Microsoft.Extensions.Logging;
     using MQTTnet;
@@ -20,7 +20,7 @@ namespace UA.MQTT.Publisher.Configuration
     using System.Threading;
     using System.Threading.Tasks;
     using System.Web;
-    using UA.MQTT.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class MQTTClient : IBrokerClient
     {

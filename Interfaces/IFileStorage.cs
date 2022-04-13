@@ -1,5 +1,5 @@
 
-namespace UA.MQTT.Publisher.Interfaces
+namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     using System.Threading;
     using System.Threading.Tasks;

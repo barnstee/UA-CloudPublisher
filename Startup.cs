@@ -1,5 +1,5 @@
 
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
@@ -10,8 +10,8 @@ namespace UA.MQTT.Publisher
     using System;
     using System.IO;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher.Configuration;
-    using UA.MQTT.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Configuration;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class Startup
     {
@@ -36,7 +36,7 @@ namespace UA.MQTT.Publisher
             string logFilePath = Configuration["LOG_FILE_PATH"];
             if (string.IsNullOrEmpty(logFilePath))
             {
-                logFilePath = "./Logs/UA-MQTT-Publisher.log";
+                logFilePath = "./Logs/UACloudPublisher.log";
             }
             services.AddLogging(logging =>
             {
@@ -120,7 +120,7 @@ namespace UA.MQTT.Publisher
             // kick off the task to show periodic diagnostic info
             _ = Task.Run(() => Diagnostics.Singleton.RunAsync());
 
-            // connect to MQTT broker
+            // connect to broker
             subscriber.Connect();
 
             // run the telemetry engine

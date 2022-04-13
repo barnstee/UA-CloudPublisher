@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher.Configuration
+namespace Opc.Ua.Cloud.Publisher.Configuration
 {
     using Confluent.Kafka;
     using Microsoft.Extensions.Logging;
@@ -7,7 +7,7 @@ namespace UA.MQTT.Publisher.Configuration
     using System;
     using System.Text;
     using System.Threading;
-    using UA.MQTT.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class KafkaClient : IBrokerClient
     {
@@ -79,7 +79,7 @@ namespace UA.MQTT.Publisher.Configuration
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Failed to connect to MQTT broker: " + ex.Message);
+                _logger.LogCritical("Failed to connect to Kafka broker: " + ex.Message);
             }
         }
 
@@ -150,14 +150,14 @@ namespace UA.MQTT.Publisher.Configuration
                     _logger.LogError("Unknown command received: " + result.Topic);
                 }
 
-                // send reponse to MQTT broker
+                // send reponse to Kafka broker
                 Publish(responsePayload);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "HandleMessageAsync");
 
-                // send error to MQTT broker
+                // send error to Kafka broker
                 Publish(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message)));
             }
         }

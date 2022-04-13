@@ -1,4 +1,4 @@
-﻿@using UA.MQTT.Publisher.Models
+﻿@using Opc.Ua.Cloud.Publisher.Models
 
 @model Settings
 
@@ -63,7 +63,7 @@
         @Html.CheckBox("CreateBrokerSASToken", @Model.CreateBrokerSASToken)<br />
     </p>
      <p>
-        Use TLS with Broker (when switching off TLS, you will most likely also need to update the MQTT Broker Port)<br />
+        Use TLS with Broker (when switching off TLS, you will most likely also need to update the Broker Port)<br />
         @Html.CheckBox("UseTLS", @Model.UseTLS)<br />
     </p>
     <p>

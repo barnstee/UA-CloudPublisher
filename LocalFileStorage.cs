@@ -1,12 +1,12 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using System;
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class LocalFileStorage : IFileStorage
     {

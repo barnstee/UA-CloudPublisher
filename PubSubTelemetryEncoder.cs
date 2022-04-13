@@ -1,11 +1,11 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
-    using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
 
     public class PubSubTelemetryEncoder : IMessageEncoder
     {

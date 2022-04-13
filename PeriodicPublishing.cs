@@ -1,12 +1,12 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
     using Opc.Ua.Client;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Threading;
-    using UA.MQTT.Publisher.Models;
 
     public class PeriodicPublishing: IDisposable
     {

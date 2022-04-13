@@ -1,5 +1,5 @@
 
-namespace UA.MQTT.Publisher.Controllers
+namespace Opc.Ua.Cloud.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
@@ -7,13 +7,13 @@ namespace UA.MQTT.Publisher.Controllers
     using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Client;
+    using Opc.Ua.Cloud.Publisher;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher;
-    using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
 
     public class BrowserController : Controller
     {

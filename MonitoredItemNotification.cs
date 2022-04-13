@@ -1,13 +1,13 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
     using Opc.Ua.Client;
     using System;
     using System.Collections.Generic;
-    using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
 
     public class MonitoredItemNotification : IMessageSource
     {

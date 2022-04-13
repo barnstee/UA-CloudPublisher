@@ -1,12 +1,12 @@
-﻿@using UA.MQTT.Publisher.Models
+﻿@using Opc.Ua.Cloud.Publisher.Models
 
 @{
-    ViewData["Title"] = "Welcome to the UA-MQTT-Publisher!";
+    ViewData["Title"] = "Welcome to the UA Cloud Publisher!";
 }
 
 <h1>@ViewData["Title"]</h1>
 <br />
-UA-MQTT-Publisher is a cross-platform OPC UA cloud publisher reference impelementation leveraging OPC UA PubSub over MQTT, running in a Docker container or on Kubernetes and it comes with an easy-to-use web user interface.
+UA Cloud Publisher is a cross-platform OPC UA cloud publisher reference impelementation leveraging OPC UA PubSub over MQTT, running in a Docker container or on Kubernetes and it comes with an easy-to-use web user interface.
 <br />
 <br />
 <h3>Features</h3>
@@ -16,7 +16,7 @@ UA-MQTT-Publisher is a cross-platform OPC UA cloud publisher reference impelemen
     <li>UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server</li>
     <li>Uses OPC UA PubSub JSON encoding</li>
     <li>Uses plain MQTT broker as publishing endpoint</li>
-    <li>Can optionally use plain Kafka broker as publishing endpoint</li>
+    <li>Optionally uses plain Kafka broker as publishing endpoint</li>
     <li>OPC UA Variables publishing</li>
     <li>OPC UA Alarms, Conditions & other events publishing</li>
     <li>OPC UA Event filtering</li>
@@ -25,7 +25,7 @@ UA-MQTT-Publisher is a cross-platform OPC UA cloud publisher reference impelemen
     <li>UI for displaying the list of publishes nodes</li>
     <li>UI for diaplaying diagnostic infomration</li>
     <li>UI for configuration</li>
-    <li>Publishing from the cloud via a connected MQTT broker</li>
+    <li>Publishing from the cloud via a connected broker</li>
     <li>Publishing on data changes or on regular intervals</li>
     <li>Supports publishednodes.json imput file format</li>
     <li>Support for storing configuration files locally or in the cloud</li>
@@ -34,13 +34,14 @@ UA-MQTT-Publisher is a cross-platform OPC UA cloud publisher reference impelemen
 <br />
 <h3>Optional Environment Variables</h3>
 <ul>
-    <li>LOG_FILE_PATH - path to the log file to use. Default is ./Logs/UA-MQTT-Publisher.log.</li>
+    <li>LOG_FILE_PATH - path to the log file to use. Default is ./Logs/UACloudPublisher.log.</li>
     <li>STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (within the container).</li>
     <li>STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.</li>
+    <li>USE_KAFKA - use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.</li>
 </ul>
 <br />
 <h3>MQTT Sub-topics for Configuration from the Cloud</h3>
-See the readme <a href="https://github.com/barnstee/UA-MQTT-Publisher#mqtt-sub-topics-for-configuration-from-the-cloud">here</a> for the payload configuration.
+See the readme <a href="https://github.com/barnstee/UA-CloudPublisher#mqtt-sub-topics-for-configuration-from-the-cloud">here</a> for the payload configuration.
 <br />
 <br />
 <ul>

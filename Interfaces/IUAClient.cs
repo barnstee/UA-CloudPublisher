@@ -1,7 +1,7 @@
 ﻿
-namespace UA.MQTT.Publisher.Interfaces
+namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
-    using UA.MQTT.Publisher.Models;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
     using System.Threading;

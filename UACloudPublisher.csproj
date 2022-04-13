@@ -5,7 +5,7 @@
 	  <UserSecretsId>1F8C131F-4A90-4802-9DB2-FF0BF5944B0D</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <StartupObject>UA.MQTT.Publisher.Program</StartupObject>
+    <StartupObject></StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="UA-MQTT-Publisher.Config.xml">
+    <Content Include="UACloudPublisher.Config.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

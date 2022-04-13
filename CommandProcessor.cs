@@ -1,15 +1,15 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
-    using UA.MQTT.Publisher.Interfaces;
-    using UA.MQTT.Publisher.Models;
 
     public class CommandProcessor : ICommandProcessor
     {

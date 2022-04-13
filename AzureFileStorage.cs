@@ -1,5 +1,5 @@
 ﻿
-namespace UA.MQTT.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Azure.Storage.Blobs;
     using Azure.Storage.Blobs.Models;
@@ -8,7 +8,7 @@ namespace UA.MQTT.Publisher
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
-    using UA.MQTT.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class AzureFileStorage : IFileStorage
     {
