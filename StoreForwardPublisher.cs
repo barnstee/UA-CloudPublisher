@@ -56,6 +56,10 @@ namespace Opc.Ua.Cloud.Publisher
             bool success = false;
 
             string pathToStore = Path.Combine(Directory.GetCurrentDirectory(), "store");
+            if (!Directory.Exists(pathToStore))
+            {
+                Directory.CreateDirectory(pathToStore);
+            }
 
             Stopwatch watch = new Stopwatch();
             watch.Start();
@@ -70,12 +74,7 @@ namespace Opc.Ua.Cloud.Publisher
                     Diagnostics.Singleton.Info.SentBytes += message.Length;
                     Diagnostics.Singleton.Info.SentMessages++;
                     Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
-
-                    if (!Directory.Exists(pathToStore))
-                    {
-                        Directory.CreateDirectory(pathToStore);
-                    }
-
+                    
                     // check if there are still messages in our store we should also send
                     string[] filePaths = Directory.GetFiles(pathToStore);
                     if (filePaths.Length > 0)
