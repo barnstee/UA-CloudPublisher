@@ -55,7 +55,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 DataSetMetaDataType dataSetMetaData = new DataSetMetaDataType();
 
-                dataSetMetaData.Name = messageData.ApplicationUri + ":" + messageData.ExpandedNodeId;
+                dataSetMetaData.Name = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId;
 
                 dataSetMetaData.Fields = new FieldMetaDataCollection();
                 
@@ -81,7 +81,7 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     FieldMetaData fieldData = new FieldMetaData()
                     {
-                        Name = messageData.ExpandedNodeId,
+                        Name = messageData.Name,
                         DataSetFieldId = new Uuid(Guid.NewGuid()),
                         BuiltInType = (byte)messageData.Value.WrappedValue.TypeInfo.BuiltInType,
                         DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
@@ -154,11 +154,11 @@ namespace Opc.Ua.Cloud.Publisher
 
                     if (Settings.Instance.ReversiblePubSubEncoding)
                     {
-                        encoder.WriteVariant(messageData.ExpandedNodeId, messageData.Value.WrappedValue);
+                        encoder.WriteVariant(messageData.Name, messageData.Value.WrappedValue);
                     }
                     else
                     {
-                        encoder.WriteVariant(messageData.ExpandedNodeId, messageData.Value);
+                        encoder.WriteVariant(messageData.Name, messageData.Value);
                     }
                 }
 

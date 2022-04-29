@@ -10,6 +10,8 @@ namespace Opc.Ua.Cloud.Publisher.Models
 
         public string ApplicationUri { get; set; }
 
+        public string Name { get; set; }
+
         public DataValue Value { get; set; }
 
         public IServiceMessageContext MessageContext { get; set; }

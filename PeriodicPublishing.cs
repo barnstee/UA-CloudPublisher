@@ -20,10 +20,13 @@ namespace Opc.Ua.Cloud.Publisher
 
         public uint HeartBeatInterval { get; }
 
+        public string DisplayName { get; }
+
         public PeriodicPublishing(
             uint heartbeatInterval,
             Session session,
             NodeId nodeId,
+            string name,
             ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.CreateLogger("PeriodicPublishing");
@@ -31,6 +34,7 @@ namespace Opc.Ua.Cloud.Publisher
             HeartBeatSession = session;
             HeartBeatNodeId = nodeId;
             HeartBeatInterval = heartbeatInterval;
+            DisplayName = name;
 
             if (heartbeatInterval > 0)
             {
@@ -56,7 +60,8 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     ExpandedNodeId = NodeId.ToExpandedNodeId(HeartBeatNodeId, HeartBeatSession.NamespaceUris).ToString(),
                     ApplicationUri = HeartBeatSession.Endpoint.Server.ApplicationUri,
-                    MessageContext = HeartBeatSession.MessageContext
+                    MessageContext = HeartBeatSession.MessageContext,
+                    Name = DisplayName
                 };
 
                 DataValue value = HeartBeatSession.ReadValue(HeartBeatNodeId);

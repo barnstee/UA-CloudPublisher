@@ -214,6 +214,7 @@ namespace Opc.Ua.Cloud.Publisher
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
                     ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
+                    Name = monitoredItem.DisplayName,
                     Value = value
                 };
 

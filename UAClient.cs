@@ -503,6 +503,14 @@ namespace Opc.Ua.Cloud.Publisher
                     newMonitoredItem.Notification += _trigger.DataChangedNotificationHandler;
                 }
 
+                // read display name
+                newMonitoredItem.DisplayName = string.Empty;
+                Node node = session.ReadNode(resolvedNodeId);
+                if ((node != null) && (node.DisplayName != null))
+                {
+                    newMonitoredItem.DisplayName = node.DisplayName.Text;
+                }
+
                 opcSubscription.AddItem(newMonitoredItem);
                 opcSubscription.ApplyChanges();
 
@@ -513,6 +521,7 @@ namespace Opc.Ua.Cloud.Publisher
                         (uint)nodeToPublish.HeartbeatInterval,
                         session,
                         resolvedNodeId,
+                        newMonitoredItem.DisplayName,
                         _loggerFactory);
 
                     lock (_periodicPublishingList)
