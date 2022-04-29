@@ -172,7 +172,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                     else
                     {
-                        _logger.LogError(ex, "Error while processing messages, discarding!");
+                        _logger.LogError(ex, "Error while processing messages!");
                     }
                 }
             }
