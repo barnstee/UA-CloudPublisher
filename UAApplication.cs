@@ -82,18 +82,25 @@ namespace Opc.Ua.Cloud.Publisher
                 _logger.LogError(ex, "Cloud not load cert or private key files, creating a new ones. This means the new cert needs to be trusted by all OPC UA servers we connect to!");
             }
 
+            // create UA app
             _uaApplicationInstance = new ApplicationInstance {
                 ApplicationName = Settings.Instance.PublisherName,
                 ApplicationType = ApplicationType.Client,
                 ConfigSectionName = "UACloudPublisher"
             };
 
+            // overwrite app name in UA config file, while removing spaces from the app name
+            string fileContent = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"));
+            fileContent = fileContent.Replace("UACloudPublisher", _uaApplicationInstance.ApplicationName.Replace(" ", string.Empty));
+            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"), fileContent);
+
+            // now load UA config file
             await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
             _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Instance.UAStackTraceMask;
             Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
             _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Instance.UAStackTraceMask:X}");
 
-            // check the application certificate.
+            // check the application certificate
             bool certOK = await _uaApplicationInstance.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
             if (!certOK)
             {

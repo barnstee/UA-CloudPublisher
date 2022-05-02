@@ -36,7 +36,7 @@ namespace Opc.Ua.Cloud.Publisher
             string logFilePath = Configuration["LOG_FILE_PATH"];
             if (string.IsNullOrEmpty(logFilePath))
             {
-                logFilePath = "./Logs/UACloudPublisher.log";
+                logFilePath = "./logs/UACloudPublisher.log";
             }
             services.AddLogging(logging =>
             {
