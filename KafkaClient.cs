@@ -43,11 +43,16 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _consumer = null;
                 }
 
-                // read password
-                string password = Settings.Instance.BrokerPassword;
-
                 // create Kafka client
-                var config = new ProducerConfig { BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort };
+                var config = new ProducerConfig {
+                    BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
+                    RequestTimeoutMs = 60000,
+                    MessageTimeoutMs = 30000,
+                    SecurityProtocol = SecurityProtocol.SaslSsl,
+                    SaslMechanism = SaslMechanism.Plain,
+                    SaslUsername = Settings.Instance.BrokerUsername,
+                    SaslPassword = Settings.Instance.BrokerPassword
+                };
 
                 // If serializers are not specified, default serializers from
                 // `Confluent.Kafka.Serializers` will be automatically used where
@@ -65,7 +70,11 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     // topic/partitions of interest. By default, offsets are committed
                     // automatically, so in this example, consumption will only start from the
                     // earliest message in the topic 'my-topic' the first time you run the program.
-                    AutoOffsetReset = AutoOffsetReset.Earliest
+                    AutoOffsetReset = AutoOffsetReset.Earliest,
+                    SecurityProtocol= SecurityProtocol.SaslSsl,
+                    SaslMechanism = SaslMechanism.Plain,
+                    SaslUsername = Settings.Instance.BrokerUsername,
+                    SaslPassword= Settings.Instance.BrokerPassword
                 };
 
                 _consumer = new ConsumerBuilder<Ignore, string>(conf).Build();
