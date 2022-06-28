@@ -57,7 +57,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public async Task<Session> GetSessionAsync(string sessionID, string endpointURL, bool enforceTrust = false)
+        public async Task<Session> GetSessionAsync(string sessionID, string endpointURL, string username = null, string password = null)
         {
             if (string.IsNullOrEmpty(sessionID) || string.IsNullOrEmpty(endpointURL))
             {
@@ -97,6 +97,12 @@ namespace Opc.Ua.Cloud.Publisher
             EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create(_configuration);
             ConfiguredEndpoint endpoint = new ConfiguredEndpoint(null, selectedEndpoint, endpointConfiguration);
 
+            UserIdentity identity = new UserIdentity(new AnonymousIdentityToken());
+            if (!string.IsNullOrEmpty(username))
+            {
+                identity = new UserIdentity(username, password);
+            }
+
             Session session = await Session.Create(
                 _configuration,
                 endpoint,
@@ -104,7 +110,7 @@ namespace Opc.Ua.Cloud.Publisher
                 false,
                 sessionID,
                 60000,
-                new UserIdentity(new AnonymousIdentityToken()),
+                identity,
                 null).ConfigureAwait(false);
 
             if (session != null)

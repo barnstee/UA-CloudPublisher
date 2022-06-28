@@ -10,20 +10,21 @@
 
 <div class="container-fluid browser_connect_container">
     <div class="row browser_connect_header">
-        <div class="browser_connect_header_text overflow"><b>Enter an OPC UA Server's URL to connect to (format: opc.tcp://ipaddress:port):</b></div>
+        <div class="browser_connect_header_text overflow"><b>Enter a user name and password for the OPC UA Server (for anonymous access, leave blank):</b></div>
     </div>
     <div class="row browser_top_container">
         <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
             <div class="row browser_select_connect_container">
-                <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="UserPassword">
+                <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="Connect">
                         <div class="browser_connect_selection_textbox">
-                            <p>@Html.TextBox("endpointUrl", null, new { style = "width:300%;" })</p>
+                            <p>User Name: @Html.TextBox("username", null, new { style = "width:300%;" })</p>
                         </div>
+                        <div class="browser_connect_selection_textbox">
+                            <p>Password: @Html.Password("password", null, new { style = "width:300%;" })</p>
+                        </div>
+                        @Html.Hidden("endpointUrl", @Model.EndpointUrl)
                         <div class="browser_browse_connect_button">
                             <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
-                        </div>
-                         <div class="row browser_browse_status_message_container">
-                            <p class="alert alert-light"><div class="alert alert-light" id="message">@Model.StatusMessage</div></p>
                         </div>
                     </p>
                 </form>

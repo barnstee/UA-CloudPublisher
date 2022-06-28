@@ -46,13 +46,21 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> ConnectAsync(string endpointUrl)
+        public ActionResult UserPassword(string endpointUrl)
         {
-            SessionModel sessionModel = new SessionModel { EndpointUrl = endpointUrl };
+            return View("User", new SessionModel { EndpointUrl = endpointUrl });
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> ConnectAsync(string username, string password, string endpointUrl)
+        {
+            SessionModel sessionModel = new SessionModel { UserName = username, Password = password, EndpointUrl = endpointUrl };
+
+            Session session = null;
 
             try
             {
-                await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl, true).ConfigureAwait(false);
+                session = await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl, username, password).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -60,9 +68,26 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 return View("Index", sessionModel);
             }
 
-            HttpContext.Session.SetString("EndpointUrl", endpointUrl);
-            sessionModel.StatusMessage = "Connected to: " + endpointUrl;
-            return View("Browse", sessionModel);
+            if (string.IsNullOrEmpty(endpointUrl))
+            {
+                sessionModel.StatusMessage = "The endpoint URL specified is invalid!";
+                return View("Index", sessionModel);
+            }
+            else
+            {
+                HttpContext.Session.SetString("EndpointUrl", endpointUrl);
+            }
+
+            if (session == null)
+            {
+                sessionModel.StatusMessage = "Unable to create session!";
+                return View("Index", sessionModel);
+            }
+            else
+            { 
+                sessionModel.StatusMessage = "Connected to: " + endpointUrl;
+                return View("Browse", sessionModel);
+            }
         }
 
         [HttpPost]
