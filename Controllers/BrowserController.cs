@@ -78,6 +78,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 HttpContext.Session.SetString("EndpointUrl", endpointUrl);
             }
 
+            if (!string.IsNullOrEmpty(username) && (password != null))
+            {
+                HttpContext.Session.SetString("UserName", username);
+                HttpContext.Session.SetString("Password", password);
+            }
+
             if (session == null)
             {
                 sessionModel.StatusMessage = "Unable to create session!";
@@ -413,6 +419,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             {
                 NodeId nodeId = new NodeId(GetNodeIDFromJSTreeNode(jstreeNode));
                 string endpointUrl = HttpContext.Session.GetString("EndpointUrl");
+                string username = HttpContext.Session.GetString("UserName");
+                string password = HttpContext.Session.GetString("Password");
 
                 Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl).ConfigureAwait(false);
 
@@ -426,6 +434,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     OpcAuthenticationMode = UserAuthModeEnum.Anonymous
                 };
 
+                if (!string.IsNullOrEmpty(username) && (password != null))
+                {
+                    node.Username = username;
+                    node.Password = password;
+                    node.OpcAuthenticationMode = UserAuthModeEnum.UsernamePassword;
+                }
+   
                 await _client.PublishNodeAsync(node).ConfigureAwait(false);
 
                 return Content(JsonConvert.SerializeObject(new NodeId(GetNodeIDFromJSTreeNode(jstreeNode))));
