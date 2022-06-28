@@ -83,6 +83,11 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 HttpContext.Session.SetString("UserName", username);
                 HttpContext.Session.SetString("Password", password);
             }
+            else
+            {
+                HttpContext.Session.Remove("UserName");
+                HttpContext.Session.Remove("Password");
+            }
 
             if (session == null)
             {
