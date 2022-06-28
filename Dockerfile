@@ -7,16 +7,16 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["UACloudPublisher.csproj", "."]
-RUN dotnet restore "./UACloudPublisher.csproj"
+COPY ["UA-CloudPublisher.csproj", "."]
+RUN dotnet restore "./UA-CloudPublisher.csproj"
 COPY . .
 WORKDIR "/src/."
-RUN dotnet build "UACloudPublisher.csproj" -c Release -o /app/build
+RUN dotnet build "UA-CloudPublisher.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "UACloudPublisher.csproj" -c Release -o /app/publish
+RUN dotnet publish "UA-CloudPublisher.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "UACloudPublisher.dll"]
+ENTRYPOINT ["dotnet", "UA-CloudPublisher.dll"]
