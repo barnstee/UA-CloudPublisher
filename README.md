@@ -28,7 +28,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 Docker containers are automatically built and published. Simply run the UA Cloud Publisher on a Docker-enabled computer via:
 
-`docker run -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
+`docker run -itd -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 And then point your browser to <http://yourIPAddress>.
 
@@ -36,7 +36,7 @@ And then point your browser to <http://yourIPAddress>.
 
 UA Cloud Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:
 
-`docker run -itd -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourAzureBlobStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
+`docker run -itd -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourCloudStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 UA Cloud Publisher settings and published nodes configuration can be persisted locally across Docker container restarts by running:
 
