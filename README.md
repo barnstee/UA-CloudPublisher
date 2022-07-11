@@ -23,6 +23,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Supports publishednodes.json imput file format
 * Support for storing configuration files locally or in the cloud
 * Support for Store & Forward during Internet connection outages
+* Support for username and password authentication
 
 ## Usage
 
