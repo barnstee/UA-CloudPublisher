@@ -5,9 +5,6 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using MQTTnet;
     using MQTTnet.Adapter;
     using MQTTnet.Client;
-    using MQTTnet.Client.Connecting;
-    using MQTTnet.Client.Options;
-    using MQTTnet.Client.Subscribing;
     using MQTTnet.Packets;
     using MQTTnet.Protocol;
     using Newtonsoft.Json;
@@ -63,20 +60,21 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                 // create MQTT client
                 _client = new MqttFactory().CreateMqttClient();
-                _client.UseApplicationMessageReceivedHandler(msg => HandleMessageAsync(msg));
+                _client.ApplicationMessageReceivedAsync += msg => HandleMessageAsync(msg);
+
                 var clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(opt => opt.NoDelay = true)
                     .WithClientId(Settings.Instance.BrokerClientName)
                     .WithTcpServer(Settings.Instance.BrokerUrl, (int?)Settings.Instance.BrokerPort)
                     .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Instance.UseTLS })
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
-                    .WithCommunicationTimeout(TimeSpan.FromSeconds(10))
+                    .WithTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                     .WithCleanSession(true) // clear existing subscriptions 
                     .WithCredentials(Settings.Instance.BrokerUsername, password);
 
                 // setup disconnection handling
-                _client.UseDisconnectedHandler(disconnectArgs =>
+                _client.DisconnectedAsync += disconnectArgs =>
                 {
                     _logger.LogWarning($"Disconnected from MQTT broker: {disconnectArgs.Reason}");
 
@@ -86,7 +84,9 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         Connect();
                     }
-                });
+
+                    return Task.CompletedTask;
+                };
 
                 try
                 {
@@ -105,7 +105,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         }).GetAwaiter().GetResult();
 
                     // make sure subscriptions were successful
-                    if (subscribeResult.Items.Count != 1 || subscribeResult.Items[0].ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
+                    if (subscribeResult.Items.Count != 1 || subscribeResult.Items.ElementAt(0).ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
                     {
                         throw new ApplicationException("Failed to subscribe");
                     }
