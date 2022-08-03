@@ -25,6 +25,23 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Support for Store & Forward during Internet connection outages
 * Support for username and password authentication
 
+## Screenshots
+
+### Main Page
+![Main Page](screenshots/mainpage.png)
+
+### Browser
+![Browser](screenshots/browser.png)
+
+### Published Nodes Management
+![Published Nodes Management](screenshots/publishednodesmanagement.png)
+
+### Diagnostics
+![Diagnostics](screenshots/diagnostics.png)
+
+### Configuration
+![Configuration](screenshots/configuration.png)
+
 ## Usage
 
 Docker containers are automatically built and published. Simply run the UA Cloud Publisher on a Docker-enabled computer via:
