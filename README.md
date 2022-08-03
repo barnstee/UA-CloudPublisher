@@ -27,19 +27,19 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 ## Screenshots
 
-### Main Page
+### Main Page:
 ![Main Page](screenshots/mainpage.png)
 
-### Browser
+### Browser:
 ![Browser](screenshots/browser.png)
 
-### Published Nodes Management
+### Published Nodes Management:
 ![Published Nodes Management](screenshots/publishednodesmanagement.png)
 
-### Diagnostics
+### Diagnostics:
 ![Diagnostics](screenshots/diagnostics.png)
 
-### Configuration
+### Configuration:
 ![Configuration](screenshots/configuration.png)
 
 ## Usage
