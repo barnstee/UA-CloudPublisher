@@ -5,7 +5,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 ## Features
 
 * Cross-plattform - Runs on Windows and Linux
-* Runs inside a Docker container
+* Runs inside a Docker container and on Kubernetes
 * UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server
 * Uses OPC UA PubSub JSON encoding
 * Uses plain MQTT broker as publishing endpoint
