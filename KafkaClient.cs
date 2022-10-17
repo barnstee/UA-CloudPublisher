@@ -46,8 +46,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 // create Kafka client
                 var config = new ProducerConfig {
                     BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
-                    RequestTimeoutMs = 60000,
-                    MessageTimeoutMs = 30000,
+                    RequestTimeoutMs = 20000,
+                    MessageTimeoutMs = 10000,
                     SecurityProtocol = SecurityProtocol.SaslSsl,
                     SaslMechanism = SaslMechanism.Plain,
                     SaslUsername = Settings.Instance.BrokerUsername,
@@ -58,8 +58,6 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 // `Confluent.Kafka.Serializers` will be automatically used where
                 // available. Note: by default strings are encoded as UTF8.
                 _producer = new ProducerBuilder<Null, string>(config).Build();
-
-                // TODO: setup disconnection handling
 
                 var conf = new ConsumerConfig
                 {
@@ -94,27 +92,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
         public void Publish(byte[] payload)
         {
-            try
-            {
-                _producer.ProduceAsync(Settings.Instance.BrokerMessageTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
-            }
-            catch (ProduceException<Null, string> ex)
-            {
-                _logger.LogCritical($"Delivery failed: {ex.Error.Reason}");
-            }
-
+            _producer.ProduceAsync(Settings.Instance.BrokerMessageTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
         }
 
         public void PublishMetadata(byte[] payload)
         {
-            try
-            {
-                _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
-            }
-            catch (ProduceException<Null, string> ex)
-            {
-                _logger.LogCritical($"Delivery failed: {ex.Error.Reason}");
-            }
+            _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
         }
 
         // handles all incoming messages
