@@ -31,7 +31,8 @@
       "publishAllPorts": true,
       "useSSL": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "USE_KAFKA": "TRUE"
       }
     }
   }

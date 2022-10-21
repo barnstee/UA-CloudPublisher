@@ -1,6 +1,7 @@
 ﻿
 namespace Opc.Ua.Cloud.Publisher
 {
+    using Extensions;
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
     using Opc.Ua.Cloud.Publisher.Interfaces;
@@ -20,10 +21,10 @@ namespace Opc.Ua.Cloud.Publisher
         {
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
             // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
-            JsonEncoder encoder = new JsonEncoder(ServiceMessageContext.GlobalContext, Settings.Instance.ReversiblePubSubEncoding);
+            JsonEncoder encoder = new(ServiceMessageContext.GlobalContext, Settings.Instance.ReversiblePubSubEncoding);
 
             encoder.WriteString("MessageId", messageID.ToString());
-            
+
             if (isMetaData)
             {
                 encoder.WriteString("MessageType", "ua-metadata");
@@ -48,23 +49,23 @@ namespace Opc.Ua.Cloud.Publisher
         {
             try
             {
-                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
 
-                ushort datasetWriterId = (ushort)(messageData.ApplicationUri.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode());
-                encoder.WriteUInt16("DataSetWriterId", datasetWriterId);
+                ushort hash = (ushort)(messageData.ApplicationUri.GetDeterministicHashCode() ^ messageData.ExpandedNodeId.GetDeterministicHashCode());
+                encoder.WriteUInt16("DataSetWriterId", hash);
 
-                DataSetMetaDataType dataSetMetaData = new DataSetMetaDataType();
+                DataSetMetaDataType dataSetMetaData = new()
+                {
+                    Name = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId,
+                    Fields = new FieldMetaDataCollection()
+                };
 
-                dataSetMetaData.Name = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId;
-
-                dataSetMetaData.Fields = new FieldMetaDataCollection();
-                
                 if (messageData.EventValues != null && messageData.EventValues.Count > 0)
                 {
                     // process events
                     foreach (EventValueModel eventValue in messageData.EventValues)
                     {
-                        FieldMetaData fieldData = new FieldMetaData()
+                        FieldMetaData fieldData = new()
                         {
                             Name = eventValue.Name,
                             DataSetFieldId = new Uuid(Guid.NewGuid()),
@@ -79,7 +80,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
                 else
                 {
-                    FieldMetaData fieldData = new FieldMetaData()
+                    FieldMetaData fieldData = new()
                     {
                         Name = messageData.Name,
                         DataSetFieldId = new Uuid(Guid.NewGuid()),
@@ -91,7 +92,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     dataSetMetaData.Fields.Add(fieldData);
                 }
-                             
+
                 dataSetMetaData.ConfigurationVersion = new ConfigurationVersionDataType()
                 {
                     MinorVersion = 1,
@@ -116,9 +117,9 @@ namespace Opc.Ua.Cloud.Publisher
         {
             try
             {
-                JsonEncoder encoder = new JsonEncoder(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
 
-                hash = (ushort)(messageData.ApplicationUri.GetHashCode() ^ messageData.ExpandedNodeId.GetHashCode());
+                hash = (ushort)(messageData.ApplicationUri.GetDeterministicHashCode() ^ messageData.ExpandedNodeId.GetDeterministicHashCode());
                 encoder.WriteUInt16("DataSetWriterId", hash);
 
                 if ((messageData.EventValues == null) || (messageData.EventValues.Count == 0))
@@ -127,7 +128,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 encoder.PushStructure("Payload");
-                                
+
                 if ((messageData.EventValues != null) && (messageData.EventValues.Count > 0))
                 {
                     // process events
