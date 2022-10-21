@@ -82,7 +82,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 _timer = new Timer(HandleMessage, null, 1000, 1000);
 
                 _logger.LogInformation("Connected to Kafka broker.");
-                
+
             }
             catch (Exception ex)
             {
@@ -92,7 +92,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
         public void Publish(byte[] payload)
         {
-            _producer.ProduceAsync(Settings.Instance.BrokerMessageTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
+            Message<Null, string> message = new() {
+                Headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } },
+                Value = Encoding.UTF8.GetString(payload)
+            };
+
+            _producer.ProduceAsync(Settings.Instance.BrokerMessageTopic, message).GetAwaiter().GetResult();
         }
 
         public void PublishMetadata(byte[] payload)
@@ -107,7 +112,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             try
             {
                 result = _consumer.Consume();
- 
+
                 _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {result.Message.Value}");
 
                 string requestTopic = Settings.Instance.BrokerCommandTopic;
