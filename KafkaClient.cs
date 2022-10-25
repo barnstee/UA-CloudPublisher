@@ -8,12 +8,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using System.Text;
     using System.Threading;
     using Opc.Ua.Cloud.Publisher.Interfaces;
+    using System.Threading.Tasks;
 
     public class KafkaClient : IBrokerClient
     {
         private IProducer<Null, string> _producer = null;
         private IConsumer<Ignore, string> _consumer = null;
-        private Timer _timer;
 
         private readonly ILogger _logger;
         private readonly ICommandProcessor _commandProcessor;
@@ -79,7 +79,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                 _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
 
-                _timer = new Timer(HandleMessage, null, 1000, 1000);
+                _ = Task.Run(() => HandleCommand());
 
                 _logger.LogInformation("Connected to Kafka broker.");
 
@@ -105,57 +105,61 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
         }
 
-        // handles all incoming messages
-        private void HandleMessage(object state)
+        // handles all incoming commands form the cloud
+        private void HandleCommand()
         {
-            ConsumeResult<Ignore, string> result;
-            try
+            while (true)
             {
-                result = _consumer.Consume();
+                Thread.Sleep(1000);
 
-                _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {result.Message.Value}");
+                try
+                {
+                    ConsumeResult<Ignore, string> result = _consumer.Consume();
 
-                string requestTopic = Settings.Instance.BrokerCommandTopic;
-                string requestID = result.Topic.Substring(result.Topic.IndexOf("?"));
+                    _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {result.Message.Value}");
 
-                string requestPayload = result.Message.Value;
-                byte[] responsePayload = null;
+                    string requestTopic = Settings.Instance.BrokerCommandTopic;
+                    string requestID = result.Topic.Substring(result.Topic.IndexOf("?"));
 
-                // route this to the right handler
-                if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
-                {
-                    responsePayload = _commandProcessor.PublishNodes(requestPayload);
-                }
-                else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
-                {
-                    responsePayload = _commandProcessor.UnpublishNodes(requestPayload);
-                }
-                else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
-                {
-                    responsePayload = _commandProcessor.UnpublishAllNodes();
-                }
-                else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))
-                {
-                    responsePayload = _commandProcessor.GetPublishedNodes();
-                }
-                else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
-                {
-                    responsePayload = _commandProcessor.GetInfo();
-                }
-                else
-                {
-                    _logger.LogError("Unknown command received: " + result.Topic);
-                }
+                    string requestPayload = result.Message.Value;
+                    byte[] responsePayload = null;
 
-                // send reponse to Kafka broker
-                Publish(responsePayload);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "HandleMessageAsync");
+                    // route this to the right handler
+                    if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
+                    {
+                        responsePayload = _commandProcessor.PublishNodes(requestPayload);
+                    }
+                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
+                    {
+                        responsePayload = _commandProcessor.UnpublishNodes(requestPayload);
+                    }
+                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
+                    {
+                        responsePayload = _commandProcessor.UnpublishAllNodes();
+                    }
+                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))
+                    {
+                        responsePayload = _commandProcessor.GetPublishedNodes();
+                    }
+                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
+                    {
+                        responsePayload = _commandProcessor.GetInfo();
+                    }
+                    else
+                    {
+                        _logger.LogError("Unknown command received: " + result.Topic);
+                    }
 
-                // send error to Kafka broker
-                Publish(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message)));
+                    // send reponse to Kafka broker
+                    Publish(responsePayload);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "HandleMessageAsync");
+
+                    // send error to Kafka broker
+                    Publish(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message)));
+                }
             }
         }
     }
