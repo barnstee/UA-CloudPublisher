@@ -105,14 +105,14 @@ namespace Opc.Ua.Cloud.Publisher
 
         public bool SendUAMetadata { get; set; } = false;
 
-        public uint MetadataSendInterval { get; set; } = 10; // seconds
-        
+        public uint MetadataSendInterval { get; set; } = 30; // seconds
+
         public string BrokerCommandTopic { get; set; }
 
         public string BrokerResponseTopic { get; set; }
 
         public uint BrokerMessageSize { get; set; } = HubMessageSizeMax;
-                
+
         public bool CreateBrokerSASToken { get; set; } = true;
 
         public bool UseTLS { get; set; } = true;

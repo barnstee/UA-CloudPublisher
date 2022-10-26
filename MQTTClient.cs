@@ -70,7 +70,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                     .WithTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
-                    .WithCleanSession(true) // clear existing subscriptions 
+                    .WithCleanSession(true) // clear existing subscriptions
                     .WithCredentials(Settings.Instance.BrokerUsername, password);
 
                 // setup disconnection handling

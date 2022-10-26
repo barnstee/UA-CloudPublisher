@@ -10,6 +10,7 @@ namespace Opc.Ua.Cloud.Publisher
     using System.Threading;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
+    using System.Linq;
 
     public class MessageProcessor : IMessageProcessor
     {
@@ -40,7 +41,7 @@ namespace Opc.Ua.Cloud.Publisher
             _logger = loggerFactory.CreateLogger("MessageProcessor");
             _encoder = encoder;
             _sink = sink;
-            _metadataTimer = new Timer(SendMetadata, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+            _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
         }
 
         public void Dispose()
@@ -197,8 +198,11 @@ namespace Opc.Ua.Cloud.Publisher
         {
             _batchBuffer.Write(Encoding.UTF8.GetBytes(jsonMessage));
             _batchBuffer.Write(Encoding.UTF8.GetBytes(","));
+
             _logger.LogDebug($"Batching message with size {Encoding.UTF8.GetByteCount(jsonMessage)}, size is now {_batchBuffer.Position - 1}.");
+
             _batchEmpty = false;
+
             _notificationsInBatch++;
         }
 
@@ -208,7 +212,7 @@ namespace Opc.Ua.Cloud.Publisher
             _batchBuffer.Position -= 1;
 
             _batchBuffer.Write(Encoding.UTF8.GetBytes("]}"));
-            
+
             _lastNotificationInBatch.Enqueue(_notificationsInBatch);
 
             // calc the average for the last 100 batches
@@ -242,13 +246,22 @@ namespace Opc.Ua.Cloud.Publisher
             _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Instance.DefaultSendIntervalSeconds);
         }
 
-        private void SendMetadata(object state)
+        private void SendMetadataOnTimer(object state)
         {
+            // stop the timer while we're sending
+            _metadataTimer.Change(Timeout.Infinite,Timeout.Infinite);
+
             if (_metadataMessages.Count > 0)
             {
+                KeyValuePair<ushort, string>[] currentMessages = null;
                 lock (_metadataMessages)
                 {
-                    foreach (KeyValuePair<ushort, string> metadataMessage in _metadataMessages)
+                    currentMessages = _metadataMessages.ToArray();
+                }
+
+                if (currentMessages != null)
+                {
+                    foreach (KeyValuePair<ushort, string> metadataMessage in currentMessages)
                     {
                         using (MemoryStream buffer = new MemoryStream())
                         {
@@ -264,6 +277,9 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                 }
             }
+
+            // restart the timer
+            _metadataTimer.Change((int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
         }
 
         private string JsonEncodeMessage(MessageProcessorModel messageData)
@@ -294,7 +310,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                 }
             }
-            
+
             Diagnostics.Singleton.Info.NumberOfEvents++;
 
             return jsonMessage;

@@ -26,12 +26,19 @@ namespace Opc.Ua.Cloud.Publisher
         {
             bool success = false;
 
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
+
             try
             {
                 if (_client != null)
                 {
                     _client.PublishMetadata(message);
                     success = true;
+
+                    Diagnostics.Singleton.Info.SentBytes += message.Length;
+                    Diagnostics.Singleton.Info.SentMessages++;
+                    Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
                 }
                 else
                 {
@@ -47,6 +54,25 @@ namespace Opc.Ua.Cloud.Publisher
 
                 _logger.LogError(ex, "Error while sending metadata message.");
             }
+
+            watch.Stop();
+
+            _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
+
+            // calc the average for the last 100 messages
+            if (_lastMessageLatencies.Count > 100)
+            {
+                _lastMessageLatencies.Dequeue();
+            }
+
+            long sum = 0;
+            foreach (long latency in _lastMessageLatencies)
+            {
+                sum += latency;
+            }
+
+            Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
+
 
             return success;
         }
@@ -74,7 +100,7 @@ namespace Opc.Ua.Cloud.Publisher
                     Diagnostics.Singleton.Info.SentBytes += message.Length;
                     Diagnostics.Singleton.Info.SentMessages++;
                     Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
-                    
+
                     // check if there are still messages in our store we should also send
                     string[] filePaths = Directory.GetFiles(pathToStore);
                     if (filePaths.Length > 0)
