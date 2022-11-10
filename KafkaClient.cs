@@ -34,6 +34,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _producer.Flush();
                     _producer.Dispose();
                     _producer = null;
+
+                    Diagnostics.Singleton.Info.ConnectedToBroker = false;
                 }
 
                 if (_consumer != null)
@@ -80,6 +82,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
 
                 _ = Task.Run(() => HandleCommand());
+
+                Diagnostics.Singleton.Info.ConnectedToBroker = true;
 
                 _logger.LogInformation("Connected to Kafka broker.");
 

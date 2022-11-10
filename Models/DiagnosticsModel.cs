@@ -10,6 +10,9 @@ namespace Opc.Ua.Cloud.Publisher.Models
         public DateTime PublisherStartTime { get; set; } = DateTime.UtcNow;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+        public bool ConnectedToBroker { get; set; } = false;
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public int NumberOfOpcSessionsConnected { get; set; } = 0;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Include)]

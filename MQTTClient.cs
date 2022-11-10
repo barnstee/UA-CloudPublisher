@@ -42,6 +42,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _client.DisconnectAsync().GetAwaiter().GetResult();
                     _client.Dispose();
                     _client = null;
+
+                    Diagnostics.Singleton.Info.ConnectedToBroker = false;
                 }
 
                 // create MQTT password
@@ -109,6 +111,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         throw new ApplicationException("Failed to subscribe");
                     }
+
+                    Diagnostics.Singleton.Info.ConnectedToBroker = true;
 
                     _logger.LogInformation("Connected to MQTT broker.");
                 }

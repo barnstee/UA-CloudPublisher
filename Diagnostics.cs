@@ -44,7 +44,6 @@ namespace Opc.Ua.Cloud.Publisher
 
                 return _instance;
             }
-       
         }
 
         public DiagnosticsModel Info { get; set; } = new DiagnosticsModel();
@@ -52,6 +51,7 @@ namespace Opc.Ua.Cloud.Publisher
         private void Clear()
         {
             Info.PublisherStartTime = DateTime.UtcNow;
+            Info.ConnectedToBroker = false;
             Info.NumberOfOpcSessionsConnected = 0;
             Info.NumberOfOpcSubscriptionsConnected = 0;
             Info.NumberOfOpcMonitoredItemsMonitored = 0;
@@ -96,6 +96,7 @@ namespace Opc.Ua.Cloud.Publisher
                     List<string> chartValues = new List<string>();
 
                     _hubClient.AddOrUpdateTableEntry("Publisher Start Time", Info.PublisherStartTime.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Connected to broker", Info.ConnectedToBroker.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA sessions", Info.NumberOfOpcSessionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA subscriptions", Info.NumberOfOpcSubscriptionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA monitored items", Info.NumberOfOpcMonitoredItemsMonitored.ToString());
@@ -118,7 +119,7 @@ namespace Opc.Ua.Cloud.Publisher
                     _hubClient.AddOrUpdateTableEntry("Current working set in MB", (Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)).ToString());
                     _hubClient.AddOrUpdateTableEntry("broker send interval setting (s)", Settings.Instance.DefaultSendIntervalSeconds.ToString());
                     _hubClient.AddOrUpdateTableEntry("broker message size setting (bytes)", Settings.Instance.BrokerMessageSize.ToString());
-                    
+
                     chartValues.Add(Info.AverageMessageLatency.ToString());
                     chartValues.Add(messagesPerSecond.ToString());
                     chartValues.Add((messagesPerSecond * Info.AverageNotificationsInBrokerMessage).ToString());
@@ -128,6 +129,7 @@ namespace Opc.Ua.Cloud.Publisher
                     if (ticks % 10 == 0)
                     {
                         _logger.LogInformation($"UACloudPublisher started @ {Info.PublisherStartTime}");
+                        _logger.LogInformation($"Connected to broker: {Info.ConnectedToBroker}");
                         _logger.LogInformation($"OPC UA sessions: {Info.NumberOfOpcSessionsConnected}");
                         _logger.LogInformation($"OPC UA subscriptions: {Info.NumberOfOpcSubscriptionsConnected}");
                         _logger.LogInformation($"OPC UA monitored items: {Info.NumberOfOpcMonitoredItemsMonitored}");

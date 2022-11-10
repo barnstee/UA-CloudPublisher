@@ -240,6 +240,7 @@ Response:
  "DiagnosticInfos": [
   {
    "PublisherStartTime": "2022-02-22T22:22:22.222Z",
+   "ConnectedToBroker": false,
    "NumberOfOpcSessionsConnected": 0,
    "NumberOfOpcSubscriptionsConnected": 0,
    "NumberOfOpcMonitoredItemsMonitored": 0,
