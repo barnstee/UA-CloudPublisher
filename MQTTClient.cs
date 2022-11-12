@@ -8,6 +8,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using MQTTnet.Packets;
     using MQTTnet.Protocol;
     using Newtonsoft.Json;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
@@ -17,7 +18,6 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using System.Threading;
     using System.Threading.Tasks;
     using System.Web;
-    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class MQTTClient : IBrokerClient
     {
@@ -25,6 +25,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
         private readonly ILogger _logger;
         private readonly ICommandProcessor _commandProcessor;
+
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         public MQTTClient(ILoggerFactory loggerFactory, ICommandProcessor commandProcessor)
         {
@@ -40,8 +42,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 if ((_client != null) && _client.IsConnected)
                 {
                     _client.DisconnectAsync().GetAwaiter().GetResult();
-                    _client.Dispose();
-                    _client = null;
+    
+                    _cancellationTokenSource.Cancel();
 
                     Diagnostics.Singleton.Info.ConnectedToBroker = false;
                 }
@@ -82,11 +84,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                     // wait a 5 seconds, then simply reconnect again, if needed
                     Task.Delay(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
-                    if ((_client == null) || !_client.IsConnected)
-                    {
-                        Connect();
-                    }
 
+                    var connectResult = _client.ConnectAsync(clientOptions.Build(), CancellationToken.None).GetAwaiter().GetResult();
+                    if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
+                    {
+                        var status = GetStatus(connectResult.UserProperties)?.ToString("x4");
+                        throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
+                    }
+                    
                     return Task.CompletedTask;
                 };
 
@@ -111,6 +116,9 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         throw new ApplicationException("Failed to subscribe");
                     }
+
+                    _cancellationTokenSource.Dispose();
+                    _cancellationTokenSource = new CancellationTokenSource();
 
                     Diagnostics.Singleton.Info.ConnectedToBroker = true;
 
@@ -142,7 +150,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 .WithPayload(payload)
                 .Build();
 
-            _client.PublishAsync(message).GetAwaiter().GetResult();
+            _client.PublishAsync(message, _cancellationTokenSource.Token).GetAwaiter().GetResult();
         }
 
         public void PublishMetadata(byte[] payload)
@@ -153,7 +161,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 .WithPayload(payload)
                 .Build();
 
-            _client.PublishAsync(message).GetAwaiter().GetResult();
+            _client.PublishAsync(message, _cancellationTokenSource.Token).GetAwaiter().GetResult();
         }
 
         private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)
@@ -219,14 +227,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 }
 
                 // send reponse to MQTT broker
-                await _client.PublishAsync(BuildResponse("200", requestID, responsePayload)).ConfigureAwait(false);
+                await _client.PublishAsync(BuildResponse("200", requestID, responsePayload), _cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "HandleMessageAsync");
 
                 // send error to MQTT broker
-                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message)))).ConfigureAwait(false);
+                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message))), _cancellationTokenSource.Token).ConfigureAwait(false);
             }
         }
     }
