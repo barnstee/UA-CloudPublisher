@@ -42,7 +42,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 if ((_client != null) && _client.IsConnected)
                 {
                     _client.DisconnectAsync().GetAwaiter().GetResult();
-    
+
                     _cancellationTokenSource.Cancel();
 
                     Diagnostics.Singleton.Info.ConnectedToBroker = false;
@@ -85,19 +85,22 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     // wait a 5 seconds, then simply reconnect again, if needed
                     Task.Delay(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
 
-                    var connectResult = _client.ConnectAsync(clientOptions.Build(), CancellationToken.None).GetAwaiter().GetResult();
+                    var connectResult = _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).GetAwaiter().GetResult();
                     if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
                     {
                         var status = GetStatus(connectResult.UserProperties)?.ToString("x4");
                         throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
                     }
-                    
+
                     return Task.CompletedTask;
                 };
 
                 try
                 {
-                    var connectResult = _client.ConnectAsync(clientOptions.Build(), CancellationToken.None).GetAwaiter().GetResult();
+                    _cancellationTokenSource.Dispose();
+                    _cancellationTokenSource = new CancellationTokenSource();
+
+                    var connectResult = _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).GetAwaiter().GetResult();
                     if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
                     {
                         var status = GetStatus(connectResult.UserProperties)?.ToString("x4");
@@ -116,9 +119,6 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         throw new ApplicationException("Failed to subscribe");
                     }
-
-                    _cancellationTokenSource.Dispose();
-                    _cancellationTokenSource = new CancellationTokenSource();
 
                     Diagnostics.Singleton.Info.ConnectedToBroker = true;
 
