@@ -13,7 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     public class KafkaClient : IBrokerClient
     {
         private IProducer<Null, string> _producer = null;
-        private IConsumer<Ignore, string> _consumer = null;
+        private IConsumer<Ignore, byte[]> _consumer = null;
 
         private readonly ILogger _logger;
         private readonly ICommandProcessor _commandProcessor;
@@ -48,7 +48,6 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 // create Kafka client
                 var config = new ProducerConfig {
                     BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
-                    RequestTimeoutMs = 20000,
                     MessageTimeoutMs = 10000,
                     SecurityProtocol = SecurityProtocol.SaslSsl,
                     SaslMechanism = SaslMechanism.Plain,
@@ -56,20 +55,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     SaslPassword = Settings.Instance.BrokerPassword
                 };
 
-                // If serializers are not specified, default serializers from
-                // `Confluent.Kafka.Serializers` will be automatically used where
-                // available. Note: by default strings are encoded as UTF8.
                 _producer = new ProducerBuilder<Null, string>(config).Build();
 
                 var conf = new ConsumerConfig
                 {
-                    GroupId = "consumer-group",
+                    GroupId = Settings.Instance.BrokerClientName,
                     BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
-                    // Note: The AutoOffsetReset property determines the start offset in the event
-                    // there are not yet any committed offsets for the consumer group for the
-                    // topic/partitions of interest. By default, offsets are committed
-                    // automatically, so in this example, consumption will only start from the
-                    // earliest message in the topic 'my-topic' the first time you run the program.
                     AutoOffsetReset = AutoOffsetReset.Earliest,
                     SecurityProtocol= SecurityProtocol.SaslSsl,
                     SaslMechanism = SaslMechanism.Plain,
@@ -77,7 +68,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     SaslPassword= Settings.Instance.BrokerPassword
                 };
 
-                _consumer = new ConsumerBuilder<Ignore, string>(conf).Build();
+                _consumer = new ConsumerBuilder<Ignore, byte[]>(conf).Build();
 
                 _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
 
@@ -118,14 +109,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                 try
                 {
-                    ConsumeResult<Ignore, string> result = _consumer.Consume();
+                    ConsumeResult<Ignore, byte[]> result = _consumer.Consume();
 
                     _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {result.Message.Value}");
 
                     string requestTopic = Settings.Instance.BrokerCommandTopic;
                     string requestID = result.Topic.Substring(result.Topic.IndexOf("?"));
 
-                    string requestPayload = result.Message.Value;
+                    string requestPayload = Encoding.UTF8.GetString(result.Message.Value);
                     byte[] responsePayload = null;
 
                     // route this to the right handler
