@@ -57,22 +57,25 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                 _producer = new ProducerBuilder<Null, string>(config).Build();
 
-                var conf = new ConsumerConfig
+                if (!string.IsNullOrEmpty(Settings.Instance.BrokerCommandTopic))
                 {
-                    GroupId = Settings.Instance.BrokerClientName,
-                    BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
-                    AutoOffsetReset = AutoOffsetReset.Earliest,
-                    SecurityProtocol= SecurityProtocol.SaslSsl,
-                    SaslMechanism = SaslMechanism.Plain,
-                    SaslUsername = Settings.Instance.BrokerUsername,
-                    SaslPassword= Settings.Instance.BrokerPassword
-                };
+                    var conf = new ConsumerConfig
+                    {
+                        GroupId = Settings.Instance.BrokerClientName,
+                        BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
+                        AutoOffsetReset = AutoOffsetReset.Earliest,
+                        SecurityProtocol = SecurityProtocol.SaslSsl,
+                        SaslMechanism = SaslMechanism.Plain,
+                        SaslUsername = Settings.Instance.BrokerUsername,
+                        SaslPassword = Settings.Instance.BrokerPassword
+                    };
 
-                _consumer = new ConsumerBuilder<Ignore, byte[]>(conf).Build();
+                    _consumer = new ConsumerBuilder<Ignore, byte[]>(conf).Build();
 
-                _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
+                    _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
 
-                _ = Task.Run(() => HandleCommand());
+                    _ = Task.Run(() => HandleCommand());
+                }
 
                 Diagnostics.Singleton.Info.ConnectedToBroker = true;
 
@@ -114,10 +117,21 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {result.Message.Value}");
 
                     string requestTopic = Settings.Instance.BrokerCommandTopic;
-                    string requestID = result.Topic.Substring(result.Topic.IndexOf("?"));
-
                     string requestPayload = Encoding.UTF8.GetString(result.Message.Value);
                     byte[] responsePayload = null;
+
+                    // try to retrieve the request id from the topic
+                    string requestID = null;
+                    if (result.Topic.IndexOf("?") != -1)
+                    {
+                        requestID = result.Topic.Substring(result.Topic.IndexOf("?"));
+                    }
+
+                    if (string.IsNullOrEmpty(requestID))
+                    {
+                        // retrieve it from the message instead
+                        // TODO
+                    }
 
                     // route this to the right handler
                     if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
@@ -143,6 +157,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     else
                     {
                         _logger.LogError("Unknown command received: " + result.Topic);
+                        responsePayload = Encoding.UTF8.GetBytes("Unkown command!");
                     }
 
                     // send reponse to Kafka broker

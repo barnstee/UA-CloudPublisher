@@ -41,7 +41,11 @@ namespace Opc.Ua.Cloud.Publisher
             _logger = loggerFactory.CreateLogger("MessageProcessor");
             _encoder = encoder;
             _sink = sink;
-            _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+
+            if (Settings.Instance.MetadataSendInterval != 0)
+            {
+                _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+            }
         }
 
         public void Dispose()
