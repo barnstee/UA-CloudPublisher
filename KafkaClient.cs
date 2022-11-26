@@ -100,7 +100,24 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
         public void PublishMetadata(byte[] payload)
         {
-            _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, new Message<Null, string> { Value = Encoding.UTF8.GetString(payload) }).GetAwaiter().GetResult();
+            Message<Null, string> message = new()
+            {
+                Headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } },
+                Value = Encoding.UTF8.GetString(payload)
+            };
+
+            _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message).GetAwaiter().GetResult();
+        }
+
+        public void PublishResponse(byte[] payload)
+        {
+            Message<Null, string> message = new()
+            {
+                Headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } },
+                Value = Encoding.UTF8.GetString(payload)
+            };
+
+            _producer.ProduceAsync(Settings.Instance.BrokerResponseTopic, message).GetAwaiter().GetResult();
         }
 
         // handles all incoming commands form the cloud
@@ -161,7 +178,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     }
 
                     // send reponse to Kafka broker
-                    Publish(responsePayload);
+                    PublishResponse(responsePayload);
                 }
                 catch (Exception ex)
                 {
