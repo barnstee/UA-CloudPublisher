@@ -57,22 +57,24 @@ namespace Opc.Ua.Cloud.Publisher
 
             watch.Stop();
 
-            _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
-
-            // calc the average for the last 100 messages
-            if (_lastMessageLatencies.Count > 100)
+            lock (_lastMessageLatencies)
             {
-                _lastMessageLatencies.Dequeue();
+                _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
+
+                // calc the average for the last 100 messages
+                if (_lastMessageLatencies.Count > 100)
+                {
+                    _lastMessageLatencies.Dequeue();
+                }
+
+                long sum = 0;
+                foreach (long latency in _lastMessageLatencies)
+                {
+                    sum += latency;
+                }
+
+                Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
             }
-
-            long sum = 0;
-            foreach (long latency in _lastMessageLatencies)
-            {
-                sum += latency;
-            }
-
-            Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
-
 
             return success;
         }
@@ -149,21 +151,24 @@ namespace Opc.Ua.Cloud.Publisher
 
             watch.Stop();
 
-            _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
-
-            // calc the average for the last 100 messages
-            if (_lastMessageLatencies.Count > 100)
+            lock (_lastMessageLatencies)
             {
-                _lastMessageLatencies.Dequeue();
-            }
+                _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
 
-            long sum = 0;
-            foreach (long latency in _lastMessageLatencies)
-            {
-                sum += latency;
-            }
+                // calc the average for the last 100 messages
+                if (_lastMessageLatencies.Count > 100)
+                {
+                    _lastMessageLatencies.Dequeue();
+                }
 
-            Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
+                long sum = 0;
+                foreach (long latency in _lastMessageLatencies)
+                {
+                    sum += latency;
+                }
+
+                Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
+            }
 
             return success;
         }
