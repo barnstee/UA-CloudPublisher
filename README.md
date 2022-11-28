@@ -114,6 +114,9 @@ Payload:
 
 ```json
 {
+ "Command": "publishnodes",
+ "CorrelationId": "D892A987-56FB-4724-AF14-5EC6A7EBDD07", // a GUID
+ "TimeStamp": "2022-11-28T12:01:00.0923534Z", // sender timestamp in UTC
  "EndpointUrl": "string",
  "OpcNodes": [
   {
@@ -156,6 +159,9 @@ Payload:
 
 ```json
 {
+ "Command": "unpublishnodes",
+ "CorrelationId": "D892A987-56FB-4724-AF14-5EC6A7EBDD07", // a GUID
+ "TimeStamp": "2022-11-28T12:01:00.0923534Z", // sender timestamp in UTC
  "EndpointUrl": "string",
  "OpcNodes": [
   {
@@ -182,7 +188,15 @@ Response:
 
 ### UnpublishAllNodes
 
-Payload: None
+Payload:
+
+```json
+{
+ "Command": "unpublishallnodes",
+ "CorrelationId": "D892A987-56FB-4724-AF14-5EC6A7EBDD07", // a GUID
+ "TimeStamp": "2022-11-28T12:01:00.0923534Z", // sender timestamp in UTC
+}
+```
 
 Response:
 
@@ -196,7 +210,15 @@ Response:
 
 ### GetPublishedNodes
 
-Payload: None
+Payload:
+
+```json
+{
+ "Command": "getpublishednodes",
+ "CorrelationId": "D892A987-56FB-4724-AF14-5EC6A7EBDD07", // a GUID
+ "TimeStamp": "2022-11-28T12:01:00.0923534Z", // sender timestamp in UTC
+}
+```
 
 Response:
 (All intervals are in milliseconds)
@@ -231,7 +253,15 @@ Response:
 
 ### GetInfo
 
-Payload: None
+Payload:
+
+```json
+{
+ "Command": "getinfo",
+ "CorrelationId": "D892A987-56FB-4724-AF14-5EC6A7EBDD07", // a GUID
+ "TimeStamp": "2022-11-28T12:01:00.0923534Z", // sender timestamp in UTC
+}
+```
 
 Response:
 

@@ -9,6 +9,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using MQTTnet.Protocol;
     using Newtonsoft.Json;
     using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
@@ -190,51 +191,75 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
         // handles all incoming messages
         private async Task HandleMessageAsync(MqttApplicationMessageReceivedEventArgs args)
         {
-            _logger.LogInformation($"Received method call with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
+            _logger.LogInformation($"Received cloud command with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
 
             string requestTopic = Settings.Instance.BrokerCommandTopic;
             string requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
 
+            ResponseModel response = new()
+            {
+                TimeStamp = DateTime.UtcNow,
+            };
+
             try
             {
                 string requestPayload = args.ApplicationMessage.ConvertPayloadToString();
-                byte[] responsePayload = null;
 
+                // parse the message
+                RequestModel request = JsonConvert.DeserializeObject<RequestModel>(requestPayload);
+
+                // discard messages that are older than 15 seconds
+                if (request.TimeStamp < DateTime.UtcNow.AddSeconds(-15))
+                {
+                    _logger.LogInformation($"Discarding old message with timestamp {request.TimeStamp}");
+                    return;
+                }
+
+                response.CorrelationId = request.CorrelationId;
                 // route this to the right handler
                 if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
                 {
-                    responsePayload = _commandProcessor.PublishNodes(requestPayload);
+                    response.Status = Encoding.UTF8.GetString(_commandProcessor.PublishNodes(requestPayload));
+                    response.Success = true;
                 }
                 else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
                 {
-                    responsePayload = _commandProcessor.UnpublishNodes(requestPayload);
+                    response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishNodes(requestPayload));
+                    response.Success = true;
                 }
                 else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
                 {
-                    responsePayload = _commandProcessor.UnpublishAllNodes();
+                    response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishAllNodes());
+                    response.Success = true;
                 }
                 else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))
                 {
-                    responsePayload = _commandProcessor.GetPublishedNodes();
+                    response.Status = Encoding.UTF8.GetString(_commandProcessor.GetPublishedNodes());
+                    response.Success = true;
                 }
                 else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
                 {
-                    responsePayload = _commandProcessor.GetInfo();
+                    response.Status = Encoding.UTF8.GetString(_commandProcessor.GetInfo());
+                    response.Success = true;
                 }
                 else
                 {
                     _logger.LogError("Unknown command received: " + args.ApplicationMessage.Topic);
+                    response.Status = "Unkown command " + args.ApplicationMessage.Topic;
+                    response.Success = false;
                 }
 
                 // send reponse to MQTT broker
-                await _client.PublishAsync(BuildResponse("200", requestID, responsePayload), _cancellationTokenSource.Token).ConfigureAwait(false);
+                await _client.PublishAsync(BuildResponse("200", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))), _cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "HandleMessageAsync");
+                response.Status = ex.Message;
+                response.Success = false;
 
                 // send error to MQTT broker
-                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message))), _cancellationTokenSource.Token).ConfigureAwait(false);
+                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))), _cancellationTokenSource.Token).ConfigureAwait(false);
             }
         }
     }

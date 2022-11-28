@@ -4,10 +4,10 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using Confluent.Kafka;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Text;
-    using System.Threading;
-    using Opc.Ua.Cloud.Publisher.Interfaces;
     using System.Threading.Tasks;
 
     public class KafkaClient : IBrokerClient
@@ -125,67 +125,74 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
         {
             while (true)
             {
-                Thread.Sleep(1000);
+                ResponseModel response = new()
+                {
+                    TimeStamp = DateTime.UtcNow,
+                };
 
                 try
                 {
                     ConsumeResult<Ignore, byte[]> result = _consumer.Consume();
 
-                    _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {result.Message.Value}");
-
-                    string requestTopic = Settings.Instance.BrokerCommandTopic;
                     string requestPayload = Encoding.UTF8.GetString(result.Message.Value);
-                    byte[] responsePayload = null;
+                    _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {requestPayload}");
 
-                    // try to retrieve the request id from the topic
-                    string requestID = null;
-                    if (result.Topic.IndexOf("?") != -1)
+                    // parse the message
+                    RequestModel request = JsonConvert.DeserializeObject<RequestModel>(requestPayload);
+
+                    // discard messages that are older than 15 seconds
+                    if (request.TimeStamp < DateTime.UtcNow.AddSeconds(-15))
                     {
-                        requestID = result.Topic.Substring(result.Topic.IndexOf("?"));
+                        _logger.LogInformation($"Discarding old message with timestamp {request.TimeStamp}");
+                        continue;
                     }
 
-                    if (string.IsNullOrEmpty(requestID))
-                    {
-                        // retrieve it from the message instead
-                        // TODO
-                    }
+                    response.CorrelationId = request.CorrelationId;
 
                     // route this to the right handler
-                    if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
+                    if (request.Command == "publishnodes")
                     {
-                        responsePayload = _commandProcessor.PublishNodes(requestPayload);
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.PublishNodes(requestPayload));
+                        response.Success = true;
                     }
-                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
+                    else if (request.Command == "unpublishnodes")
                     {
-                        responsePayload = _commandProcessor.UnpublishNodes(requestPayload);
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishNodes(requestPayload));
+                        response.Success = true;
                     }
-                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
+                    else if (request.Command == "unpublishallnodes")
                     {
-                        responsePayload = _commandProcessor.UnpublishAllNodes();
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishAllNodes());
+                        response.Success = true;
                     }
-                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))
+                    else if (request.Command == "getpublishednodes")
                     {
-                        responsePayload = _commandProcessor.GetPublishedNodes();
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.GetPublishedNodes());
+                        response.Success = true;
                     }
-                    else if (result.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
+                    else if (request.Command == "getinfo")
                     {
-                        responsePayload = _commandProcessor.GetInfo();
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.GetInfo());
+                        response.Success = true;
                     }
                     else
                     {
                         _logger.LogError("Unknown command received: " + result.Topic);
-                        responsePayload = Encoding.UTF8.GetBytes("Unkown command!");
+                        response.Status = "Unkown command " + result.Topic;
+                        response.Success = false;
                     }
 
                     // send reponse to Kafka broker
-                    PublishResponse(responsePayload);
+                    Publish(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response)));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "HandleMessageAsync");
+                    response.Status = ex.Message;
+                    response.Success = false;
 
                     // send error to Kafka broker
-                    Publish(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(ex.Message)));
+                    Publish(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response)));
                 }
             }
         }
