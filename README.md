@@ -68,7 +68,8 @@ And then point your browser to <http://yourIPAddress>.
 
 * LOG_FILE_PATH - path to the log file to use. Default is /app/logs/UACloudPublisher.log (in the Docker container).
 * STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (under /app/settings/ in the Docker container).
-* STORAGE_CONNECTION_STRING - when using STORAGE_TYPE, specifies the connection string to the cloud storage.
+* STORAGE_CONNECTION_STRING - when using STORAGE_TYPE="Azure", specifies the connection string to the cloud storage.
+* STORAGE_CONTAINER_NAME - when using STORAGE_TYPE="Azure", specifies the blob storage container name.
 * USE_KAFKA - if present, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
 
 ## PublishedNodes.json File Format

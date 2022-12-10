@@ -14,9 +14,16 @@ namespace Opc.Ua.Cloud.Publisher
     {
         private readonly ILogger _logger;
 
+        private string _blobContainerName = "uacloudpublisher";
+
         public AzureFileStorage(ILoggerFactory logger)
         {
             _logger = logger.CreateLogger("AzureFileStorage");
+
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("STORAGE_CONTAINER_NAME")))
+            {
+                _blobContainerName = Environment.GetEnvironmentVariable("STORAGE_CONTAINER_NAME");
+            }
         }
 
         public async Task<string> FindFileAsync(string path, string name, CancellationToken cancellationToken = default)
@@ -26,7 +33,7 @@ namespace Opc.Ua.Cloud.Publisher
                 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING")))
                 {
                     // open blob storage
-                    BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), "uamqttpublisher");
+                    BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), _blobContainerName);
                     await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     var resultSegment = container.GetBlobsAsync();
@@ -60,7 +67,7 @@ namespace Opc.Ua.Cloud.Publisher
                 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING")))
                 {
                     // open blob storage
-                    BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), "uamqttpublisher");
+                    BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), _blobContainerName);
                     await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     // Get a reference to the blob
@@ -104,7 +111,7 @@ namespace Opc.Ua.Cloud.Publisher
                 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING")))
                 {
                     // open blob storage
-                    BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), "uamqttpublisher");
+                    BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), _blobContainerName);
                     await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
                     var resultSegment = container.GetBlobsAsync();
