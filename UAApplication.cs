@@ -38,7 +38,7 @@ namespace Opc.Ua.Cloud.Publisher
                 byte[] certFile = await _storage.LoadFileAsync(certFilePath).ConfigureAwait(false);
                 if (certFile == null)
                 {
-                    _logger.LogError("Cloud not load cert file, creating a new one. This means the new cert needs to be trusted by all OPC UA servers we connect to!");
+                    _logger.LogError("Could not load cert file, creating a new one. This means the new cert needs to be trusted by all OPC UA servers we connect to!");
                 }
                 else
                 {
@@ -60,7 +60,7 @@ namespace Opc.Ua.Cloud.Publisher
                 byte[] keyFile = await _storage.LoadFileAsync(keyFilePath).ConfigureAwait(false);
                 if (keyFile == null)
                 {
-                    _logger.LogError("Cloud not load key file, creating a new one. This means the new cert generated from the key needs to be trusted by all OPC UA servers we connect to!");
+                    _logger.LogError("Could not load key file, creating a new one. This means the new cert generated from the key needs to be trusted by all OPC UA servers we connect to!");
                 }
                 else
                 {
@@ -108,14 +108,20 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                // store app cert
+                // store app certs
                 foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), "*.der"))
                 {
                     await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
                 }
 
-                // store private key
+                // store private keys
                 foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "private"), "*.pfx"))
+                {
+                    await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+                }
+
+                // store trusted certs
+                foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "trusted", "certs"), "*.der"))
                 {
                     await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
                 }
