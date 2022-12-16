@@ -34,7 +34,7 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 // load app cert from storage
-                string certFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), ".der").ConfigureAwait(false);
+                string certFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), Settings.Instance.PublisherName).ConfigureAwait(false);
                 byte[] certFile = await _storage.LoadFileAsync(certFilePath).ConfigureAwait(false);
                 if (certFile == null)
                 {
@@ -56,7 +56,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // load app private key from storage
-                string keyFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "private"), ".pfx").ConfigureAwait(false);
+                string keyFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "private"), Settings.Instance.PublisherName).ConfigureAwait(false);
                 byte[] keyFile = await _storage.LoadFileAsync(keyFilePath).ConfigureAwait(false);
                 if (keyFile == null)
                 {
