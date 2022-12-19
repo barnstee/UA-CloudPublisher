@@ -12,7 +12,7 @@
     <ApplicationCertificate>
       <StoreType>Directory</StoreType>
       <StorePath>./pki/own</StorePath>
-      <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPCFoundation, DC=localhost</SubjectName>
+      <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPCFoundation</SubjectName>
     </ApplicationCertificate>
     <TrustedIssuerCertificates>
       <StoreType>Directory</StoreType>
