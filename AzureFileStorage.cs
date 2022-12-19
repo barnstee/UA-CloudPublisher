@@ -39,7 +39,7 @@ namespace Opc.Ua.Cloud.Publisher
                     var resultSegment = container.GetBlobsAsync();
                     await foreach (BlobItem blobItem in resultSegment.ConfigureAwait(false))
                     {
-                        if (blobItem.Name.Contains(name))
+                        if (blobItem.Name.Contains(path.TrimStart('/')) && blobItem.Name.Contains(name))
                         {
                             return blobItem.Name;
                         }
