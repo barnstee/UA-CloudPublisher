@@ -32,7 +32,10 @@
       "useSSL": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "USE_KAFKA": "TRUE"
+        "USE_KAFKA": "TRUE",
+        "STORAGE_TYPE": "Azure",
+        "STORAGE_CONTAINER_NAME": "uacloudpublisher",
+        "STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=[yourstorageaccountname];AccountKey=[key];EndpointSuffix=core.windows.net"
       }
     }
   }
