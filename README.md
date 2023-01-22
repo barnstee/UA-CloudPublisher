@@ -24,6 +24,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Support for storing configuration files locally or in the cloud
 * Support for Store & Forward during Internet connection outages
 * Support for username and password authentication
+* Support for both Intel x64 and ARM x64 architectures (Raspberry Pi4, etc.) with pre-built Docker containers ready for use
 
 ## Screenshots
 
