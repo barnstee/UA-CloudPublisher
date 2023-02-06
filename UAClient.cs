@@ -24,7 +24,7 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly IFileStorage _storage;
 
         private IMessageSource _trigger;
- 
+
         private List<Session> _sessions = new List<Session>();
         private List<SessionReconnectHandler> _reconnectHandlers = new List<SessionReconnectHandler>();
         private List<PeriodicPublishing> _periodicPublishingList = new List<PeriodicPublishing>();
@@ -344,7 +344,7 @@ namespace Opc.Ua.Cloud.Publisher
                                 _missedKeepAlives[endpoint] = 0;
                             }
                         }
-                    }   
+                    }
                 }
                 catch (Exception e)
                 {
@@ -773,6 +773,70 @@ namespace Opc.Ua.Cloud.Publisher
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Update of persistency file failed.");
+            }
+        }
+
+        public void ExecuteCommand(string nodeIDString, string parentNodeIDString, string uaNamespace, string argument, string endpoint)
+        {
+            // find or create the session we need to monitor the node
+            Session session = ConnectSessionAsync(endpoint, null, null).GetAwaiter().GetResult();
+            if (session == null)
+            {
+                // couldn't create the session
+                throw new Exception($"Could not create session for endpoint {endpoint}!");
+            }
+
+            try
+            {
+                ExpandedNodeId nodeID = ExpandedNodeId.Parse("nsu=" + uaNamespace + ";" + nodeIDString, session.NamespaceUris);
+                ExpandedNodeId parentNodeID = ExpandedNodeId.Parse("nsu=" + uaNamespace + ";" + parentNodeIDString, session.NamespaceUris);
+
+                CallMethodRequest request = new CallMethodRequest
+                {
+                    ObjectId = new NodeId(parentNodeID.Identifier, parentNodeID.NamespaceIndex),
+                    MethodId = new NodeId(nodeID.Identifier, nodeID.NamespaceIndex),
+                };
+
+                request.InputArguments = new VariantCollection
+                {
+                    new Variant(argument)
+                };
+
+                CallMethodRequestCollection requests = new CallMethodRequestCollection
+                {
+                    request
+                };
+
+                CallMethodResultCollection results;
+                DiagnosticInfoCollection diagnosticInfos;
+
+                ResponseHeader responseHeader = session.Call(
+                    null,
+                    requests,
+                    out results,
+                    out diagnosticInfos);
+
+                if (StatusCode.IsBad(results[0].StatusCode))
+                {
+                    throw new ServiceResultException(new ServiceResult(results[0].StatusCode, 0, diagnosticInfos, responseHeader.StringTable));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Executing OPC UA command failed!");
+                throw;
+            }
+            finally
+            {
+                if (session != null)
+                {
+                    if (session.Connected)
+                    {
+                        session.Close();
+                    }
+
+                    session.Dispose();
+                }
             }
         }
     }

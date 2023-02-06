@@ -16,16 +16,15 @@
         <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
             <div class="row browser_select_connect_container">
                 <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="UserPassword">
-                        <div class="browser_connect_selection_textbox">
-                            <p>@Html.TextBox("endpointUrl", null, new { style = "width:300%;" })</p>
-                        </div>
-                        <div class="browser_browse_connect_button">
-                            <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
-                        </div>
-                         <div class="row browser_browse_status_message_container">
-                            <p class="alert alert-light"><div class="alert alert-light" id="message">@Model.StatusMessage</div></p>
-                        </div>
-                    </p>
+                    <div class="browser_connect_selection_textbox">
+                        <p>@Html.TextBox("endpointUrl", null, new { style = "width:300%;" })</p>
+                    </div>
+                    <div class="browser_browse_connect_button">
+                        <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
+                    </div>
+                        <div class="row browser_browse_status_message_container">
+                        <p class="alert alert-light"><div class="alert alert-light" id="message">@Model.StatusMessage</div></p>
+                    </div>
                 </form>
             </div>
         </div>

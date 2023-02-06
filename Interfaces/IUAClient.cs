@@ -16,5 +16,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
         void UnpublishAllNodes();
 
         IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes();
+
+        void ExecuteCommand(string nodeIDString, string parentNodeIDString, string uaNamespace, string argument, string endpoint);
     }
 }

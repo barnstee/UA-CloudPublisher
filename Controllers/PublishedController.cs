@@ -44,9 +44,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             {
                 if (file == null)
                 {
-                    throw new ArgumentException("No files specified!");
+                    throw new ArgumentException("No file specified!");
                 }
-                
+
                 if ((file.Length == 0) || (file.ContentType != "application/json"))
                 {
                     throw new ArgumentException("Invalid file specified!");
@@ -59,7 +59,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                     _publishedNodesFileHandler.ParseFile(bytes);
                 }
-                
+
                 return View("Index", GeneratePublishedNodesArray());
             }
             catch (Exception ex)
