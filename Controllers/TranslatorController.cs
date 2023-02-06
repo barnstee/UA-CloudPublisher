@@ -14,8 +14,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         private readonly IUAClient _client;
         private readonly ILogger _logger;
 
-        private static string _payload = string.Empty;
-
         public TranslatorController(IUAClient client, ILoggerFactory loggerFactory)
         {
             _client = client;
@@ -28,10 +26,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult Load(IFormFile file)
+        public IActionResult Load(IFormFile file, string endpointUrl)
         {
             try
             {
+                if (string.IsNullOrEmpty(endpointUrl))
+                {
+                    throw new ArgumentException("The endpoint URL specified is invalid!");
+                }
+
                 if (file == null)
                 {
                     throw new ArgumentException("No file specified!");
@@ -42,46 +45,28 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("Invalid file specified!");
                 }
 
+                string payload = string.Empty;
                 using (Stream content = file.OpenReadStream())
                 {
                     byte[] bytes = new byte[file.Length];
                     content.Read(bytes, 0, (int)file.Length);
-                    _payload = Encoding.UTF8.GetString(bytes);
+                    payload = Encoding.UTF8.GetString(bytes);
                 }
 
-                return View("Index", "Thing Description loaded successfully!");
+                if (string.IsNullOrEmpty(payload))
+                {
+                    throw new ArgumentException("Invalid file specified!");
+                }
+
+                _client.ExecuteCommand("ConfigureAsset", "AssetManagement", "http://opcfoundation.org/UA/EdgeTranslator/", payload, endpointUrl);
+
+                return View("Index", "UA Edge Translator configured successfully!");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
                 return View("Index", ex.Message);
             }
-        }
-
-        [HttpPost]
-        public ActionResult Configure(string endpointUrl)
-        {
-            if (string.IsNullOrEmpty(endpointUrl))
-            {
-                return View("Index", "The endpoint URL specified is invalid!");
-            }
-
-            if (string.IsNullOrEmpty(_payload))
-            {
-                return View("Index", "The Web of Things Thing Description is invalid!");
-            }
-
-            try
-            {
-                _client.ExecuteCommand("ConfigureAsset", "AssetManagement", "http://opcfoundation.org/UA/EdgeTranslator/", _payload, endpointUrl);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message);
-                return View("Index", ex.Message);
-            }
-
-            return View("Index", "UA Edge Translator configured successfully!");
         }
     }
 }

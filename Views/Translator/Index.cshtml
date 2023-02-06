@@ -11,7 +11,7 @@
 
 <div class="container-fluid browser_connect_container">
     <p>
-        <B>Open a Web of Things Thing Description JSON LD file:</B>
+        <B>Open a Web of Things Thing Description JSON LD file and send it to UA Edge Translator via OPC UA (format: opc.tcp://ipaddress:port):</B>
     </p>
     <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
         <p>
@@ -19,22 +19,16 @@
             <input class="btn btn-primary" type="file" name="file">
         </p>
         <p>
-            <input class="btn btn-primary" type="submit" value="Open">
+            @Html.TextBox("endpointUrl", null, new { style = "width:50%;" })
         </p>
-    </form>
-    <p>
-        <B>Send the Web of Things Thing Description file to UA Edge Translator via OPC UA (format: opc.tcp://ipaddress:port):</B>
-    </p>
-    <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Configure">
-        <div class="browser_connect_selection_textbox">
-            <p>@Html.TextBox("endpointUrl", null, new { style = "width:50%;" })</p>
-        </div>
-        <div class="browser_browse_connect_button">
+        <p>
             <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Send">
-        </div>
-        <div class="row browser_browse_status_message_container">
-            <p class="alert alert-light"><div class="alert alert-light" id="message">@Model</div></p>
-        </div>
+        </p>
+        <p class="alert alert-light">
+            <div class="alert alert-light" id="message">
+                @Model
+            </div>
+        </p>
     </form>
 </div>
 

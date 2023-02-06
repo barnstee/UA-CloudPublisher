@@ -818,7 +818,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 if (StatusCode.IsBad(results[0].StatusCode))
                 {
-                    throw new ServiceResultException(new ServiceResult(results[0].StatusCode, 0, diagnosticInfos, responseHeader.StringTable));
+                    throw new Exception(results[0].StatusCode.ToString());
                 }
             }
             catch (Exception ex)
