@@ -47,7 +47,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 ConditionState condition = EventUtils.ConstructEvent(
-                    monitoredItem.Subscription.Session,
+                    (Session)monitoredItem.Subscription.Session,
                     monitoredItem,
                     notification,
                     new Dictionary<NodeId, NodeId>()) as ConditionState;
@@ -86,7 +86,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     messageData.EventValues.Add(eventValue);
                 }
-                
+
                 // Branch
                 if (condition.BranchId != null && !NodeId.IsNull(condition.BranchId.Value))
                 {
@@ -111,7 +111,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     messageData.EventValues.Add(eventValue);
                 }
-               
+
                 // Severity
                 if (condition.Severity != null)
                 {
@@ -159,7 +159,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     messageData.EventValues.Add(eventValue);
                 }
-               
+
                 // Comment
                 if (condition.Comment != null)
                 {
@@ -171,7 +171,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     messageData.EventValues.Add(eventValue);
                 }
-                               
+
                 if (messageData.EventValues.Count > 0)
                 {
                     MessageProcessor.Enqueue(messageData);

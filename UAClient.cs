@@ -90,7 +90,7 @@ namespace Opc.Ua.Cloud.Publisher
                 return null;
             }
 
-            // check there is already a session for the requested endpoint
+            // check if there is already a session for the requested endpoint
             lock (_sessions)
             {
                 ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(
@@ -101,7 +101,8 @@ namespace Opc.Ua.Cloud.Publisher
 
                 foreach (Session session in _sessions)
                 {
-                    if (session.ConfiguredEndpoint.EndpointUrl == configuredEndpoint.EndpointUrl)
+                    if ((session.ConfiguredEndpoint.EndpointUrl == configuredEndpoint.EndpointUrl) ||
+                        (session.ConfiguredEndpoint.EndpointUrl.ToString() == endpointUrl))
                     {
                         // return the existing session
                         return session;
@@ -266,7 +267,7 @@ namespace Opc.Ua.Cloud.Publisher
             return subscription;
         }
 
-        private void KeepAliveHandler(Session session, KeepAliveEventArgs eventArgs)
+        private void KeepAliveHandler(ISession session, KeepAliveEventArgs eventArgs)
         {
             if (eventArgs != null && session != null && session.ConfiguredEndpoint != null)
             {
@@ -317,7 +318,7 @@ namespace Opc.Ua.Cloud.Publisher
                                 {
                                     lock (_sessions)
                                     {
-                                        _sessions.Remove(session);
+                                        _sessions.Remove((Session)session);
                                     }
 
                                     Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
@@ -382,10 +383,10 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // update the session
-            Session session = reconnectHandler.Session;
+            ISession session = reconnectHandler.Session;
             lock (_sessions)
             {
-                _sessions.Add(session);
+                _sessions.Add((Session)session);
             }
 
             Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
