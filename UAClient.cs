@@ -267,7 +267,7 @@ namespace Opc.Ua.Cloud.Publisher
             return subscription;
         }
 
-        private void KeepAliveHandler(ISession session, KeepAliveEventArgs eventArgs)
+        private void KeepAliveHandler(Session session, KeepAliveEventArgs eventArgs)
         {
             if (eventArgs != null && session != null && session.ConfiguredEndpoint != null)
             {
@@ -383,10 +383,10 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // update the session
-            ISession session = reconnectHandler.Session;
+            Session session = reconnectHandler.Session;
             lock (_sessions)
             {
-                _sessions.Add((Session)session);
+                _sessions.Add(session);
             }
 
             Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;

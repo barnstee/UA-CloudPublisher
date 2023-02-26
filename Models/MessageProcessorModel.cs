@@ -14,7 +14,7 @@ namespace Opc.Ua.Cloud.Publisher.Models
 
         public DataValue Value { get; set; }
 
-        public IServiceMessageContext MessageContext { get; set; }
+        public ServiceMessageContext MessageContext { get; set; }
 
         public List<EventValueModel> EventValues { get; set; } = new List<EventValueModel>();
     }
