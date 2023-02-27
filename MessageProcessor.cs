@@ -25,7 +25,10 @@ namespace Opc.Ua.Cloud.Publisher
 
         MemoryStream _batchBuffer = new MemoryStream();
         private static BlockingCollection<MessageProcessorModel> _monitoredItemsDataQueue;
+
         private Dictionary<ushort, string> _metadataMessages = new Dictionary<ushort, string>();
+        private object _metadataMessagesLock = new object();
+
         private Timer _metadataTimer;
         private bool _isRunning = false;
 
@@ -258,7 +261,7 @@ namespace Opc.Ua.Cloud.Publisher
             if (_metadataMessages.Count > 0)
             {
                 KeyValuePair<ushort, string>[] currentMessages = null;
-                lock (_metadataMessages)
+                lock (_metadataMessagesLock)
                 {
                     currentMessages = _metadataMessages.ToArray();
                 }
@@ -296,7 +299,7 @@ namespace Opc.Ua.Cloud.Publisher
                 string metadataMessage = _encoder.EncodeMetadata(messageData);
                 if (!_metadataMessages.ContainsKey(hash))
                 {
-                    lock (_metadataMessages)
+                    lock (_metadataMessagesLock)
                     {
                         _metadataMessages.Add(hash, metadataMessage);
                     }

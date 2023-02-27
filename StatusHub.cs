@@ -17,6 +17,7 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly IHubContext<StatusHub> _hubContext;
 
         private Dictionary<string, Tuple<string, bool>> TableEntries { get; set; } = new Dictionary<string, Tuple<string, bool>>();
+        private object _tableEntriesLock = new object();
 
         private Dictionary<string, string[]> ChartEntries { get; set; } = new Dictionary<string, string[]>();
 
@@ -29,7 +30,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         public void AddOrUpdateTableEntry(string key, string value, bool addToChart = false)
         {
-            lock (TableEntries)
+            lock (_tableEntriesLock)
             {
                 if (TableEntries.ContainsKey(key))
                 {
@@ -58,7 +59,7 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 await Task.Delay(1000).ConfigureAwait(false);
 
-                lock (TableEntries)
+                lock (_tableEntriesLock)
                 {
                     if (TableEntries.Count > 0)
                     {
@@ -96,7 +97,7 @@ namespace Opc.Ua.Cloud.Publisher
             sb.Append("</tr>");
 
             // rows
-            lock (TableEntries)
+            lock (_tableEntriesLock)
             {
                 foreach (KeyValuePair<string, Tuple<string, bool>> item in TableEntries)
                 {

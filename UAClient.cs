@@ -26,10 +26,20 @@ namespace Opc.Ua.Cloud.Publisher
         private IMessageSource _trigger;
 
         private List<Session> _sessions = new List<Session>();
+        private object _sessionLock = new object();
+
         private List<SessionReconnectHandler> _reconnectHandlers = new List<SessionReconnectHandler>();
+        private object _reconnectHandlersLock = new object();
+
         private List<PeriodicPublishing> _periodicPublishingList = new List<PeriodicPublishing>();
+        private object _periodicPublishingListLock = new object();
+
         private Dictionary<string, uint> _missedKeepAlives = new Dictionary<string, uint>();
+        private object _missedKeepAlivesLock = new object();
+
         private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
+        private object _endpointDescriptionCacheLock = new object();
+
         private readonly Dictionary<Session, ComplexTypeSystem> _complexTypeList = new Dictionary<Session, ComplexTypeSystem>();
 
         public UAClient(
@@ -62,7 +72,7 @@ namespace Opc.Ua.Cloud.Publisher
             EndpointDescription selectedEndpoint;
             try
             {
-                lock (_endpointDescriptionCache)
+                lock (_endpointDescriptionCacheLock)
                 {
                     if (_endpointDescriptionCache.ContainsKey(endpointUrl))
                     {
@@ -91,7 +101,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // check if there is already a session for the requested endpoint
-            lock (_sessions)
+            lock (_sessionLock)
             {
                 ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(
                     null,
@@ -174,7 +184,7 @@ namespace Opc.Ua.Cloud.Publisher
             newSession.KeepAlive += KeepAliveHandler;
 
             // add the session to our list
-            lock (_sessions)
+            lock (_sessionLock)
             {
                 _sessions.Add(newSession);
                 Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
@@ -201,7 +211,7 @@ namespace Opc.Ua.Cloud.Publisher
         public void UnpublishAllNodes()
         {
             // loop through all sessions
-            lock (_sessions)
+            lock (_sessionLock)
             {
                 foreach (PeriodicPublishing heartbeat in _periodicPublishingList)
                 {
@@ -275,7 +285,7 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
 
-                    lock (_missedKeepAlives)
+                    lock (_missedKeepAlivesLock)
                     {
                         if (!ServiceResult.IsGood(eventArgs.Status))
                         {
@@ -302,7 +312,7 @@ namespace Opc.Ua.Cloud.Publisher
                             {
                                 // check if a reconnection is already in progress
                                 bool reconnectInProgress = false;
-                                lock (_reconnectHandlers)
+                                lock (_reconnectHandlersLock)
                                 {
                                     foreach (SessionReconnectHandler handler in _reconnectHandlers)
                                     {
@@ -316,15 +326,15 @@ namespace Opc.Ua.Cloud.Publisher
 
                                 if (!reconnectInProgress)
                                 {
-                                    lock (_sessions)
+                                    lock (_sessionLock)
                                     {
-                                        _sessions.Remove((Session)session);
+                                        _sessions.Remove(session);
                                     }
 
                                     Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
                                     _logger.LogInformation($"RECONNECTING session {session.SessionId}...");
                                     SessionReconnectHandler reconnectHandler = new SessionReconnectHandler();
-                                    lock (_reconnectHandlers)
+                                    lock (_reconnectHandlersLock)
                                     {
                                         _reconnectHandlers.Add(reconnectHandler);
                                     }
@@ -364,7 +374,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             // find our reconnect handler
             SessionReconnectHandler reconnectHandler = null;
-            lock (_reconnectHandlers)
+            lock (_reconnectHandlersLock)
             {
                 foreach (SessionReconnectHandler handler in _reconnectHandlers)
                 {
@@ -377,20 +387,20 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // ignore callbacks from discarded objects
-            if (reconnectHandler == null)
+            if (reconnectHandler == null || reconnectHandler.Session == null)
             {
                 return;
             }
 
             // update the session
             Session session = reconnectHandler.Session;
-            lock (_sessions)
+            lock (_sessionLock)
             {
                 _sessions.Add(session);
             }
 
             Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
-            lock (_reconnectHandlers)
+            lock (_reconnectHandlersLock)
             {
                 _reconnectHandlers.Remove(reconnectHandler);
             }
@@ -525,7 +535,7 @@ namespace Opc.Ua.Cloud.Publisher
                         newMonitoredItem.DisplayName,
                         _loggerFactory);
 
-                    lock (_periodicPublishingList)
+                    lock (_periodicPublishingListLock)
                     {
                         _periodicPublishingList.Add(heartbeat);
                     }
@@ -642,7 +652,7 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 // loop through all sessions
-                lock (_sessions)
+                lock (_sessionLock)
                 {
                     foreach (Session session in _sessions)
                     {
@@ -719,7 +729,7 @@ namespace Opc.Ua.Cloud.Publisher
                                         SkipFirst = false
                                     };
 
-                                    lock (_periodicPublishingList)
+                                    lock (_periodicPublishingListLock)
                                     {
                                         foreach (PeriodicPublishing heartbeat in _periodicPublishingList)
                                         {

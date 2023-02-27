@@ -15,6 +15,7 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly ILogger _logger;
 
         private Queue<long> _lastMessageLatencies = new Queue<long>();
+        private object _lastMessageLatenciesLock = new object();
 
         public StoreForwardPublisher(ILoggerFactory loggerFactory, IBrokerClient subscriber)
         {
@@ -57,7 +58,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             watch.Stop();
 
-            lock (_lastMessageLatencies)
+            lock (_lastMessageLatenciesLock)
             {
                 _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
 
@@ -151,7 +152,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             watch.Stop();
 
-            lock (_lastMessageLatencies)
+            lock (_lastMessageLatenciesLock)
             {
                 _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
 
