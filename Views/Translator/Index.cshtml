@@ -11,14 +11,30 @@
 
 <div class="container-fluid browser_connect_container">
     <p>
-        <B>Open a Web of Things Thing Description JSON LD file and send it to UA Edge Translator via OPC UA (format: opc.tcp://ipaddress:port):</B>
+        <B>
+            You can use ChatGPT to generate a Web of Things Thing Description for the asset you want to configure automatically.<br />
+            After validating its contents, choose the file below.<br />
+            Finally, send it to UA Edge Translator via OPC UA to configure the asset.
+        </B>
     </p>
-    <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
+    <hr />
+    <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Generate">
         <p>
-
-            <input class="btn btn-primary" type="file" name="file">
+            ChatGPT prompt to automatically generate the description file for your asset (e.g. enter "Siemens Sentron PAC4200")<br />
+            @Html.TextBox("chatprompt", null, new { style = "width:50%;" })
         </p>
         <p>
+            <input id="chatButton" class="btn btn-primary btn_browser" type="submit" value="Generate & Download File">
+        </p>
+    </form>
+    <hr />
+    <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
+        <p>
+            <input class="btn btn-primary" type="file" name="file">
+        </p>
+        <hr />
+        <p>
+            UA Edge Translator address. Format: opc.tcp://ipaddress:port <br />
             @Html.TextBox("endpointUrl", null, new { style = "width:50%;" })
         </p>
         <p>

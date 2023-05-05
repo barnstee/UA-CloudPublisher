@@ -26,6 +26,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Support for username and password authentication
 * Support for both Intel x64 and ARM x64 architectures (Raspberry Pi4, etc.) with pre-built Docker containers ready for use
 * Integration with [UA Edge Translator](https://github.com/barnstee/UA-EdgeTranslator)
+* Support for generating the Web of Things Thing Descriptions for UA Edge Translator automatically using ChatGPT
 
 ## Screenshots
 
@@ -76,6 +77,7 @@ And then point your browser to <http://yourIPAddress>.
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE="Azure", specifies the connection string to the cloud storage.
 * STORAGE_CONTAINER_NAME - when using STORAGE_TYPE="Azure", specifies the blob storage container name.
 * USE_KAFKA - if present, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
+* AZURE_OPENAI_API_KEY - Key to use the Azure Open AI service (ChatGPT) to generate the configuration files for UA Edge Translator automatically.
 
 ## PublishedNodes.json File Format
 
