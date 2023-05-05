@@ -25,7 +25,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         private IMessageSource _trigger;
 
-        private List<Session> _sessions = new List<Session>();
+        private List<ISession> _sessions = new List<ISession>();
         private object _sessionLock = new object();
 
         private List<SessionReconnectHandler> _reconnectHandlers = new List<SessionReconnectHandler>();
@@ -40,7 +40,7 @@ namespace Opc.Ua.Cloud.Publisher
         private Dictionary<string, EndpointDescription> _endpointDescriptionCache = new Dictionary<string, EndpointDescription>();
         private object _endpointDescriptionCacheLock = new object();
 
-        private readonly Dictionary<Session, ComplexTypeSystem> _complexTypeList = new Dictionary<Session, ComplexTypeSystem>();
+        private readonly Dictionary<ISession, ComplexTypeSystem> _complexTypeList = new Dictionary<ISession, ComplexTypeSystem>();
 
         public UAClient(
             IUAApplication app,
@@ -222,7 +222,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 while (_sessions.Count > 0)
                 {
-                    Session session = _sessions[0];
+                    ISession session = _sessions[0];
                     while (session.SubscriptionCount > 0)
                     {
                         Subscription subscription = session.Subscriptions.First();
@@ -277,7 +277,7 @@ namespace Opc.Ua.Cloud.Publisher
             return subscription;
         }
 
-        private void KeepAliveHandler(Session session, KeepAliveEventArgs eventArgs)
+        private void KeepAliveHandler(ISession session, KeepAliveEventArgs eventArgs)
         {
             if (eventArgs != null && session != null && session.ConfiguredEndpoint != null)
             {
@@ -393,7 +393,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // update the session
-            Session session = reconnectHandler.Session;
+            ISession session = reconnectHandler.Session;
             lock (_sessionLock)
             {
                 _sessions.Add(session);
@@ -654,7 +654,7 @@ namespace Opc.Ua.Cloud.Publisher
                 // loop through all sessions
                 lock (_sessionLock)
                 {
-                    foreach (Session session in _sessions)
+                    foreach (ISession session in _sessions)
                     {
                         UserAuthModeEnum authenticationMode = UserAuthModeEnum.Anonymous;
                         string username = null;
