@@ -829,7 +829,8 @@ namespace Opc.Ua.Cloud.Publisher
 
                 if (StatusCode.IsBad(results[0].StatusCode))
                 {
-                    throw new Exception(results[0].StatusCode.ToString());
+                    string hexString = "0x" + results[0].StatusCode.Code.ToString("X");
+                    throw new Exception("Call failed with: " + hexString);
                 }
             }
             catch (Exception ex)
