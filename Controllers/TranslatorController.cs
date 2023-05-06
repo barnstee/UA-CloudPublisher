@@ -37,8 +37,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("The chat prompt is invalid!");
                 }
 
+                string endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_ENDPOINT");
                 string key = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
-                OpenAIClient client = new OpenAIClient(new Uri("https://wotgpt4.openai.azure.com/"), new AzureKeyCredential(key));
+                OpenAIClient client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
 
                 Response<ChatCompletions> responseWithoutStream = client.GetChatCompletions(
 	                "gpt4",
@@ -78,8 +79,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("The endpoint URL specified is invalid!");
                 }
 
-                string payload = string.Empty;
-
                 if (file == null)
                 {
                     throw new ArgumentException("No file specified!");
@@ -90,6 +89,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("Invalid file specified!");
                 }
 
+                string payload = string.Empty;
                 using (Stream content = file.OpenReadStream())
                 {
                     byte[] bytes = new byte[file.Length];
