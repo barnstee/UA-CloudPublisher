@@ -77,8 +77,8 @@ And then point your browser to <http://yourIPAddress>.
 * STORAGE_CONNECTION_STRING - when using STORAGE_TYPE="Azure", specifies the connection string to the cloud storage.
 * STORAGE_CONTAINER_NAME - when using STORAGE_TYPE="Azure", specifies the blob storage container name.
 * USE_KAFKA - if present, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
-* AZURE_OPENAI_API_ENDPOINT - OpenAI service endpoint, e.g. https://wotgpt4.openai.azure.com/ 
-* AZURE_OPENAI_API_KEY - key to use the Azure Open AI service (ChatGPT) to generate the configuration files for UA Edge Translator automatically.
+* AZURE_OPENAI_API_ENDPOINT - Azure OpenAI service endpoint, e.g. https://wotgpt4.openai.azure.com/ 
+* AZURE_OPENAI_API_KEY - key to use with the Azure OpenAI service (ChatGPT) to generate the configuration files for UA Edge Translator automatically.
 
 ## PublishedNodes.json File Format
 
