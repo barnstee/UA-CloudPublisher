@@ -39,15 +39,20 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 string endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_ENDPOINT");
                 string key = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+                string name = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_DEPLOYMENT_NAME");
                 OpenAIClient client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
 
+                string chatResponseSample = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "pac4200.jsonld"));
+
                 Response<ChatCompletions> responseWithoutStream = client.GetChatCompletions(
-	                "gpt4",
+                    name,
 	                new ChatCompletionsOptions()
 	                {
 		                Messages =
                         {
                             new ChatMessage(ChatRole.System, "You are a Web of Things Thing Description generator."),
+                            new ChatMessage(ChatRole.User, @"Generate a Web of Things Thing Description for a Siemens Sentron PAC4200"),
+                            new ChatMessage(ChatRole.Assistant, chatResponseSample),
                             new ChatMessage(ChatRole.User, "Generate a Web of Things Thing Description for a " + chatprompt)
                         },
 		                Temperature = (float)0.2,

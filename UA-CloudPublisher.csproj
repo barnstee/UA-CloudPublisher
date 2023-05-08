@@ -31,6 +31,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="pac4200.jsonld" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="pac4200.jsonld">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="UACloudPublisher.Config.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
