@@ -162,7 +162,7 @@ namespace Opc.Ua.Cloud.Publisher
                 MessageProcessorModel messageData = new MessageProcessorModel
                 {
                     ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;s=" + displayName,
-                    ApplicationUri = "urn:localhost:UACloudPublisher",
+                    ApplicationUri = "urn:" + Settings.Instance.BrokerClientName,
                     MessageContext = ServiceMessageContext.GlobalContext,
                     Name = displayName,
                     Value = value
