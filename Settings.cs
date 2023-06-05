@@ -89,7 +89,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public string BrokerClientName { get; set; }
+        public string PublisherName { get; set; } = "UACloudPublisher";
 
         public string BrokerUrl { get; set; }
 
@@ -116,8 +116,6 @@ namespace Opc.Ua.Cloud.Publisher
         public bool CreateBrokerSASToken { get; set; } = true;
 
         public bool UseTLS { get; set; } = true;
-
-        public string PublisherName { get; set; } = "UACloudPublisher";
 
         public uint InternalQueueCapacity { get; set; } = 1000; // records
 

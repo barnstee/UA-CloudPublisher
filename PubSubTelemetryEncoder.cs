@@ -34,7 +34,7 @@ namespace Opc.Ua.Cloud.Publisher
                 encoder.WriteString("MessageType", "ua-data");
             }
 
-            encoder.WriteString("PublisherId", Settings.Instance.BrokerClientName);
+            encoder.WriteString("PublisherId", Settings.Instance.PublisherName);
 
             if (!isMetaData)
             {

@@ -26,11 +26,6 @@ namespace Opc.Ua.Cloud.Publisher
 
         public async Task CreateAsync(CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(Settings.Instance.PublisherName))
-            {
-                Settings.Instance.PublisherName = "UACloudPublisher";
-            }
-
             try
             {
                 // load app cert from storage

@@ -61,7 +61,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 {
                     var conf = new ConsumerConfig
                     {
-                        GroupId = Settings.Instance.BrokerClientName,
+                        GroupId = Settings.Instance.PublisherName,
                         BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
                         AutoOffsetReset = AutoOffsetReset.Earliest,
                         SecurityProtocol = SecurityProtocol.SaslSsl,

@@ -57,10 +57,10 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
                     int week = 60 * 60 * 24 * 7;
                     string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
-                    string stringToSign = HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.BrokerClientName) + "\n" + expiry;
+                    string stringToSign = HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.PublisherName) + "\n" + expiry;
                     HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
                     string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.BrokerClientName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
+                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.PublisherName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
                 }
 
                 // create MQTT client
@@ -69,7 +69,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                 MqttClientOptionsBuilder clientOptions = new MqttClientOptionsBuilder()
                         .WithTcpServer(Settings.Instance.BrokerUrl, (int?)Settings.Instance.BrokerPort)
-                        .WithClientId(Settings.Instance.BrokerClientName)
+                        .WithClientId(Settings.Instance.PublisherName)
                         .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Instance.UseTLS })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                         .WithTimeout(TimeSpan.FromSeconds(10))
@@ -81,7 +81,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 {
                     clientOptions = new MqttClientOptionsBuilder()
                         .WithWebSocketServer(Settings.Instance.BrokerUrl)
-                        .WithClientId(Settings.Instance.BrokerClientName)
+                        .WithClientId(Settings.Instance.PublisherName)
                         .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Instance.UseTLS })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                         .WithTimeout(TimeSpan.FromSeconds(10))

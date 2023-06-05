@@ -7,12 +7,12 @@
 }
 
 <h1>@ViewData["Title"]</h1>
- 
+
 <form action="/Config/Update" method="post">
     <br />
     <p>
-        Broker Client Name (<b>required</b>)<br />
-        @Html.TextBox("BrokerClientName", @Model.BrokerClientName, new { style = "width:100%;" })<br />
+        Publisher Name<br />
+        @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;" })<br />
     </p>
     <p>
         Broker URL (<b>required</b>)<br />
@@ -65,10 +65,6 @@
      <p>
         Use TLS with Broker (when switching off TLS, you will most likely also need to update the Broker Port)<br />
         @Html.CheckBox("UseTLS", @Model.UseTLS)<br />
-    </p>
-    <p>
-        Publisher Name<br />
-        @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;" })<br />
     </p>
     <p>
         Internal Queue Capacity<br />
