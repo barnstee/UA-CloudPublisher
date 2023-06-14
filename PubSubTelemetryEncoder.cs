@@ -174,5 +174,29 @@ namespace Opc.Ua.Cloud.Publisher
                 return string.Empty;
             }
         }
+
+        public string EncodeStatus(ulong messageID)
+        {
+            try
+            {
+                // encode a PubSub JSON status message
+                JsonEncoder encoder = new(ServiceMessageContext.GlobalContext, Settings.Instance.ReversiblePubSubEncoding);
+
+                encoder.WriteString("MessageId", messageID.ToString());
+                encoder.WriteString("MessageType", "ua-status");
+                encoder.WriteString("PublisherId", Settings.Instance.PublisherName);
+                encoder.WriteDateTime("Timestamp", DateTime.UtcNow);
+                encoder.WriteBoolean("IsCyclic", true);
+                encoder.WriteEnumerated("Status", PubSubState.Operational);
+                encoder.WriteDateTime("NextReportTime", DateTime.UtcNow.AddMilliseconds(Settings.Instance.DiagnosticsLoggingInterval * 1000));
+
+                return encoder.CloseAndReturnText();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Generation of JSON PubSub status message failed.");
+                return string.Empty;
+            }
+        }
     }
 }

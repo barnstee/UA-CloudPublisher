@@ -3,12 +3,12 @@ namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.AspNetCore.SignalR;
     using Microsoft.Extensions.Logging;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
-    using Opc.Ua.Cloud.Publisher.Models;
 
     public class Diagnostics
     {

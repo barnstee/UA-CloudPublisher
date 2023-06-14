@@ -30,6 +30,7 @@ namespace Opc.Ua.Cloud.Publisher
         private object _metadataMessagesLock = new object();
 
         private Timer _metadataTimer;
+        private Timer _statusTimer;
         private bool _isRunning = false;
 
         private static ILogger _logger;
@@ -49,6 +50,8 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
             }
+
+            _statusTimer = new Timer(SendStatusOnTimer, null, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
         }
 
         public void Dispose()
@@ -251,6 +254,24 @@ namespace Opc.Ua.Cloud.Publisher
 
             // reset our send time
             _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Instance.DefaultSendIntervalSeconds);
+        }
+
+        private void SendStatusOnTimer(object state)
+        {
+            // stop the timer while we're sending
+            _statusTimer.Change(Timeout.Infinite, Timeout.Infinite);
+
+            using (MemoryStream buffer = new MemoryStream())
+            {
+                buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeStatus(_messageID++)));
+                if (_sink.SendMetadata(buffer.ToArray()))
+                {
+                    _logger.LogDebug($"Sent status message to broker!");
+                }
+            }
+
+            // restart the timer
+            _statusTimer.Change((int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
         }
 
         private void SendMetadataOnTimer(object state)

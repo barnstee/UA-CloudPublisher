@@ -10,5 +10,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
         string EncodePayload(MessageProcessorModel messageData, out ushort hash);
 
         string EncodeMetadata(MessageProcessorModel messageData);
+
+        string EncodeStatus(ulong messageID);
     }
 }
