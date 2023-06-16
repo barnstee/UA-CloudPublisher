@@ -26,6 +26,8 @@ namespace Opc.Ua.Cloud.Publisher
 
         public async Task CreateAsync(CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation($"Creating OPC UA app named {Settings.Instance.PublisherName}");
+
             try
             {
                 // load app cert from storage
@@ -91,6 +93,8 @@ namespace Opc.Ua.Cloud.Publisher
 
             // now load UA config file
             await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
+
+            // set trace masks
             _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Instance.UAStackTraceMask;
             Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
             _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Instance.UAStackTraceMask:X}");
