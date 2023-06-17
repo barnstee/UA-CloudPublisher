@@ -59,7 +59,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             try
             {
-                UnpublishAllNodes();
+                UnpublishAllNodes(false);
             }
             catch (Exception e)
             {
@@ -208,7 +208,7 @@ namespace Opc.Ua.Cloud.Publisher
             return newSession;
         }
 
-        public void UnpublishAllNodes()
+        public void UnpublishAllNodes(bool updatePersistencyFile = true)
         {
             // loop through all sessions
             lock (_sessionLock)
@@ -248,7 +248,10 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // update our persistency
-            PersistPublishedNodesAsync().GetAwaiter().GetResult();
+            if (updatePersistencyFile)
+            {
+                PersistPublishedNodesAsync().GetAwaiter().GetResult();
+            }
         }
 
         private Subscription CreateSubscription(Session session, ref int publishingInterval)

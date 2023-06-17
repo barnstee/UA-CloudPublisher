@@ -13,7 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         void UnpublishNode(NodePublishingModel nodeToUnpublish);
 
-        void UnpublishAllNodes();
+        void UnpublishAllNodes(bool updatePersistencyFile = true);
 
         IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes();
 
