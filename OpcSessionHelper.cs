@@ -30,14 +30,14 @@ namespace Opc.Ua.Cloud.Publisher
     public class OpcSessionHelper
     {
         public ConcurrentDictionary<string, OpcSessionCacheData> OpcSessionCache = new ConcurrentDictionary<string, OpcSessionCacheData>();
-        
+
         private readonly ApplicationConfiguration _configuration = null;
 
         public OpcSessionHelper(IUAApplication app)
         {
-            _configuration = app.GetAppConfig();
+            _configuration = app.UAApplicationInstance.ApplicationConfiguration;
         }
-        
+
         public void Disconnect(string sessionID)
         {
             OpcSessionCacheData entry;
@@ -131,7 +131,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                 }
             }
-            
+
             return session;
         }
 

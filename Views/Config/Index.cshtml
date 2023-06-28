@@ -11,6 +11,10 @@
 <form action="/Config/Update" method="post">
     <br />
     <p>
+        OPC UA Certificate Thumbprint<br />
+        @Html.TextBox("UACertThumbprint", @Model.UACertThumbprint, new { style = "width:100%", @readonly = "true" })<br />
+    </p>
+    <p>
         Publisher Name<br />
         @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;" })<br />
     </p>
@@ -65,6 +69,10 @@
      <p>
         Use TLS with Broker (when switching off TLS, you will most likely also need to update the Broker Port)<br />
         @Html.CheckBox("UseTLS", @Model.UseTLS)<br />
+    </p>
+    <p>
+        Use OPC UA certificate for authentication with Broker<br />
+        @Html.CheckBox("UseCertAuth", @Model.UseCertAuth)<br />
     </p>
     <p>
         Internal Queue Capacity<br />

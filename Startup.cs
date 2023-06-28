@@ -46,7 +46,7 @@ namespace Opc.Ua.Cloud.Publisher
             // add our singletons
             services.AddSingleton<IUAApplication, UAApplication>();
             services.AddSingleton<IUAClient, UAClient>();
-            
+
             if (!string.IsNullOrEmpty(Configuration["USE_KAFKA"]))
             {
                 services.AddSingleton<IBrokerClient, KafkaClient>();

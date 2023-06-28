@@ -10,6 +10,10 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Uses OPC UA PubSub JSON encoding
 * Uses plain MQTT broker as publishing endpoint
 * Optionally uses plain Kafka broker as publishing endpoint
+* Support for websockets transport with MQTT broker
+* Support for username/password authentication for Kafka broker
+* Support for username/password authentication for MQTT broker
+* Support for certificate authentication for MQTT broker
 * OPC UA Variables publishing
 * OPC UA Alarms, Conditions & other events publishing
 * OPC UA Event filtering

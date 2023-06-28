@@ -89,6 +89,8 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
+        public string UACertThumbprint { get; set; }
+
         public string PublisherName { get; set; } = "UACloudPublisher";
 
         public string BrokerUrl { get; set; }
@@ -116,6 +118,8 @@ namespace Opc.Ua.Cloud.Publisher
         public bool CreateBrokerSASToken { get; set; } = true;
 
         public bool UseTLS { get; set; } = true;
+
+        public bool UseCertAuth { get; set; } = false;
 
         public uint InternalQueueCapacity { get; set; } = 1000; // records
 

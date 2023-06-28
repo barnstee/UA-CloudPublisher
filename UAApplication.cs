@@ -16,7 +16,7 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly ILogger _logger;
         private readonly IFileStorage _storage;
 
-        private ApplicationInstance _uaApplicationInstance;
+        public ApplicationInstance UAApplicationInstance { get; set; }
 
         public UAApplication(ILoggerFactory loggerFactory, IFileStorage storage)
         {
@@ -80,7 +80,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // create UA app
-            _uaApplicationInstance = new ApplicationInstance {
+            UAApplicationInstance = new ApplicationInstance {
                 ApplicationName = Settings.Instance.PublisherName,
                 ApplicationType = ApplicationType.Client,
                 ConfigSectionName = "UACloudPublisher"
@@ -88,25 +88,28 @@ namespace Opc.Ua.Cloud.Publisher
 
             // overwrite app name in UA config file, while removing spaces from the app name
             string fileContent = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"));
-            fileContent = fileContent.Replace("UACloudPublisher", _uaApplicationInstance.ApplicationName.Replace(" ", string.Empty));
+            fileContent = fileContent.Replace("UACloudPublisher", UAApplicationInstance.ApplicationName.Replace(" ", string.Empty));
             File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"), fileContent);
 
             // now load UA config file
-            await _uaApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
+            await UAApplicationInstance.LoadApplicationConfiguration(false).ConfigureAwait(false);
 
             // set trace masks
-            _uaApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Instance.UAStackTraceMask;
+            UAApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Instance.UAStackTraceMask;
             Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
             _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Instance.UAStackTraceMask:X}");
 
             // check the application certificate
-            bool certOK = await _uaApplicationInstance.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
+            bool certOK = await UAApplicationInstance.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
             if (!certOK)
             {
                 throw new Exception("Application instance certificate invalid!");
             }
             else
             {
+                // store UA cert thumbprint
+                Settings.Instance.UACertThumbprint = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.Thumbprint;
+
                 // store app certs
                 foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), "*.der"))
                 {
@@ -126,30 +129,25 @@ namespace Opc.Ua.Cloud.Publisher
                 }
             }
 
-            _logger.LogInformation($"Trusted Issuer store type is: {_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedIssuerCertificates.StoreType}");
-            _logger.LogInformation($"Trusted Issuer Certificate store path is: {Utils.ReplaceSpecialFolderNames(_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedIssuerCertificates.StorePath)}");
+            _logger.LogInformation($"Trusted Issuer store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedIssuerCertificates.StoreType}");
+            _logger.LogInformation($"Trusted Issuer Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedIssuerCertificates.StorePath)}");
 
-            _logger.LogInformation($"Trusted Peer Certificate store type is: {_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates.StoreType}");
-            _logger.LogInformation($"Trusted Peer Certificate store path is: {Utils.ReplaceSpecialFolderNames(_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates.StorePath)}");
+            _logger.LogInformation($"Trusted Peer Certificate store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates.StoreType}");
+            _logger.LogInformation($"Trusted Peer Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates.StorePath)}");
 
-            _logger.LogInformation($"Rejected certificate store type is: {_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectedCertificateStore.StoreType}");
-            _logger.LogInformation($"Rejected Certificate store path is: {Utils.ReplaceSpecialFolderNames(_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectedCertificateStore.StorePath)}");
+            _logger.LogInformation($"Rejected certificate store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectedCertificateStore.StoreType}");
+            _logger.LogInformation($"Rejected Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectedCertificateStore.StorePath)}");
 
-            _logger.LogInformation($"Rejection of SHA1 signed certificates is {(_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectSHA1SignedCertificates ? "enabled" : "disabled")}");
-            _logger.LogInformation($"Minimum certificate key size set to {_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.MinimumCertificateKeySize}");
+            _logger.LogInformation($"Rejection of SHA1 signed certificates is {(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectSHA1SignedCertificates ? "enabled" : "disabled")}");
+            _logger.LogInformation($"Minimum certificate key size set to {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.MinimumCertificateKeySize}");
 
-            _logger.LogInformation($"Application Certificate store type is: {_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.StoreType}");
-            _logger.LogInformation($"Application Certificate store path is: {Utils.ReplaceSpecialFolderNames(_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.StorePath)}");
-            _logger.LogInformation($"Application Certificate subject name is: {_uaApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
+            _logger.LogInformation($"Application Certificate store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.StoreType}");
+            _logger.LogInformation($"Application Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.StorePath)}");
+            _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
 
             // create cert validator
-            _uaApplicationInstance.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
-            _uaApplicationInstance.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(CertificateValidator_CertificateValidation);
-        }
-
-        public ApplicationConfiguration GetAppConfig()
-        {
-            return (_uaApplicationInstance != null) ? _uaApplicationInstance.ApplicationConfiguration : null;
+            UAApplicationInstance.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
+            UAApplicationInstance.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(CertificateValidator_CertificateValidation);
         }
 
         private void CertificateValidator_CertificateValidation(CertificateValidator validator, CertificateValidationEventArgs e)

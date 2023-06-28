@@ -1,14 +1,14 @@
 ﻿
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
-    using Opc.Ua;
+    using Opc.Ua.Configuration;
     using System.Threading;
     using System.Threading.Tasks;
 
     public interface IUAApplication
     {
-        Task CreateAsync(CancellationToken cancellationToken = default);
+        ApplicationInstance UAApplicationInstance { get; set; }
 
-        ApplicationConfiguration GetAppConfig();
+        Task CreateAsync(CancellationToken cancellationToken = default);
     }
 }

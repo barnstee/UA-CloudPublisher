@@ -136,7 +136,7 @@ namespace Opc.Ua.Cloud.Publisher
             ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create());
             _logger.LogInformation("Connecting session on endpoint {endpointUrl}.", configuredEndpoint.EndpointUrl);
 
-            uint timeout = (uint)_app.GetAppConfig().ClientConfiguration.DefaultSessionTimeout;
+            uint timeout = (uint)_app.UAApplicationInstance.ApplicationConfiguration.ClientConfiguration.DefaultSessionTimeout;
 
             _logger.LogInformation("Creating session for endpoint {endpointUrl} with timeout of {timeout} ms.",
                 configuredEndpoint.EndpointUrl,
@@ -156,11 +156,11 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 newSession = await Session.Create(
-                    _app.GetAppConfig(),
+                    _app.UAApplicationInstance.ApplicationConfiguration,
                     configuredEndpoint,
                     true,
                     false,
-                    _app.GetAppConfig().ApplicationName,
+                    _app.UAApplicationInstance.ApplicationConfiguration.ApplicationName,
                     timeout,
                     userIdentity,
                     null

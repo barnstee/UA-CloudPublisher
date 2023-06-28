@@ -15,6 +15,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using System.Globalization;
     using System.Linq;
     using System.Security.Cryptography;
+    using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -26,13 +27,15 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
         private readonly ILogger _logger;
         private readonly ICommandProcessor _commandProcessor;
+        private readonly IUAApplication _uAApplication;
 
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-        public MQTTClient(ILoggerFactory loggerFactory, ICommandProcessor commandProcessor)
+        public MQTTClient(ILoggerFactory loggerFactory, ICommandProcessor commandProcessor, IUAApplication uAApplication)
         {
             _logger = loggerFactory.CreateLogger("MQTTClient");
             _commandProcessor = commandProcessor;
+            _uAApplication = uAApplication;
         }
 
         public void Connect()
@@ -88,6 +91,31 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                         .WithCleanSession(true) // clear existing subscriptions
                         .WithCredentials(Settings.Instance.BrokerUsername, password);
+                }
+
+                if (Settings.Instance.UseCertAuth)
+                {
+                    X509Certificate2 appCert = _uAApplication.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
+                    if (appCert == null)
+                    {
+                        throw new Exception($"Cannot access OPC UA application certificate!");
+                    }
+
+                    clientOptions = new MqttClientOptionsBuilder()
+                        .WithTcpServer(Settings.Instance.BrokerUrl)
+                        .WithClientId(Settings.Instance.PublisherName)
+                        .WithTls(new MqttClientOptionsBuilderTlsParameters
+                        {
+                            UseTls = true,
+                            AllowUntrustedCertificates = true,
+                            IgnoreCertificateChainErrors = true,
+                            Certificates = new[] { appCert }
+                        })
+                        .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
+                        .WithTimeout(TimeSpan.FromSeconds(10))
+                        .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
+                        .WithCleanSession(true) // clear existing subscriptions
+                        .WithCredentials(Settings.Instance.PublisherName, string.Empty);
                 }
 
                 // setup disconnection handling
