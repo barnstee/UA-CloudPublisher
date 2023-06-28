@@ -13,6 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Text;
     using System.Threading.Tasks;
 
     public class BrowserController : Controller
@@ -95,7 +96,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 return View("Index", sessionModel);
             }
             else
-            { 
+            {
                 sessionModel.StatusMessage = "Connected to: " + endpointUrl;
                 return View("Browse", sessionModel);
             }
@@ -118,11 +119,89 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GetRootNodeAsync()
+        public async Task<ActionResult> GeneratePN()
         {
-            ReferenceDescriptionCollection references;
+            try
+            {
+                List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
+
+                Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+
+                PublishNodesInterfaceModel model = new()
+                {
+                    EndpointUrl = session.Endpoint.EndpointUrl,
+                    OpcNodes = new List<VariableModel>()
+                };
+
+                foreach (UANodeInformation nodeInfo in results)
+                {
+                    if (nodeInfo.Type == "Variable")
+                    {
+                        VariableModel variable = new()
+                        {
+                            OpcSamplingInterval = 1000,
+                            OpcPublishingInterval = 1000,
+                            HeartbeatInterval = 0,
+                            SkipFirst = false,
+                            Id = nodeInfo.ExpandedNodeId
+                        };
+
+                        model.OpcNodes.Add(variable);
+                    }
+                }
+
+                string json = JsonConvert.SerializeObject(new List<PublishNodesInterfaceModel>() { model }, Formatting.Indented);
+
+                return File(Encoding.UTF8.GetBytes(json), "APPLICATION/octet-stream", "publishednodes.json");
+            }
+            catch (Exception ex)
+            {
+                SessionModel sessionModel = new SessionModel
+                {
+                    StatusMessage = ex.Message,
+                    SessionId = HttpContext.Session.Id,
+                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
+                };
+
+                return View("Browse", sessionModel);
+            }
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> GenerateCSV()
+        {
+            try
+            {
+                List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
+
+                string content = "ApplicationUri,ExpandedNodeId,DisplayName,Type\r\n";
+                foreach (UANodeInformation nodeInfo in results)
+                {
+                    content += (nodeInfo.ApplicationUri + "," + nodeInfo.ExpandedNodeId + "," + nodeInfo.DisplayName + "," + nodeInfo.Type + "\r\n");
+                }
+
+                return File(Encoding.UTF8.GetBytes(content), "APPLICATION/octet-stream", "opcuaservernodes.csv");
+            }
+            catch (Exception ex)
+            {
+                SessionModel sessionModel = new SessionModel
+                {
+                    StatusMessage = ex.Message,
+                    SessionId = HttpContext.Session.Id,
+                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
+                };
+
+                return View("Browse", sessionModel);
+            }
+        }
+
+        private async Task<ReferenceDescriptionCollection> BrowseNodeAsync(NodeId nodeId)
+        {
+            ReferenceDescriptionCollection references = new();
             byte[] continuationPoint;
-            var jsonTree = new List<object>();
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             try
             {
@@ -131,7 +210,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 session.Browse(
                     null,
                     null,
-                    ObjectIds.ObjectsFolder,
+                    nodeId,
                     0u,
                     BrowseDirection.Forward,
                     ReferenceTypeIds.HierarchicalReferences,
@@ -139,16 +218,112 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     0,
                     out continuationPoint,
                     out references);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Cannot browse node {0}: {1}", nodeId, ex.Message);
+
+                throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+
+            _logger.LogInformation("Browing all childeren info of node '{0}' took {0} ms", nodeId, stopwatch.ElapsedMilliseconds);
+
+            return references;
+        }
+
+        private async Task<List<UANodeInformation>> BrowseNodeResursiveAsync(NodeId nodeId)
+        {
+            List<UANodeInformation> results = new();
+
+            try
+            {
+                if (nodeId == null)
+                {
+                    nodeId = ObjectIds.ObjectsFolder;
+                }
+
+                ReferenceDescriptionCollection references = await BrowseNodeAsync(nodeId).ConfigureAwait(false);
+                if (references != null)
+                {
+                    List<string> processedReferences = new();
+                    foreach (ReferenceDescription nodeReference in references)
+                    {
+                        // filter out duplicates
+                        if (processedReferences.Contains(nodeReference.NodeId.ToString()))
+                        {
+                            continue;
+                        }
+
+                        UANodeInformation nodeInfo = new()
+                        {
+                            DisplayName = nodeReference.DisplayName.Text,
+                            Type = nodeReference.NodeClass.ToString()
+                        };
+
+                        try
+                        {
+                            Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+
+                            nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
+
+                            if (nodeReference.NodeId.NamespaceIndex == 0)
+                            {
+                                nodeInfo.ExpandedNodeId = "nsu=http://opcfoundation.org/UA;" + nodeReference.NodeId.ToString();
+                            }
+                            else
+                            {
+                                nodeInfo.ExpandedNodeId = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                            }
+
+                            results.AddRange(await BrowseNodeResursiveAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false));
+                        }
+                        catch (Exception)
+                        {
+                            // skip this node
+                            continue;
+                        }
+
+                        processedReferences.Add(nodeReference.NodeId.ToString());
+                        results.Add(nodeInfo);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Cannot browse node {0}: {1}", nodeId, ex.Message);
+
+                throw;
+            }
+
+            return results;
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> GetRootNodeAsync()
+        {
+            try
+            {
+                List<object> jsonTree = new();
+
+                ReferenceDescriptionCollection references = await BrowseNodeAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
+
                 jsonTree.Add(new { id = ObjectIds.ObjectsFolder.ToString(), text = "Root", children = (references?.Count != 0) });
 
                 return Json(jsonTree);
             }
             catch (Exception ex)
             {
-                SessionModel sessionModel = new SessionModel();
-                sessionModel.StatusMessage = ex.Message;
-                sessionModel.SessionId = HttpContext.Session.Id;
-                sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+                SessionModel sessionModel = new SessionModel
+                {
+                    StatusMessage = ex.Message,
+                    SessionId = HttpContext.Session.Id,
+                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
+                };
+
                 return View("Browse", sessionModel);
             }
         }
@@ -156,91 +331,32 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> GetChildrenAsync(string jstreeNode)
         {
-            ReferenceDescriptionCollection references = null;
-            byte[] continuationPoint;
-            var jsonTree = new List<object>();
+            List<object> jsonTree = new();
 
-            Session session = null;
             try
             {
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
-
-                try
-                {
-                    session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
-
-                    session.Browse(
-                        null,
-                        null,
-                        GetNodeIDFromJSTreeNode(jstreeNode),
-                        0u,
-                        BrowseDirection.Forward,
-                        ReferenceTypeIds.HierarchicalReferences,
-                        true,
-                        0,
-                        out continuationPoint,
-                        out references);
-                }
-                catch (Exception e)
-                {
-                    // skip this node
-                    _logger.LogError("Can not browse node '{0}'", GetNodeIDFromJSTreeNode(jstreeNode));
-                    string errorMessage = string.Format("Error", e.Message,
-                        e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
-                    _logger.LogError(errorMessage);
-                }
-
-                _logger.LogInformation("Browsing node '{0}' data took {0} ms", GetNodeIDFromJSTreeNode(jstreeNode), stopwatch.ElapsedMilliseconds);
-
+                ReferenceDescriptionCollection references = await BrowseNodeAsync(GetNodeIDFromJSTreeNode(jstreeNode)).ConfigureAwait(false);
                 if (references != null)
                 {
-                    var idList = new List<string>();
-                    foreach (var nodeReference in references)
+                    List<string> processedReferences = new();
+                    foreach (ReferenceDescription nodeReference in references)
                     {
-                        bool idFound = false;
-                        foreach (var id in idList)
-                        {
-                            if (id == nodeReference.NodeId.ToString())
-                            {
-                                idFound = true;
-                            }
-                        }
-                        if (idFound == true)
+                        // filter out duplicates
+                        if (processedReferences.Contains(nodeReference.NodeId.ToString()))
                         {
                             continue;
                         }
 
                         ReferenceDescriptionCollection childReferences = null;
-                        byte[] childContinuationPoint;
-
-                        _logger.LogInformation("Browse '{0}' count: {1}", nodeReference.NodeId, jsonTree.Count);
-
-                        INode currentNode = null;
                         try
                         {
-                            session.Browse(
-                                null,
-                                null,
-                                ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris),
-                                0u,
-                                BrowseDirection.Forward,
-                                ReferenceTypeIds.HierarchicalReferences,
-                                true,
-                                0,
-                                out childContinuationPoint,
-                                out childReferences);
+                            Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
 
-                            currentNode = session.ReadNode(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris));
+                            childReferences = await BrowseNodeAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
                         }
-                        catch (Exception e)
+                        catch (Exception)
                         {
                             // skip this node
-                            _logger.LogError("Can not browse or read node '{0}'", nodeReference.NodeId);
-                            string errorMessage = string.Format("Error", e.Message,
-                                e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
-                            _logger.LogError(errorMessage);
-
                             continue;
                         }
 
@@ -248,120 +364,43 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         byte currentNodeEventNotifier = 0;
                         bool currentNodeExecutable = false;
 
-                        VariableNode variableNode = currentNode as VariableNode;
-                        if (variableNode != null)
+                        if (nodeReference.NodeClass == NodeClass.Variable)
                         {
-                            currentNodeAccessLevel = variableNode.UserAccessLevel;
+                            currentNodeAccessLevel = 1;
                         }
 
-                        ObjectNode objectNode = currentNode as ObjectNode;
-                        if (objectNode != null)
+                        if (nodeReference.NodeClass == NodeClass.Method)
                         {
-                            currentNodeEventNotifier = objectNode.EventNotifier;
-                        }
-
-                        ViewNode viewNode = currentNode as ViewNode;
-                        if (viewNode != null)
-                        {
-                            currentNodeEventNotifier = viewNode.EventNotifier;
-                        }
-
-                        MethodNode methodNode = currentNode as MethodNode;
-                        if (methodNode != null)
-                        {
-                            currentNodeExecutable = methodNode.UserExecutable;
+                            currentNodeExecutable = true;
                         }
 
                         jsonTree.Add(new
                         {
-                            id = ("__" + GetNodeIDFromJSTreeNode(jstreeNode) + "__$__" + nodeReference.NodeId.ToString()),
+                            id = "__" + GetNodeIDFromJSTreeNode(jstreeNode) + "__$__" + nodeReference.NodeId.ToString(),
                             text = nodeReference.DisplayName.ToString(),
                             nodeClass = nodeReference.NodeClass.ToString(),
                             accessLevel = currentNodeAccessLevel.ToString(),
                             eventNotifier = currentNodeEventNotifier.ToString(),
                             executable = currentNodeExecutable.ToString(),
-                            children = (childReferences.Count == 0) ? false : true,
+                            children = (childReferences.Count > 0),
                             relevantNode = true
                         });
 
-                        idList.Add(nodeReference.NodeId.ToString());
-                    }
-
-                    // If there are no children, then this is a call to read the properties of the node itself.
-                    if (jsonTree.Count == 0)
-                    {
-                        INode currentNode = null;
-
-                        try
-                        {
-                            currentNode = session.ReadNode(new NodeId(GetNodeIDFromJSTreeNode(jstreeNode)));
-                        }
-                        catch (Exception e)
-                        {
-                            string errorMessage = string.Format("Error", e.Message,
-                                e.InnerException?.Message ?? "--", e?.StackTrace ?? "--");
-                            _logger.LogError(errorMessage);
-                        }
-
-                        if (currentNode == null)
-                        {
-                            byte currentNodeAccessLevel = 0;
-                            byte currentNodeEventNotifier = 0;
-                            bool currentNodeExecutable = false;
-
-                            VariableNode variableNode = currentNode as VariableNode;
-
-                            if (variableNode != null)
-                            {
-                                currentNodeAccessLevel = variableNode.UserAccessLevel;
-                            }
-
-                            ObjectNode objectNode = currentNode as ObjectNode;
-
-                            if (objectNode != null)
-                            {
-                                currentNodeEventNotifier = objectNode.EventNotifier;
-                            }
-
-                            ViewNode viewNode = currentNode as ViewNode;
-
-                            if (viewNode != null)
-                            {
-                                currentNodeEventNotifier = viewNode.EventNotifier;
-                            }
-
-                            MethodNode methodNode = currentNode as MethodNode;
-
-                            if (methodNode != null)
-                            {
-                                currentNodeExecutable = methodNode.UserExecutable;
-                            }
-
-                            jsonTree.Add(new
-                            {
-                                id = jstreeNode,
-                                text = currentNode.DisplayName.ToString(),
-                                nodeClass = currentNode.NodeClass.ToString(),
-                                accessLevel = currentNodeAccessLevel.ToString(),
-                                eventNotifier = currentNodeEventNotifier.ToString(),
-                                executable = currentNodeExecutable.ToString(),
-                                children = false
-                            });
-                        }
+                        processedReferences.Add(nodeReference.NodeId.ToString());
                     }
                 }
-
-                stopwatch.Stop();
-                _logger.LogInformation("Browing all childeren info of node '{0}' took {0} ms", GetNodeIDFromJSTreeNode(jstreeNode), stopwatch.ElapsedMilliseconds);
 
                 return Json(jsonTree);
             }
             catch (Exception ex)
             {
-                SessionModel sessionModel = new SessionModel();
-                sessionModel.StatusMessage = ex.Message;
-                sessionModel.SessionId = HttpContext.Session.Id;
-                sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+                SessionModel sessionModel = new SessionModel
+                {
+                    StatusMessage = ex.Message,
+                    SessionId = HttpContext.Session.Id,
+                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
+                };
+
                 return View("Browse", sessionModel);
             }
         }
@@ -370,7 +409,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         public async Task<ActionResult> VariableReadAsync(string jstreeNode)
         {
             try
-            { 
+            {
                 DataValueCollection values = null;
                 DiagnosticInfoCollection diagnosticInfos = null;
                 ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
@@ -409,10 +448,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                SessionModel sessionModel = new SessionModel();
-                sessionModel.StatusMessage = ex.Message;
-                sessionModel.SessionId = HttpContext.Session.Id;
-                sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+                SessionModel sessionModel = new SessionModel
+                {
+                    StatusMessage = ex.Message,
+                    SessionId = HttpContext.Session.Id,
+                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
+                };
+
                 return View("Browse", sessionModel);
             }
         }
@@ -445,24 +487,27 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     node.Password = password;
                     node.OpcAuthenticationMode = UserAuthModeEnum.UsernamePassword;
                 }
-   
+
                 await _client.PublishNodeAsync(node).ConfigureAwait(false);
 
                 return Content(JsonConvert.SerializeObject(new NodeId(GetNodeIDFromJSTreeNode(jstreeNode))));
             }
             catch (Exception ex)
             {
-                SessionModel sessionModel = new SessionModel();
-                sessionModel.StatusMessage = ex.Message;
-                sessionModel.SessionId = HttpContext.Session.Id;
-                sessionModel.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+                SessionModel sessionModel = new SessionModel
+                {
+                    StatusMessage = ex.Message,
+                    SessionId = HttpContext.Session.Id,
+                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
+                };
+
                 return View("Browse", sessionModel);
             }
         }
 
         private string GetNodeIDFromJSTreeNode(string jstreeNode)
         {
-            // This delimiter is used to allow the storing of the OPC UA parent node ID together with the OPC UA child node ID in jstree data structures and provide it as parameter to 
+            // This delimiter is used to allow the storing of the OPC UA parent node ID together with the OPC UA child node ID in jstree data structures and provide it as parameter to
             // Ajax calls.
             string[] delimiter = { "__$__" };
             string[] jstreeNodeSplit = jstreeNode.Split(delimiter, 3, StringSplitOptions.None);

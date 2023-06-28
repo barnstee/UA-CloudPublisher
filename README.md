@@ -7,6 +7,8 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Cross-plattform - Runs on Windows and Linux
 * Runs inside a Docker container and on Kubernetes
 * UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server
+* Generates a CSV file containing all OPC UA nodes from a connected server
+* Generates a publishednodes.json file containing all OPC UA variable nodes from a connected server
 * Uses OPC UA PubSub JSON encoding
 * Uses plain MQTT broker as publishing endpoint
 * Optionally uses plain Kafka broker as publishing endpoint

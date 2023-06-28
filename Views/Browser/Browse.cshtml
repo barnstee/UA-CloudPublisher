@@ -43,12 +43,30 @@ Right-click a node to read or publish it.
             @Model.StatusMessage
         </div>
     </div>
-    <div class="row browser_browse_disconnect_button">
-        @using (Html.BeginForm("Disconnect", "Browser"))
-        {
-            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
-        }
-    </div>
+    <p>
+        <div class="row browser_browse_generate_pn_button">
+            @using (Html.BeginForm("GeneratePN", "Browser"))
+            {
+                <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate publishednodes.json file from all OPC UA variables in the server" />
+            }
+        </div>
+    </p>
+    <p>
+        <div class="row browser_browse_generate_csv_button">
+            @using (Html.BeginForm("GenerateCSV", "Browser"))
+            {
+                <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
+            }
+        </div>
+    </p>
+    <p>
+        <div class="row browser_browse_disconnect_button">
+            @using (Html.BeginForm("Disconnect", "Browser"))
+            {
+                <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
+            }
+        </div>
+    </p>
 </div>
 
 @section scripts {
