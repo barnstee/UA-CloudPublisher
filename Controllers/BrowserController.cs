@@ -174,10 +174,10 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             {
                 List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
 
-                string content = "ApplicationUri,ExpandedNodeId,DisplayName,Type\r\n";
+                string content = "Endpoint,ApplicationUri,ExpandedNodeId,DisplayName,Type,VariableCurrentValue,VariableType\r\n";
                 foreach (UANodeInformation nodeInfo in results)
                 {
-                    content += (nodeInfo.ApplicationUri + "," + nodeInfo.ExpandedNodeId + "," + nodeInfo.DisplayName + "," + nodeInfo.Type + "\r\n");
+                    content += (nodeInfo.Endpoint + "," + nodeInfo.ApplicationUri + "," + nodeInfo.ExpandedNodeId + "," + nodeInfo.DisplayName + "," + nodeInfo.Type + "," + nodeInfo.VariableCurrentValue + "," + nodeInfo.VariableType + "\r\n");
                 }
 
                 return File(Encoding.UTF8.GetBytes(content), "APPLICATION/octet-stream", "opcuaservernodes.csv");
@@ -270,6 +270,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                             nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
 
+                            nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
+
                             if (nodeReference.NodeId.NamespaceIndex == 0)
                             {
                                 nodeInfo.ExpandedNodeId = "nsu=http://opcfoundation.org/UA;" + nodeReference.NodeId.ToString();
@@ -277,6 +279,23 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                             else
                             {
                                 nodeInfo.ExpandedNodeId = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                            }
+
+                            if (nodeReference.NodeClass == NodeClass.Variable)
+                            {
+                                try
+                                {
+                                    DataValue value = session.ReadValue(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris));
+                                    if ((value != null) && (value.WrappedValue != Variant.Null))
+                                    {
+                                        nodeInfo.VariableCurrentValue = value.ToString();
+                                        nodeInfo.VariableType = value.WrappedValue.TypeInfo.ToString();
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    // do nothing
+                                }
                             }
 
                             results.AddRange(await BrowseNodeResursiveAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false));
