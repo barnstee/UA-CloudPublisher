@@ -15,5 +15,9 @@
         public string VariableCurrentValue { get; set; } = string.Empty;
 
         public string VariableType { get; set; } = string.Empty;
+
+        public string Parent { get; set; } = string.Empty;
+
+        public string[] References { get; set; }
     }
 }

@@ -174,10 +174,29 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             {
                 List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
 
-                string content = "Endpoint,ApplicationUri,ExpandedNodeId,DisplayName,Type,VariableCurrentValue,VariableType\r\n";
+                string content = "Endpoint,ApplicationUri,ExpandedNodeId,DisplayName,Type,VariableCurrentValue,VariableType,Parent,References\r\n";
                 foreach (UANodeInformation nodeInfo in results)
                 {
-                    content += (nodeInfo.Endpoint + "," + nodeInfo.ApplicationUri + "," + nodeInfo.ExpandedNodeId + "," + nodeInfo.DisplayName + "," + nodeInfo.Type + "," + nodeInfo.VariableCurrentValue + "," + nodeInfo.VariableType + "\r\n");
+                    string references = string.Empty;
+                    foreach (string reference in nodeInfo.References)
+                    {
+                        references += reference + " | ";
+                    }
+
+                    if (references.Length > 0)
+                    {
+                        references = references.Substring(0, references.Length - 3);
+                    }
+
+                    content += (nodeInfo.Endpoint + ","
+                              + nodeInfo.ApplicationUri + ","
+                              + nodeInfo.ExpandedNodeId + ","
+                              + nodeInfo.DisplayName + ","
+                              + nodeInfo.Type + ","
+                              + nodeInfo.VariableCurrentValue + ","
+                              + nodeInfo.VariableType + ","
+                              + nodeInfo.Parent + ","
+                              + references + "\r\n");
                 }
 
                 return File(Encoding.UTF8.GetBytes(content), "APPLICATION/octet-stream", "opcuaservernodes.csv");
@@ -272,6 +291,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                             nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
 
+                            if (nodeId.NamespaceIndex == 0)
+                            {
+                                nodeInfo.Parent = "nsu=http://opcfoundation.org/UA;" + nodeId.ToString();
+                            }
+                            else
+                            {
+                                nodeInfo.Parent = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                            }
+
                             if (nodeReference.NodeId.NamespaceIndex == 0)
                             {
                                 nodeInfo.ExpandedNodeId = "nsu=http://opcfoundation.org/UA;" + nodeReference.NodeId.ToString();
@@ -298,7 +326,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                                 }
                             }
 
-                            results.AddRange(await BrowseNodeResursiveAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false));
+                            List<UANodeInformation> childReferences = await BrowseNodeResursiveAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
+
+                            nodeInfo.References = new string[childReferences.Count];
+                            for (int i = 0; i < childReferences.Count; i++)
+                            {
+                                nodeInfo.References[i] = childReferences[i].ExpandedNodeId.ToString();
+                            }
+
+                            results.AddRange(childReferences);
                         }
                         catch (Exception)
                         {
