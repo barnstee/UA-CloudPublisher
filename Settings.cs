@@ -107,6 +107,8 @@ namespace Opc.Ua.Cloud.Publisher
 
         public bool SendUAMetadata { get; set; } = false;
 
+        public bool SendUAStatus { get; set; } = false;
+
         public uint MetadataSendInterval { get; set; } = 30; // seconds
 
         public string BrokerCommandTopic { get; set; }

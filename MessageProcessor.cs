@@ -51,7 +51,10 @@ namespace Opc.Ua.Cloud.Publisher
                 _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
             }
 
-            _statusTimer = new Timer(SendStatusOnTimer, null, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+            if (Settings.Instance.SendUAStatus)
+            {
+                _statusTimer = new Timer(SendStatusOnTimer, null, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+            }
         }
 
         public void Dispose()

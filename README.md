@@ -20,7 +20,8 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * OPC UA Alarms, Conditions & other events publishing
 * OPC UA Event filtering
 * OPC UA Complex Types publishing
-* OPC UA metadata publishing
+* OPC UA metadata messages publishing
+* OPC UA status messages publishing
 * Diagnostics info publishing
 * UI for displaying the list of publishes nodes
 * UI for displaying diagnostic information

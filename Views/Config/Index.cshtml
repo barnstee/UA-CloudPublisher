@@ -43,8 +43,12 @@
         @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;" })<br />
     </p>
      <p>
-        Send OPC UA Metadata<br />
+        Send OPC UA Metadata Messages<br />
         @Html.CheckBox("SendUAMetadata", @Model.SendUAMetadata)<br />
+    </p>
+    <p>
+        Send OPC UA Status Messages<br />
+        @Html.CheckBox("SendUAStatus", @Model.SendUAStatus)<br />
     </p>
     <p>
         Metadata Send Interval in Seconds<br />
