@@ -3,11 +3,11 @@ namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.IO;
     using System.Text;
     using System.Threading.Tasks;
-    using Opc.Ua.Cloud.Publisher.Interfaces;
 
     public class Settings
     {
@@ -89,21 +89,21 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public string UACertThumbprint { get; set; }
+        public string UACertThumbprint { get; set; } = string.Empty;
 
         public string PublisherName { get; set; } = "UACloudPublisher";
 
-        public string BrokerUrl { get; set; }
+        public string BrokerUrl { get; set; } = string.Empty;
 
         public uint BrokerPort { get; set; } = 8883;
 
-        public string BrokerUsername { get; set; }
+        public string BrokerUsername { get; set; } = string.Empty;
 
-        public string BrokerPassword { get; set; }
+        public string BrokerPassword { get; set; } = string.Empty;
 
-        public string BrokerMessageTopic { get; set; }
+        public string BrokerMessageTopic { get; set; } = string.Empty;
 
-        public string BrokerMetadataTopic { get; set; }
+        public string BrokerMetadataTopic { get; set; } = string.Empty;
 
         public bool SendUAMetadata { get; set; } = false;
 
@@ -111,9 +111,9 @@ namespace Opc.Ua.Cloud.Publisher
 
         public uint MetadataSendInterval { get; set; } = 30; // seconds
 
-        public string BrokerCommandTopic { get; set; }
+        public string BrokerCommandTopic { get; set; } = string.Empty;
 
-        public string BrokerResponseTopic { get; set; }
+        public string BrokerResponseTopic { get; set; } = string.Empty;
 
         public uint BrokerMessageSize { get; set; } = HubMessageSizeMax;
 
@@ -138,6 +138,13 @@ namespace Opc.Ua.Cloud.Publisher
         public bool ReversiblePubSubEncoding { get; set; } = false;
 
         public bool AutoLoadPersistedNodes { get; set; } = false;
+
+        public string AzureOpenAIAPIEndpoint { get; set; } = string.Empty;
+
+        public string AzureOpenAIAPIKey { get; set; } = string.Empty;
+
+        public string AzureOpenAIDeploymentName { get; set; } = string.Empty;
+
 
         public const int MaxResponsePayloadLength = (128 * 1024) - 256;
         public const uint HubMessageSizeMax = 256 * 1024;

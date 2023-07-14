@@ -37,15 +37,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("The chat prompt is invalid!");
                 }
 
-                string endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_ENDPOINT");
-                string key = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
-                string name = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_DEPLOYMENT_NAME");
-                OpenAIClient client = new OpenAIClient(new Uri(endpoint), new AzureKeyCredential(key));
+                OpenAIClient client = new OpenAIClient(
+                    new Uri(Settings.Instance.AzureOpenAIAPIEndpoint),
+                    new AzureKeyCredential(Settings.Instance.AzureOpenAIAPIKey)
+                );
 
                 string chatResponseSample = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "pac4200.jsonld"));
 
                 Response<ChatCompletions> responseWithoutStream = client.GetChatCompletions(
-                    name,
+                    Settings.Instance.AzureOpenAIDeploymentName,
 	                new ChatCompletionsOptions()
 	                {
 		                Messages =
