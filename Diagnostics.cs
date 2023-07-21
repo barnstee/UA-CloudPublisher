@@ -96,7 +96,7 @@ namespace Opc.Ua.Cloud.Publisher
                     List<string> chartValues = new List<string>();
 
                     _hubClient.AddOrUpdateTableEntry("Publisher Start Time", Info.PublisherStartTime.ToString());
-                    _hubClient.AddOrUpdateTableEntry("Connected to broker", Info.ConnectedToBroker.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Connected to broker(s)", Info.ConnectedToBroker.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA sessions", Info.NumberOfOpcSessionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA subscriptions", Info.NumberOfOpcSubscriptionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA monitored items", Info.NumberOfOpcMonitoredItemsMonitored.ToString());

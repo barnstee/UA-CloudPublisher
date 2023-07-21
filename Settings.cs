@@ -101,6 +101,16 @@ namespace Opc.Ua.Cloud.Publisher
 
         public string BrokerPassword { get; set; } = string.Empty;
 
+        public bool UseAltBrokerForMetadata { get; set; } = false;
+
+        public string AltBrokerUrl { get; set; } = string.Empty;
+
+        public uint AltBrokerPort { get; set; } = 8883;
+
+        public string AltBrokerUsername { get; set; } = string.Empty;
+
+        public string AltBrokerPassword { get; set; } = string.Empty;
+
         public string BrokerMessageTopic { get; set; } = string.Empty;
 
         public string BrokerMetadataTopic { get; set; } = string.Empty;

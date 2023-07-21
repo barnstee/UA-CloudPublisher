@@ -13,6 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     public class KafkaClient : IBrokerClient
     {
         private IProducer<Null, string> _producer = null;
+        private IProducer<Null, string> _altProducer = null;
         private IConsumer<Ignore, byte[]> _consumer = null;
 
         private readonly ILogger _logger;
@@ -38,6 +39,13 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     Diagnostics.Singleton.Info.ConnectedToBroker = false;
                 }
 
+                if (_altProducer != null)
+                {
+                    _altProducer.Flush();
+                    _altProducer.Dispose();
+                    _altProducer = null;
+                }
+
                 if (_consumer != null)
                 {
                     _consumer.Close();
@@ -56,6 +64,21 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 };
 
                 _producer = new ProducerBuilder<Null, string>(config).Build();
+
+                if (Settings.Instance.UseAltBrokerForMetadata)
+                {
+                    var altConfig = new ProducerConfig
+                    {
+                        BootstrapServers = Settings.Instance.AltBrokerUrl + ":" + Settings.Instance.AltBrokerPort,
+                        MessageTimeoutMs = 10000,
+                        SecurityProtocol = SecurityProtocol.SaslSsl,
+                        SaslMechanism = SaslMechanism.Plain,
+                        SaslUsername = Settings.Instance.AltBrokerUsername,
+                        SaslPassword = Settings.Instance.AltBrokerPassword
+                    };
+
+                    _altProducer = new ProducerBuilder<Null, string>(altConfig).Build();
+                }
 
                 if (!string.IsNullOrEmpty(Settings.Instance.BrokerCommandTopic))
                 {
@@ -106,7 +129,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 Value = Encoding.UTF8.GetString(payload)
             };
 
-            _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message).GetAwaiter().GetResult();
+            if (Settings.Instance.UseAltBrokerForMetadata)
+            {
+                _altProducer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message).GetAwaiter().GetResult();
+            }
+            else
+            {
+                _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message).GetAwaiter().GetResult();
+            }
         }
 
         public void PublishResponse(byte[] payload)

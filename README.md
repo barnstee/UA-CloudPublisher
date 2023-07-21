@@ -16,6 +16,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Support for username/password authentication for Kafka broker
 * Support for username/password authentication for MQTT broker
 * Support for certificate authentication for MQTT broker
+* Support for sending OPC UA metadata to an alternative broker
 * OPC UA Variables publishing
 * OPC UA Alarms, Conditions & other events publishing
 * OPC UA Event filtering

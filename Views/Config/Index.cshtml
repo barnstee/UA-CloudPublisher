@@ -15,7 +15,7 @@
         @Html.TextBox("UACertThumbprint", @Model.UACertThumbprint, new { style = "width:100%", @readonly = "true" })<br />
     </p>
     <p>
-        Publisher Name<br />
+        Publisher Name (<b>required</b>)<br />
         @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;" })<br />
     </p>
     <p>
@@ -39,12 +39,32 @@
         @Html.TextBox("BrokerMessageTopic", @Model.BrokerMessageTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
+        Send OPC UA Metadata Messages<br />
+        @Html.CheckBox("SendUAMetadata", @Model.SendUAMetadata)<br />
+    </p>
+    <p>
         Broker Metadata Topic<br />
         @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;" })<br />
     </p>
-     <p>
-        Send OPC UA Metadata Messages<br />
-        @Html.CheckBox("SendUAMetadata", @Model.SendUAMetadata)<br />
+    <p>
+        Use Alternative Broker For OPC UA Metadata Messages<br />
+        @Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata)<br />
+    </p>
+    <p>
+        Alternative Broker URL<br />
+        @Html.TextBox("AltBrokerUrl", @Model.AltBrokerUrl, new { style = "width:100%;" })<br />
+    </p>
+    <p>
+        Alternative Broker Port<br />
+        @Html.TextBox("AltBrokerPort", @Model.AltBrokerPort, new { style = "width:100%;" })<br />
+    </p>
+    <p>
+        Alternative Broker Username<br />
+        @Html.TextBox("AltBrokerUsername", @Model.AltBrokerUsername, new { style = "width:100%;" })<br />
+    </p>
+    <p>
+        Alternative Broker Password<br />
+        @Html.Password("AltBrokerPassword", @Model.AltBrokerPassword, new { style = "width:100%;" })<br />
     </p>
     <p>
         Send OPC UA Status Messages<br />
