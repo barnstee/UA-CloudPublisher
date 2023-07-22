@@ -57,6 +57,14 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
+        public void ClearMetadataMessageCache()
+        {
+            lock (_metadataMessagesLock)
+            {
+                _metadataMessages.Clear();
+            }
+        }
+
         public void Dispose()
         {
             _batchBuffer.Dispose();

@@ -7,5 +7,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
     public interface IMessageProcessor : IDisposable
     {
         void Run(CancellationToken cancellationToken = default);
+
+        void ClearMetadataMessageCache();
     }
 }

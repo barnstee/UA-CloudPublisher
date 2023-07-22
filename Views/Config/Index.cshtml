@@ -8,8 +8,12 @@
 
 <h1>@ViewData["Title"]</h1>
 
-<form action="/Config/Update" method="post">
+<form action="/Config/Apply" method="post">
     <br />
+    <p>
+        Apply Changes<br />
+        <input type="submit" name="Apply" value="Apply" />
+    </p>
     <p>
         OPC UA Certificate Thumbprint<br />
         @Html.TextBox("UACertThumbprint", @Model.UACertThumbprint, new { style = "width:100%", @readonly = "true" })<br />
@@ -75,11 +79,11 @@
         @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { style = "width:100%;" })<br />
     </p>
      <p>
-        Broker Command Topic (<b>required</b>)<br />
+        Broker Command Topic<br />
         @Html.TextBox("BrokerCommandTopic", @Model.BrokerCommandTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
-        Broker Command Response Topic (<b>required</b>)<br />
+        Broker Command Response Topic<br />
         @Html.TextBox("BrokerResponseTopic", @Model.BrokerResponseTopic, new { style = "width:100%;" })<br />
     </p>
     <p>
@@ -141,8 +145,5 @@
     <p>
         Azure OpenAI Deployment or Model Name<br />
         @Html.TextBox("AzureOpenAIDeploymentName", @Model.AzureOpenAIDeploymentName, new { style = "width:100%;" })<br />
-    </p>
-    <p>
-        <input type="submit" name="Update" value="Update" />
     </p>
 </form>
