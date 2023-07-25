@@ -28,11 +28,9 @@ Plus local Python MQTT clients to test publishing and subscribing.
 
 ## Testing MQTT Broker with Python Clients
 
-    ````
     python.exe .\pub_client_1.py
     python.exe .\sub_client_1.py
-    ````
 
-## Tips:
+## Tips
 
 - Error "Failed to connect to MQTT broker: Topic should not be empty." &rarr; Please Connect UA-Cloud-Publisher and OPC-UA Server.
