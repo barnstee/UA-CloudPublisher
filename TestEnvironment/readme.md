@@ -6,7 +6,7 @@ Docker environment with the following containers:
 - PLC-Simulator: https://github.com/Azure-Samples/iot-edge-opc-plc
 - MQTT Broker HiveMQ
 
-All containers need to be on the same network
+All containers are on the same virtual network.
 
 Plus local Python MQTT clients to test publishing and subscribing.
 
