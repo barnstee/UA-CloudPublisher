@@ -65,6 +65,8 @@ Docker containers are automatically built and published. Simply run the UA Cloud
 
 And then point your browser to <http://yourIPAddress>.
 
+Note: We have also provided a [test environment](./TestEnvironment/readme.md) to get you started.
+
 ### Persisting Settings
 
 UA Cloud Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:

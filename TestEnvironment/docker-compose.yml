@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  ua-cloudpublisher:
+    image: ghcr.io/barnstee/ua-cloudpublisher:main
+    container_name: ua-cloud
+    ports:
+      - "80:80"
+    networks:
+      - sharedNetwork
+
+  opcplc:
+    image: mcr.microsoft.com/iotedge/opc-plc:latest
+    container_name: plc-sim
+    command:
+      [
+        "--pn=50000",
+        "--autoaccept",
+        "--sph",
+        "--sn=5",
+        "--sr=10",
+        "--st=uint",
+        "--fn=5",
+        "--fr=1",
+        "--ft=uint",
+        "--gn=5"
+      ]
+    ports:
+      - "50000:50000"
+    networks:
+      - sharedNetwork
+
+  hivemq4:
+    image: hivemq/hivemq4
+    container_name: hivemq4
+    ports:
+      - "1883:1883"
+    networks:
+      - sharedNetwork
+
+networks:
+  sharedNetwork:
+    driver: bridge
