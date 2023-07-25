@@ -1,4 +1,4 @@
-# Description
+# Test Environment Description
 
 We provide a Docker composition with the following containers:
 
@@ -33,4 +33,4 @@ In addition, we provide local Python MQTT clients to test publishing and subscri
 
 ## Tips
 
-- Error "Failed to connect to MQTT broker: Topic should not be empty." &rarr; Please Connect UA-Cloud-Publisher and OPC-UA Server.
+- Error "Failed to connect to MQTT broker: Topic should not be empty." &rarr; Please Connect UA Cloud Publisher and OPC-UA Server.
