@@ -1,6 +1,6 @@
 # Description
 
-Docker environment with the following containers:
+We provide a Docker composition with the following containers:
 
 - UA Cloud Publisher: https://github.com/barnstee/UA-CloudPublisher
 - PLC-Simulator: https://github.com/Azure-Samples/iot-edge-opc-plc
@@ -8,9 +8,9 @@ Docker environment with the following containers:
 
 All containers are on the same virtual network.
 
-Plus local Python MQTT clients to test publishing and subscribing.
+In addition, we provide local Python MQTT clients to test publishing and subscribing.
 
-# UA Cloud Publisher
+## UA Cloud Publisher
 
 - Frontend: http://localhost
 - Connect to Simulated OPC Server: opc.tcp://plc-sim:50000/
@@ -21,7 +21,7 @@ Plus local Python MQTT clients to test publishing and subscribing.
     - uncheck SAS
     - uncheck TLS
 
-# HiveMQ
+## HiveMQ
 
 - Control center: http://localhost:8888
 - Credentials: admin / hivemq
