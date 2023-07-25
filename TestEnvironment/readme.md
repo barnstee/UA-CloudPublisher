@@ -5,21 +5,21 @@ Docker environment with the following containers:
 - UA Cloud Publisher: https://github.com/barnstee/UA-CloudPublisher
 - PLC-Simulator: https://github.com/Azure-Samples/iot-edge-opc-plc
 - MQTT Broker HiveMQ
-- Python mqtt clients to test publishing and subscribing
 
+All containers need to be on the same network
+
+Plus local Python MQTT clients to test publishing and subscribing.
 
 # UA Cloud Publisher
 
 - Frontend: http://localhost
-- Connect to Simulated OPC Server:
-    - UA Cloud Publisher as lokal instance (IDE): opc.tcp://localhost:50000/
-    - UA Cloud Publisher as container: opc.tcp://plc-sim:50000/
-- Configuration (in Frontend):
+- Connect to Simulated OPC Server: opc.tcp://plc-sim:50000/
+- Configuration (in UI):
     - Broker URL: hivemq4
     - Broker Port: 1883
     - Message Topic: data
-        - uncheck SAS
-        - uncheck TLS
+    - uncheck SAS
+    - uncheck TLS
 
 # HiveMQ
 
@@ -28,18 +28,11 @@ Docker environment with the following containers:
 
 ## Testing MQTT Broker with Python Clients
 
-- Test with Python Scripts
-
     ````
     python.exe .\pub_client_1.py
     python.exe .\sub_client_1.py
     ````
 
-## Further Tips:
+## Tips:
 
-- Error " Failed to connect to MQTT broker: Topic should not be empty." &rarr; Connect UA-Cloud-Publisher and OPC-UA Server
-- all containers need to be in the same network
-
-    
-
-
+- Error "Failed to connect to MQTT broker: Topic should not be empty." &rarr; Please Connect UA-Cloud-Publisher and OPC-UA Server.
