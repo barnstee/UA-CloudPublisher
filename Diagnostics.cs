@@ -52,6 +52,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             Info.PublisherStartTime = DateTime.UtcNow;
             Info.ConnectedToBroker = false;
+            Info.ConnectedToCloudStorage = false;
             Info.NumberOfOpcSessionsConnected = 0;
             Info.NumberOfOpcSubscriptionsConnected = 0;
             Info.NumberOfOpcMonitoredItemsMonitored = 0;
@@ -70,13 +71,13 @@ namespace Opc.Ua.Cloud.Publisher
 
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
+            Clear();
+
             if ( Settings.Instance.DiagnosticsLoggingInterval == 0)
             {
                 // diagnostics are disabled
                 return;
             }
-
-            Clear();
 
             uint ticks = 0;
             while (true)
@@ -97,6 +98,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     _hubClient.AddOrUpdateTableEntry("Publisher Start Time", Info.PublisherStartTime.ToString());
                     _hubClient.AddOrUpdateTableEntry("Connected to broker(s)", Info.ConnectedToBroker.ToString());
+                    _hubClient.AddOrUpdateTableEntry("Connected to cloud storage/OneLake", Info.ConnectedToCloudStorage.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA sessions", Info.NumberOfOpcSessionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA subscriptions", Info.NumberOfOpcSubscriptionsConnected.ToString());
                     _hubClient.AddOrUpdateTableEntry("OPC UA monitored items", Info.NumberOfOpcMonitoredItemsMonitored.ToString());
@@ -129,6 +131,7 @@ namespace Opc.Ua.Cloud.Publisher
                     if (ticks % 10 == 0)
                     {
                         DiagnosticsSend("ConnectedToBroker", new DataValue(Info.ConnectedToBroker));
+                        DiagnosticsSend("ConnectedToCloudStorage", new DataValue(Info.ConnectedToCloudStorage));
                         DiagnosticsSend("NumOpcSessions", new DataValue(Info.NumberOfOpcSessionsConnected));
                         DiagnosticsSend("NumOpcSubscriptions", new DataValue(Info.NumberOfOpcSubscriptionsConnected));
                         DiagnosticsSend("NumOpcMonitoredItems", new DataValue(Info.NumberOfOpcMonitoredItemsMonitored));

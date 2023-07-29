@@ -70,6 +70,7 @@ namespace Opc.Ua.Cloud.Publisher
             switch (Configuration["STORAGE_TYPE"])
             {
                 case "Azure": services.AddSingleton<IFileStorage, AzureFileStorage>(); break;
+                case "OneLake": services.AddSingleton<IFileStorage, OneLakeFileStorage>(); break;
                 default: services.AddSingleton<IFileStorage, LocalFileStorage>(); break;
             }
         }
@@ -114,42 +115,46 @@ namespace Opc.Ua.Cloud.Publisher
                 endpoints.MapHub<StatusHub>("/statushub");
             });
 
-            // create our app
-            uaApp.CreateAsync().GetAwaiter().GetResult();
-
-            // kick off the task to show periodic diagnostic info
-            _ = Task.Run(() => Diagnostics.Singleton.RunAsync());
-
-            // connect to broker
-            subscriber.Connect();
-
-            // run the telemetry engine
-            _ = Task.Run(() => engine.Run());
-
-            // load our persistency file
-            if (Settings.Instance.AutoLoadPersistedNodes)
+            // do all further initialization on a background thread to load the webserver independently
+            _ = Task.Run(() =>
             {
-                try
+                // kick off the task to show periodic diagnostic info
+                _ = Task.Run(() => Diagnostics.Singleton.RunAsync());
+
+                // create our app
+                uaApp.CreateAsync().GetAwaiter().GetResult();
+
+                // connect to broker
+                subscriber.Connect();
+
+                // run the telemetry engine
+                _ = Task.Run(() => engine.Run());
+
+                // load our persistency file
+                if (Settings.Instance.AutoLoadPersistedNodes)
                 {
-                    string persistencyFilePath = storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
-                    byte[] persistencyFile = storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
-                    if (persistencyFile == null)
+                    try
                     {
-                        // no file persisted yet
-                        logger.LogInformation("Persistency file not found.");
+                        string persistencyFilePath = storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
+                        byte[] persistencyFile = storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
+                        if (persistencyFile == null)
+                        {
+                            // no file persisted yet
+                            logger.LogInformation("Persistency file not found.");
+                        }
+                        else
+                        {
+                            logger.LogInformation($"Parsing persistency file...");
+                            publishedNodesFileHandler.ParseFile(persistencyFile);
+                            logger.LogInformation("Persistency file parsed successfully.");
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        logger.LogInformation($"Parsing persistency file...");
-                        publishedNodesFileHandler.ParseFile(persistencyFile);
-                        logger.LogInformation("Persistency file parsed successfully.");
+                        logger.LogError(ex, "Persistency file not loaded!");
                     }
                 }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Persistency file not loaded!");
-                }
-            }
+            });
         }
     }
 }

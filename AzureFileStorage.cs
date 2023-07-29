@@ -28,6 +28,11 @@ namespace Opc.Ua.Cloud.Publisher
 
         public async Task<string> FindFileAsync(string path, string name, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(name))
+            {
+                return null;
+            }
+
             try
             {
                 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING")))
@@ -35,6 +40,8 @@ namespace Opc.Ua.Cloud.Publisher
                     // open blob storage
                     BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), _blobContainerName);
                     await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    Diagnostics.Singleton.Info.ConnectedToCloudStorage = true;
 
                     var resultSegment = container.GetBlobsAsync();
                     await foreach (BlobItem blobItem in resultSegment.ConfigureAwait(false))
@@ -69,6 +76,8 @@ namespace Opc.Ua.Cloud.Publisher
                     // open blob storage
                     BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), _blobContainerName);
                     await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    Diagnostics.Singleton.Info.ConnectedToCloudStorage = true;
 
                     // Get a reference to the blob
                     BlobClient blob = container.GetBlobClient(path);
@@ -113,6 +122,8 @@ namespace Opc.Ua.Cloud.Publisher
                     // open blob storage
                     BlobContainerClient container = new BlobContainerClient(Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING"), _blobContainerName);
                     await container.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    Diagnostics.Singleton.Info.ConnectedToCloudStorage = true;
 
                     var resultSegment = container.GetBlobsAsync();
                     await foreach (BlobItem blobItem in resultSegment.ConfigureAwait(false))

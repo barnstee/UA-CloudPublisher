@@ -129,20 +129,6 @@ namespace Opc.Ua.Cloud.Publisher
                 }
             }
 
-            _logger.LogInformation($"Trusted Issuer store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedIssuerCertificates.StoreType}");
-            _logger.LogInformation($"Trusted Issuer Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedIssuerCertificates.StorePath)}");
-
-            _logger.LogInformation($"Trusted Peer Certificate store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates.StoreType}");
-            _logger.LogInformation($"Trusted Peer Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates.StorePath)}");
-
-            _logger.LogInformation($"Rejected certificate store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectedCertificateStore.StoreType}");
-            _logger.LogInformation($"Rejected Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectedCertificateStore.StorePath)}");
-
-            _logger.LogInformation($"Rejection of SHA1 signed certificates is {(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.RejectSHA1SignedCertificates ? "enabled" : "disabled")}");
-            _logger.LogInformation($"Minimum certificate key size set to {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.MinimumCertificateKeySize}");
-
-            _logger.LogInformation($"Application Certificate store type is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.StoreType}");
-            _logger.LogInformation($"Application Certificate store path is: {Utils.ReplaceSpecialFolderNames(UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.StorePath)}");
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
 
             // create cert validator

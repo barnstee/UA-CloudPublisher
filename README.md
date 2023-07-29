@@ -30,7 +30,9 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Publishing from the cloud via a broker
 * Publishing on data changes or on regular intervals
 * Supports publishednodes.json imput file format
-* Support for storing configuration files locally or in the cloud
+* Support for storing configuration files locally
+* Support for storing configuration files in the Azure cloud
+* Support for storing configuration files in Microsoft OneLake
 * Support for Store & Forward during Internet connection outages
 * Support for username and password authentication
 * Support for both Intel x64 and ARM x64 architectures (Raspberry Pi4, etc.) with pre-built Docker containers ready for use
@@ -84,10 +86,10 @@ And then point your browser to <http://yourIPAddress>.
 ## Optional Environment Variables
 
 * LOG_FILE_PATH - path to the log file to use. Default is /app/logs/UACloudPublisher.log (in the Docker container).
-* STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure". Default is local file storage (under /app/settings/ in the Docker container).
-* STORAGE_CONNECTION_STRING - when using STORAGE_TYPE="Azure", specifies the connection string to the cloud storage.
-* STORAGE_CONTAINER_NAME - when using STORAGE_TYPE="Azure", specifies the blob storage container name.
-* USE_KAFKA - if present, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
+* STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure" and "OneLake". Default is local file storage (under /app/settings/ in the Docker container).
+* STORAGE_CONNECTION_STRING - when using STORAGE_TYPE="Azure" or "OneLake", specifies the connection string to the cloud storage. For OneLake, this is called "URL" and can be retrieved from your Lakehouse `Files` folder properties in Microsoft Fabric.
+* STORAGE_CONTAINER_NAME - when using STORAGE_TYPE="Azure" or "OneLake", specifies the storage container name. Default is "uacloudpublisher".
+* USE_KAFKA - **if present**, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
 
 ## PublishedNodes.json File Format
 
@@ -289,6 +291,7 @@ Response:
   {
    "PublisherStartTime": "2022-02-22T22:22:22.222Z",
    "ConnectedToBroker": false,
+   "ConnectedToCloudStorage":false,
    "NumberOfOpcSessionsConnected": 0,
    "NumberOfOpcSubscriptionsConnected": 0,
    "NumberOfOpcMonitoredItemsMonitored": 0,

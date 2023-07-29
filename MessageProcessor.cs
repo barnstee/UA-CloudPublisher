@@ -45,16 +45,6 @@ namespace Opc.Ua.Cloud.Publisher
             _logger = loggerFactory.CreateLogger("MessageProcessor");
             _encoder = encoder;
             _sink = sink;
-
-            if (Settings.Instance.MetadataSendInterval != 0)
-            {
-                _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
-            }
-
-            if (Settings.Instance.SendUAStatus)
-            {
-                _statusTimer = new Timer(SendStatusOnTimer, null, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
-            }
         }
 
         public void ClearMetadataMessageCache()
@@ -106,6 +96,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             Init();
+
             _isRunning = true;
 
             while (true)
@@ -213,6 +204,16 @@ namespace Opc.Ua.Cloud.Publisher
 
             // init our send time
             _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Instance.DefaultSendIntervalSeconds);
+
+            if (Settings.Instance.MetadataSendInterval != 0)
+            {
+                _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+            }
+
+            if (Settings.Instance.SendUAStatus)
+            {
+                _statusTimer = new Timer(SendStatusOnTimer, null, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+            }
         }
 
         private void BatchMessage(string jsonMessage)

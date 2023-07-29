@@ -19,6 +19,11 @@ namespace Opc.Ua.Cloud.Publisher
 
         public Task<string> FindFileAsync(string path, string name, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(name))
+            {
+                return null;
+            }
+
             try
             {
                 foreach (string filePath in Directory.GetFiles(path))
