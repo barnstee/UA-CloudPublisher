@@ -53,6 +53,13 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _consumer = null;
                 }
 
+                if (string.IsNullOrEmpty(Settings.Instance.BrokerUrl))
+                {
+                    // no broker URL configured = nothing to connect to!
+                    _logger.LogError("Broker URL not configured. Cannot connect to broker!");
+                    return;
+                }
+
                 // create Kafka client
                 var config = new ProducerConfig {
                     BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,

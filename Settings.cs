@@ -127,7 +127,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         public uint BrokerMessageSize { get; set; } = HubMessageSizeMax;
 
-        public bool CreateBrokerSASToken { get; set; } = true;
+        public bool CreateBrokerSASToken { get; set; } = false;
 
         public bool UseTLS { get; set; } = true;
 

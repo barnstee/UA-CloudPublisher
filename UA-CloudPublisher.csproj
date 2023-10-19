@@ -45,16 +45,16 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.5" />
-    <PackageReference Include="Azure.Identity" Version="1.9.0" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.17.0" />
-    <PackageReference Include="Azure.Storage.Files.DataLake" Version="12.15.0" />
+    <PackageReference Include="Azure.Identity" Version="1.10.3" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.18.0" />
+    <PackageReference Include="Azure.Storage.Files.DataLake" Version="12.16.0" />
     <PackageReference Include="Confluent.Kafka" Version="2.2.0" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.18.1" />
-    <PackageReference Include="MQTTnet" Version="4.2.1.781" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.4.371.96" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.4.371.96" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Configuration" Version="1.4.371.96" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.4.371.96" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
+    <PackageReference Include="MQTTnet" Version="4.3.1.873" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.4.372.56" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.4.372.56" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Configuration" Version="1.4.372.56" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Core" Version="1.4.372.56" />
     <PackageReference Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageReference Include="System.Collections.Concurrent" Version="4.3.0" />
   </ItemGroup>

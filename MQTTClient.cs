@@ -38,6 +38,27 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             _uAApplication = uAApplication;
         }
 
+        public class MqttClientCertificatesProvider : IMqttClientCertificatesProvider
+        {
+            private readonly IUAApplication _uAApplication;
+
+            public MqttClientCertificatesProvider(IUAApplication uAApplication)
+            {
+                _uAApplication = uAApplication;
+            }
+
+            X509CertificateCollection IMqttClientCertificatesProvider.GetCertificates()
+            {
+                X509Certificate2 appCert = _uAApplication.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
+                if (appCert == null)
+                {
+                    throw new Exception($"Cannot access OPC UA application certificate!");
+                }
+
+                return new X509CertificateCollection() { appCert };
+            }
+        }
+
         public void Connect()
         {
             try
@@ -50,6 +71,13 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _cancellationTokenSource.Cancel();
 
                     Diagnostics.Singleton.Info.ConnectedToBroker = false;
+                }
+
+                if (string.IsNullOrEmpty(Settings.Instance.BrokerUrl))
+                {
+                    // no broker URL configured = nothing to connect to!
+                    _logger.LogError("Broker URL not configured. Cannot connect to broker!");
+                    return;
                 }
 
                 // create MQTT password
@@ -73,7 +101,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 MqttClientOptionsBuilder clientOptions = new MqttClientOptionsBuilder()
                         .WithTcpServer(Settings.Instance.BrokerUrl, (int?)Settings.Instance.BrokerPort)
                         .WithClientId(Settings.Instance.PublisherName)
-                        .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Instance.UseTLS })
+                        .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                         .WithTimeout(TimeSpan.FromSeconds(10))
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
@@ -83,9 +111,9 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 if (Settings.Instance.BrokerPort == 443)
                 {
                     clientOptions = new MqttClientOptionsBuilder()
-                        .WithWebSocketServer(Settings.Instance.BrokerUrl)
+                        .WithWebSocketServer( o => o.WithUri(Settings.Instance.BrokerUrl))
                         .WithClientId(Settings.Instance.PublisherName)
-                        .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = Settings.Instance.UseTLS })
+                        .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                         .WithTimeout(TimeSpan.FromSeconds(10))
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
@@ -95,21 +123,15 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                 if (Settings.Instance.UseCertAuth)
                 {
-                    X509Certificate2 appCert = _uAApplication.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
-                    if (appCert == null)
-                    {
-                        throw new Exception($"Cannot access OPC UA application certificate!");
-                    }
-
                     clientOptions = new MqttClientOptionsBuilder()
                         .WithTcpServer(Settings.Instance.BrokerUrl)
                         .WithClientId(Settings.Instance.PublisherName)
-                        .WithTls(new MqttClientOptionsBuilderTlsParameters
+                        .WithTlsOptions(new MqttClientTlsOptions
                         {
                             UseTls = true,
                             AllowUntrustedCertificates = true,
                             IgnoreCertificateChainErrors = true,
-                            Certificates = new[] { appCert }
+                            ClientCertificatesProvider = new MqttClientCertificatesProvider(_uAApplication)
                         })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                         .WithTimeout(TimeSpan.FromSeconds(10))
@@ -148,17 +170,20 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
                     }
 
-                    MqttClientSubscribeResult subscribeResult = _client.SubscribeAsync(
+                    if (!string.IsNullOrEmpty(Settings.Instance.BrokerCommandTopic))
+                    {
+                        MqttClientSubscribeResult subscribeResult = _client.SubscribeAsync(
                         new MqttTopicFilter
                         {
                             Topic = Settings.Instance.BrokerCommandTopic,
                             QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
                         }).GetAwaiter().GetResult();
 
-                    // make sure subscriptions were successful
-                    if (subscribeResult.Items.Count != 1 || subscribeResult.Items.ElementAt(0).ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
-                    {
-                        throw new ApplicationException("Failed to subscribe");
+                        // make sure subscriptions were successful
+                        if (subscribeResult.Items.Count != 1 || subscribeResult.Items.ElementAt(0).ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
+                        {
+                            throw new ApplicationException("Failed to subscribe");
+                        }
                     }
 
                     Diagnostics.Singleton.Info.ConnectedToBroker = true;
