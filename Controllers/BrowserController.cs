@@ -375,11 +375,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 SessionModel sessionModel = new SessionModel
                 {
                     StatusMessage = ex.Message,
-                    SessionId = HttpContext.Session.Id,
+                    SessionId = string.Empty,
                     EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
                 };
 
-                return View("Browse", sessionModel);
+                _helper.Disconnect(HttpContext.Session.Id);
+                HttpContext.Session.SetString("EndpointUrl", string.Empty);
+
+                return View("Index", sessionModel);
             }
         }
 
@@ -452,11 +455,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 SessionModel sessionModel = new SessionModel
                 {
                     StatusMessage = ex.Message,
-                    SessionId = HttpContext.Session.Id,
+                    SessionId = string.Empty,
                     EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
                 };
 
-                return View("Browse", sessionModel);
+                _helper.Disconnect(HttpContext.Session.Id);
+                HttpContext.Session.SetString("EndpointUrl", string.Empty);
+
+                return View("Index", sessionModel);
             }
         }
 
@@ -506,11 +512,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 SessionModel sessionModel = new SessionModel
                 {
                     StatusMessage = ex.Message,
-                    SessionId = HttpContext.Session.Id,
+                    SessionId = string.Empty,
                     EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
                 };
 
-                return View("Browse", sessionModel);
+                _helper.Disconnect(HttpContext.Session.Id);
+                HttpContext.Session.SetString("EndpointUrl", string.Empty);
+
+                return View("Index", sessionModel);
             }
         }
 
@@ -552,11 +561,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 SessionModel sessionModel = new SessionModel
                 {
                     StatusMessage = ex.Message,
-                    SessionId = HttpContext.Session.Id,
+                    SessionId = string.Empty,
                     EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
                 };
 
-                return View("Browse", sessionModel);
+                _helper.Disconnect(HttpContext.Session.Id);
+                HttpContext.Session.SetString("EndpointUrl", string.Empty);
+
+                return View("Index", sessionModel);
             }
         }
 
