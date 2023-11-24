@@ -130,20 +130,8 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
-
-            // create cert validator
-            UAApplicationInstance.ApplicationConfiguration.CertificateValidator = new CertificateValidator();
-            UAApplicationInstance.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(CertificateValidator_CertificateValidation);
         }
 
-        private void CertificateValidator_CertificateValidation(CertificateValidator validator, CertificateValidationEventArgs e)
-        {
-            if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
-            {
-                // auto-accept as we are the client
-                e.Accept = true;
-            }
-        }
 
         private void OpcStackLoggingHandler(object sender, TraceEventArgs e)
         {
