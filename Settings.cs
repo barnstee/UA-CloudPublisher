@@ -131,7 +131,9 @@ namespace Opc.Ua.Cloud.Publisher
 
         public bool UseTLS { get; set; } = true;
 
-        public bool UseCertAuth { get; set; } = false;
+        public bool UseUACertAuth { get; set; } = false;
+
+        public bool UseCustomCertAuth { get; set; } = false;
 
         public uint InternalQueueCapacity { get; set; } = 1000; // records
 

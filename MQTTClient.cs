@@ -13,6 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using System;
     using System.Collections.Generic;
     using System.Globalization;
+    using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
@@ -49,7 +50,17 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
             X509CertificateCollection IMqttClientCertificatesProvider.GetCertificates()
             {
-                X509Certificate2 appCert = _uAApplication.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
+                X509Certificate2 appCert = null;
+                if (Settings.Instance.UseCustomCertAuth)
+                {
+                    string filePath = Path.Combine(Directory.GetCurrentDirectory(), "customclientcert");
+                    appCert = new X509Certificate2(filePath);
+                }
+                else
+                {
+                    appCert = _uAApplication.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
+                }
+
                 if (appCert == null)
                 {
                     throw new Exception($"Cannot access OPC UA application certificate!");
@@ -121,7 +132,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         .WithCredentials(Settings.Instance.BrokerUsername, password);
                 }
 
-                if (Settings.Instance.UseCertAuth)
+                if (Settings.Instance.UseUACertAuth || Settings.Instance.UseCustomCertAuth)
                 {
                     clientOptions = new MqttClientOptionsBuilder()
                         .WithTcpServer(Settings.Instance.BrokerUrl)

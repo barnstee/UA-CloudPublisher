@@ -8,6 +8,17 @@
 
 <h1>@ViewData["Title"]</h1>
 
+<form method="post" enctype="multipart/form-data" asp-controller="Config" asp-action="LocalCertOpen">
+    <div class="container-fluid browser_connect_container">
+        <br />
+        By default, the OPC UA client cert is also used as the MQTT client cert, but a custom MQTT cert can also be provided here:
+        <br />
+        <p>
+            <input class="btn btn-primary" type="file" name="file" accept=".pfx,.der">
+            <input class="btn btn-primary" type="submit" value="Open">
+        </p>
+    </div>
+</form>
 <form action="/Config/Apply" method="post">
     <br />
     <p>
@@ -15,7 +26,7 @@
         <input type="submit" name="Apply" value="Apply" />
     </p>
     <p>
-        OPC UA Certificate Thumbprint<br />
+        MQTT Client Certificate Thumbprint<br />
         @Html.TextBox("UACertThumbprint", @Model.UACertThumbprint, new { style = "width:100%", @readonly = "true" })<br />
     </p>
     <p>
@@ -100,7 +111,11 @@
     </p>
     <p>
         Use OPC UA certificate for authentication with Broker<br />
-        @Html.CheckBox("UseCertAuth", @Model.UseCertAuth)<br />
+        @Html.CheckBox("UseUACertAuth", @Model.UseUACertAuth)<br />
+    </p>
+    <p>
+        Use custom certificate for authentication with Broker (loaded above)<br />
+        @Html.CheckBox("UseCustomCertAuth", @Model.UseCustomCertAuth)<br />
     </p>
     <p>
         Internal Queue Capacity<br />
