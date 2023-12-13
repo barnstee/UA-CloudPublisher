@@ -118,6 +118,10 @@
         @Html.CheckBox("UseCustomCertAuth", @Model.UseCustomCertAuth)<br />
     </p>
     <p>
+        Use reverse connect to connect to OPC UA servers. UA Cloud Publisher will listen on port 50000.<br />
+        @Html.CheckBox("UseReverseConnect", @Model.UseReverseConnect)<br />
+    </p>
+    <p>
         Internal Queue Capacity<br />
         @Html.TextBox("InternalQueueCapacity", @Model.InternalQueueCapacity, new { style = "width:100%;" })<br />
     </p>

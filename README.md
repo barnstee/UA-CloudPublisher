@@ -4,7 +4,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 ## Features
 
-* Cross-plattform - Runs on Windows and Linux
+* Cross-plattform - Runs natively on Windows and Linux
 * Runs inside a Docker container and on Kubernetes
 * UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server
 * Generates a CSV file containing all OPC UA nodes from a connected server
@@ -17,6 +17,8 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Support for username/password authentication for MQTT broker
 * Support for certificate authentication for MQTT broker
 * Support for sending OPC UA metadata to an alternative broker
+* Support for reverse connects from OPC UA servers
+* Support for subscriptions transfer when server connections are temporarily interrupted
 * OPC UA Variables publishing
 * OPC UA Alarms, Conditions & other events publishing
 * OPC UA Event filtering

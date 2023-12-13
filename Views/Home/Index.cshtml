@@ -8,53 +8,12 @@
 
 <h1>@ViewData["Title"]</h1>
 <br />
-UA Cloud Publisher is a cross-platform OPC UA cloud publisher reference impelementation leveraging OPC UA PubSub over MQTT, running in a Docker container or on Kubernetes and it comes with an easy-to-use web user interface.
-<br />
-<br />
 <p>
     Click <a href="https://microsoft.com/devicelogin" target="_blank">here</a> to use the code below for <b>Microsoft OneLake</b> authentication:<br />
     @Html.TextBox("AuthCode", @Model.AuthCode, new { style = "width:100%", @readonly = "true" })<br />
     <br />
     Note: UA Cloud Publisher will show up as Microsoft Azure Cross-platform Command Line Interface. When prompted "Are you trying to sign in to Microsoft Azure CLI?", select continue.<br />
 </p>
-<h3>Features</h3>
- <ul>
-    <li>Cross-plattform - Runs on Windows and Linux</li>
-    <li>Runs inside a Docker container and on Kubernetes</li>
-    <li>UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server</li>
-    <li>Generates a CSV file containing all OPC UA nodes from a connected server</li>
-    <li>Generates a publishednodes.json file containing all OPC UA variable nodes from a connected server</li>
-    <li>Uses OPC UA PubSub JSON encoding</li>
-    <li>Uses plain MQTT broker as publishing endpoint</li>
-    <li>Optionally uses plain Kafka broker as publishing endpoint</li>
-    <li>Support for websockets transport with MQTT broker</li>
-    <li>Support for username/password authentication for Kafka broker</li>
-    <li>Support for username/password authentication for MQTT broker</li>
-    <li>Support for certificate authentication for MQTT broker</li>
-    <li>Support for sending OPC UA metadata to an alternative broker</li>
-    <li>OPC UA Variables publishing</li>
-    <li>OPC UA Alarms, Conditions & other events publishing</li>
-    <li>OPC UA Event filtering</li>
-    <li>OPC UA Complex Types publishing</li>
-    <li>OPC UA metadata messages publishing</li>
-    <li>OPC UA status messages publishing</li>
-    <li>Diagnostics info publishing</li>
-    <li>UI for displaying the list of publishes nodes</li>
-    <li>UI for diaplaying diagnostic infomration</li>
-    <li>UI for configuration</li>
-    <li>Publishing from the cloud via a connected broker</li>
-    <li>Publishing on data changes or on regular intervals</li>
-    <li>Supports publishednodes.json imput file format</li>
-    <li>Support for storing configuration files locally</li>
-    <li>Support for storing configuration files in the Azure cloud</li>
-    <li>Support for storing configuration files in Microsoft OneLake</li>
-    <li>Support for Store & Forward during Internet connection outages</li>
-    <li>Support for username and password authentication</li>
-    <li>Support for both Intel x64 and ARM x64 architectures (Raspberry Pi4, etc.) with pre-built Docker containers ready for use</li>
-    <li>Integration with <a href="https://github.com/barnstee/UA-EdgeTranslator">UA Edge Translator</a></li>
-    <li>Support for generating the Web of Things Thing Descriptions for UA Edge Translator automatically using ChatGPT</li>
-</ul>
-<br />
 <h3>Optional Environment Variables</h3>
 <ul>
     <li>LOG_FILE_PATH - path to the log file to use. Default is ./logs/UACloudPublisher.log.</li>

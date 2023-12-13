@@ -3,6 +3,7 @@ namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
+    using Opc.Ua.Client;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Configuration;
     using System;
@@ -17,6 +18,8 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly IFileStorage _storage;
 
         public ApplicationInstance UAApplicationInstance { get; set; }
+
+        public ReverseConnectManager ReverseConnectManager { get; set; } = new();
 
         public UAApplication(ILoggerFactory loggerFactory, IFileStorage storage)
         {
@@ -130,6 +133,10 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
+
+            _logger.LogInformation("Creating reverse connection endpoint on local port 50000.");
+            ReverseConnectManager.AddEndpoint(new Uri("opc.tcp://localhost:50000"));
+            ReverseConnectManager.StartService(UAApplicationInstance.ApplicationConfiguration);
         }
 
 

@@ -132,7 +132,24 @@ namespace Opc.Ua.Cloud.Publisher
                 return existingSession;
             }
 
-            EndpointDescription selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, true);
+            EndpointDescription selectedEndpoint = null;
+            ITransportWaitingConnection connection = null;
+            if (Settings.Instance.UseReverseConnect)
+            {
+                _logger.LogInformation("Waiting for reverse connection from {0}", endpointUrl);
+                connection = await _app.ReverseConnectManager.WaitForConnection(new Uri(endpointUrl), null, new CancellationTokenSource(30_000).Token).ConfigureAwait(false);
+                if (connection == null)
+                {
+                    throw new ServiceResultException(StatusCodes.BadTimeout, "Waiting for a reverse connection timed out after 30 seconds.");
+                }
+
+                selectedEndpoint = CoreClientUtils.SelectEndpoint(_app.UAApplicationInstance.ApplicationConfiguration, connection, true);
+            }
+            else
+            {
+                selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, true);
+            }
+
             ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create());
             _logger.LogInformation("Connecting session on endpoint {endpointUrl}.", configuredEndpoint.EndpointUrl);
 
@@ -182,6 +199,9 @@ namespace Opc.Ua.Cloud.Publisher
 
             // register keep alive callback
             newSession.KeepAlive += KeepAliveHandler;
+
+            // enable subscriptions transfer
+            newSession.TransferSubscriptionsOnReconnect = true;
 
             // add the session to our list
             lock (_sessionLock)
@@ -519,7 +539,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 // read display name
                 newMonitoredItem.DisplayName = string.Empty;
-                Node node = session.ReadNode(resolvedNodeId);
+                Ua.Node node = session.ReadNode(resolvedNodeId);
                 if ((node != null) && (node.DisplayName != null))
                 {
                     newMonitoredItem.DisplayName = node.DisplayName.Text;

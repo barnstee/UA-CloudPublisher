@@ -6,6 +6,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.Collections.Concurrent;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class OpcSessionCacheData
@@ -33,8 +34,11 @@ namespace Opc.Ua.Cloud.Publisher
 
         private readonly ApplicationConfiguration _configuration = null;
 
+        private readonly IUAApplication _app;
+
         public OpcSessionHelper(IUAApplication app)
         {
+            _app = app;
             _configuration = app.UAApplicationInstance.ApplicationConfiguration;
         }
 
@@ -91,26 +95,46 @@ namespace Opc.Ua.Cloud.Publisher
                 OpcSessionCache.TryAdd(sessionID, newEntry);
             }
 
-            Uri endpointURI = new Uri(endpointURL);
-            EndpointDescriptionCollection endpointCollection = DiscoverEndpoints(_configuration, endpointURI, 10);
-            EndpointDescription selectedEndpoint = SelectUaTcpEndpoint(endpointCollection);
-            EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create(_configuration);
-            ConfiguredEndpoint endpoint = new ConfiguredEndpoint(null, selectedEndpoint, endpointConfiguration);
-
-            UserIdentity identity = new UserIdentity(new AnonymousIdentityToken());
-            if (!string.IsNullOrEmpty(username))
+            EndpointDescription selectedEndpoint = null;
+            ITransportWaitingConnection connection = null;
+            if (Settings.Instance.UseReverseConnect)
             {
-                identity = new UserIdentity(username, password);
+                connection = await _app.ReverseConnectManager.WaitForConnection(new Uri(endpointURL), null, new CancellationTokenSource(30_000).Token).ConfigureAwait(false);
+                if (connection == null)
+                {
+                    throw new ServiceResultException(StatusCodes.BadTimeout, "Waiting for a reverse connection timed out after 30 seconds.");
+                }
+
+                selectedEndpoint = CoreClientUtils.SelectEndpoint(_configuration, connection, true);
+            }
+            else
+            {
+                selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointURL, true);
+            }
+
+            ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create());
+
+
+            uint timeout = (uint)_configuration.ClientConfiguration.DefaultSessionTimeout;
+
+            UserIdentity userIdentity = null;
+            if (username == null)
+            {
+                userIdentity = new UserIdentity(new AnonymousIdentityToken());
+            }
+            else
+            {
+                userIdentity = new UserIdentity(username, password);
             }
 
             Session session = await Session.Create(
                 _configuration,
-                endpoint,
+                configuredEndpoint,
                 true,
                 false,
                 sessionID,
                 60000,
-                identity,
+                userIdentity,
                 null).ConfigureAwait(false);
 
             if (session != null)
