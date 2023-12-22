@@ -71,7 +71,7 @@ namespace Opc.Ua.Cloud.Publisher
                             DataSetFieldId = new Uuid(Guid.NewGuid()),
                             BuiltInType = (byte)eventValue.Value.WrappedValue.TypeInfo.BuiltInType,
                             DataType = TypeInfo.GetDataTypeId(eventValue.Value.WrappedValue),
-                            ValueRank = ValueRanks.Scalar,
+                            ValueRank = eventValue.Value.WrappedValue.TypeInfo.ValueRank,
                             Description = LocalizedText.Null
                         };
 
@@ -86,7 +86,7 @@ namespace Opc.Ua.Cloud.Publisher
                         DataSetFieldId = new Uuid(Guid.NewGuid()),
                         BuiltInType = (byte)messageData.Value.WrappedValue.TypeInfo.BuiltInType,
                         DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
-                        ValueRank = ValueRanks.Scalar,
+                        ValueRank = messageData.Value.WrappedValue.TypeInfo.ValueRank,
                         Description = LocalizedText.Null
                     };
 
@@ -100,6 +100,8 @@ namespace Opc.Ua.Cloud.Publisher
                 };
 
                 dataSetMetaData.Description = LocalizedText.Null;
+
+                encoder.WriteDateTime("Timestamp", DateTime.UtcNow);
 
                 encoder.WriteEncodeable("MetaData", dataSetMetaData, typeof(DataSetMetaDataType));
 
