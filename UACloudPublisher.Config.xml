@@ -52,7 +52,7 @@
     <SecurityTokenLifetime>3600000</SecurityTokenLifetime>
   </TransportQuotas>
   <ClientConfiguration>
-    <DefaultSessionTimeout>600000</DefaultSessionTimeout>
+    <DefaultSessionTimeout>15000</DefaultSessionTimeout>
     <WellKnownDiscoveryUrls>
       <ua:String>opc.tcp://{0}:4840/UADiscovery</ua:String>
       <ua:String>http://{0}:52601/UADiscovery</ua:String>
@@ -65,7 +65,7 @@
   <Extensions/>
   <TraceConfiguration>
     <!-- The following setting is not used, but a combined UA Cloud Publisher tracelog is written to the configured directory instead -->
-    <OutputFilePath>./logs/UACloudPublisher.log</OutputFilePath>
+    <OutputFilePath>./logs/erichbdev.log</OutputFilePath>
     <DeleteOnLoad>true</DeleteOnLoad>
     <!--
     Masks supported by the trace feature.

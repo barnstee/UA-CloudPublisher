@@ -1,4 +1,5 @@
 ﻿@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Pages
 
 @model SessionModel
 
@@ -7,229 +8,35 @@
 }
 
 <h1>@ViewData["Title"]</h1>
-
-<br />
-Right-click a node to read or publish it.
 <br />
 <br />
 
-<div class="container-fluid browser_browse_container">
-   <div class="row browser_top_container">
-        <div class="col">
-            <div id="OpcNodeTree" class="browser_browse_nodetree_container">
-                <ul>
-                    <li id="rootnode">
-                        @Model.EndpointUrl
-                        <ul>
-                            <li></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-        <div class="col">
-            <div class="mt-4 invisible" id="variableReadContainer">
-                <div class="alert alert-dark" role="alert" id="variableReadHeader"></div>
-                <ul class="list-group">
-                    <li class="list-group-item" id="variableReadValue"></li>
-                    <li class="list-group-item" id="variableReadNodeID"></li>
-                    <li class="list-group-item" id="variableReadSourceTimeStamp"></li>
-                </ul>
-            </div>
-        </div>
+<p>
+    <component>@(await Html.RenderComponentAsync<UABrowser>(RenderMode.Server, new { EndpointUrl = Model.EndpointUrl, Username = Model.UserName, Password = Model.Password }).ConfigureAwait(false))</component>
+</p>
+
+<p>
+    <div class="row browser_browse_generate_pn_button">
+        @using (Html.BeginForm("GeneratePN", "Browser"))
+        {
+            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate publishednodes.json file from all OPC UA variables in the server" />
+        }
     </div>
-    <div class="row browser_browse_status_message_container">
-        <div class="alert alert-light" id="message">
-            @Model.StatusMessage
-        </div>
+</p>
+<p>
+    <div class="row browser_browse_generate_csv_button">
+        @using (Html.BeginForm("GenerateCSV", "Browser"))
+        {
+            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
+        }
     </div>
-    <p>
-        <div class="row browser_browse_generate_pn_button">
-            @using (Html.BeginForm("GeneratePN", "Browser"))
-            {
-                <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate publishednodes.json file from all OPC UA variables in the server" />
-            }
-        </div>
-    </p>
-    <p>
-        <div class="row browser_browse_generate_csv_button">
-            @using (Html.BeginForm("GenerateCSV", "Browser"))
-            {
-                <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
-            }
-        </div>
-    </p>
-    <p>
-        <div class="row browser_browse_disconnect_button">
-            @using (Html.BeginForm("Disconnect", "Browser"))
-            {
-                <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
-            }
-        </div>
-    </p>
-</div>
-
-@section scripts {
-    <script src="~/lib/jstree/jstree.min.js"></script>
-    <script>
-        var title = "TitleBrowser";
-
-        function htmlDecode(value) {
-            decodedValue = $('<div>').html(value).text();
-            return decodedValue;
+</p>
+<p>
+    <div class="row browser_browse_disconnect_button">
+        @using (Html.BeginForm("Disconnect", "Browser"))
+        {
+            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
         }
+    </div>
+</p>
 
-        function getRightLeftDiv(leftContent, rightContent) {
-            return "<div class=\"bg-light d-flex justify-content-between\">"
-                + "<div>" + leftContent + "</div>"
-                + "<div>" + rightContent + "</div>"
-                + "</div>";
-        }
-
-        function VariableRead(obj) {
-            $("#variableWriteContainer").addClass('invisible');
-
-            $.post({
-                url: "/Browser/VariableRead",
-                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: obj.item.nodeId },
-                success: function (data) {
-                    $("#variableReadContainer").removeClass("invisible");
-
-                    console.log("callback node name: " + obj.item.nodeName);
-                    $("#variableReadHeader").html(obj.item.nodeName);
-
-                    console.log("callback got results: " + data);
-                    var dataContainer = JSON.parse(data);
-
-                    $("#variableReadValue").html(getRightLeftDiv("<strong>Value:</strong>", dataContainer.value));
-                    $("#variableReadNodeID").html(getRightLeftDiv("<strong>Expanded Node ID:</strong>", dataContainer.nodeid));
-                    $("#variableReadSourceTimeStamp").html(getRightLeftDiv("<strong>Source Timestamp:</strong>", dataContainer.sourceTimestamp));
-
-                    $("#message").html("Successfully read node: " + obj.item.nodeName);
-                },
-                error: function (response) {
-                    $("#message").html("Got error reading opc variable: %o", response);
-                }
-            });
-        }
-
-        function VariablePublish(obj) {
-            $.post({
-                url: "/Browser/VariablePublish",
-                data: { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: obj.item.nodeId },
-                success: function (data) {
-                    console.log("callback node name: " + obj.item.nodeName);
-                    console.log("callback got results: " + data);
-                    $("#message").html("Successfully published node: " + obj.item.nodeName);
-                },
-                error: function (response) {
-                    $("#message").html("Got error publishing node: %o", response);
-                }
-            });
-        }
-
-        function OpcServerMenu(node) {
-            var result = {};
-
-            if (node.original.nodeClass === "Variable" && node.original.publishedNode != true && (node.original.accessLevel & 0x01)) {
-                $.extend(result, {
-                    "Publish": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "Publish",
-                        "nodeId": node.id,
-                        "nodeName": node.text,
-                        "action": function (obj) {
-                            VariablePublish(obj);
-                        }
-                    }
-                });
-            }
-
-            if (node.original.nodeClass === "Variable" && (node.original.accessLevel & 0x01)) {
-                $.extend(result, {
-                    "Read": {
-                        "separator_before": false,
-                        "separator_after": false,
-                        "label": "Read",
-                        "nodeId": node.id,
-                        "nodeName": node.text,
-                        "action": function (obj) {
-                            VariableRead(obj);
-                        }
-                    }
-                });
-            }
-
-            return result;
-        }
-
-        $(function ($) {
-            $('#OpcNodeTree').jstree({
-                "plugins": ["wholerow", "contextmenu", "types"],
-
-                "core": {
-                    "themes": {
-                        "name": "default",
-                        "dots": true,
-                        "icons": true,
-                        "stripes": true,
-                        "responsive": true
-                    },
-                    "data": {
-                        "type": "POST",
-                        "cache": false,
-                        "async": false,
-                        "url": function (node) {
-                            return node.id === "#" ? "/Browser/GetRootNode" : "/Browser/GetChildren";
-                        },
-                        "data": function (node) {
-                            return { __RequestVerificationToken: $('[name=__RequestVerificationToken]').val(), jstreeNode: node.id };
-                        },
-                        "error": function (xdr) {
-                            console.log("Got error browsing opc variable: %o", xdr);
-                        }
-                    }
-                },
-
-                "types": {
-                    "default": {
-                        "icon": "glyphicon"
-                    },
-                    "published": {
-                        "icons": true,
-                        "icon": "glyphicon glyphicon-ok"
-                    }
-                },
-
-                "contextmenu": {
-                    "show_at_node": false,
-                    "items": OpcServerMenu
-                }
-            });
-        });
-
-        $(function ($) {
-            $('#OpcNodeTree').on('ready.jstree', function (e, data) {
-                var nodes = $('#OpcNodeTree').jstree('get_json');
-                $(this).jstree("open_node", nodes);
-            });
-
-            $('#OpcNodeTree').on('open_node.jstree', function (e, data) {
-                for (var node in data.instance._model.data) {
-                    if (node != "#") {
-                        var nodeOriginal = $(this).jstree(true).get_node(node).original;
-                        if (nodeOriginal.publishedNode == true) {
-                            var jsonNode = $(this).jstree(true).get_node(node)
-                            $(this).jstree(true).set_type(jsonNode, "published")
-                        }
-                        else {
-                            var jsonNode = $(this).jstree(true).get_node(node)
-                            $(this).jstree(true).set_type(jsonNode, "default")
-                        }
-                    }
-                }
-            });
-        });
-    </script>
-}

@@ -1,0 +1,269 @@
+﻿
+@using Opc.Ua.Cloud.Publisher.Interfaces
+@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua
+@using Opc.Ua.Client;
+
+@inject OpcSessionHelper _helper
+@inject IUAClient _client
+
+<div class="col-12 row">
+    <div class="col-6">
+        <Tree Nodes="UANodes" TNode="UANode" ChildSelector="node => node.Children" SelectedNodeChanged="SelectedNodeChanged" OnNodeExpand="OnNodeExpand">
+            <TitleTemplate>@context.Text</TitleTemplate>
+        </Tree>
+    </div>
+    <div class="col-6">
+        NodeId: <b>@NodeId</b><br />
+        NodeDisplayName: <b>@NodeDisplayName</b><br />
+        NodeValue: <b>@NodeValue</b><br />
+        <button class="btn btn-primary" hidden="@NodeNotPublishable" @onclick="VariablePublishAsync">Publish</button>
+    </div>
+</div>
+<div class="alert alert-light">
+    @StatusMessage
+</div>
+
+@code {
+
+    [Parameter]
+    public string EndpointUrl { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Username { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Password { get; set; } = string.Empty;
+
+    private class UANode
+    {
+        public string Text { get; set; } = string.Empty;
+
+        public string NodeId { get; set; } = string.Empty;
+
+        public IEnumerable<UANode> Children { get; set; } = null;
+    }
+
+    private IEnumerable<UANode> UANodes;
+
+    private string NodeId { get; set; } = string.Empty;
+    private string NodeDisplayName { get; set; } = string.Empty;
+    private string NodeValue { get; set; } = string.Empty;
+    private bool NodeNotPublishable { get; set; } = true;
+
+    private string StatusMessage { get; set; } = string.Empty;
+
+    private string SessionId { get; set; } = Guid.NewGuid().ToString();
+
+    protected override void OnInitialized()
+    {
+        UANodes = GetRootNodeAsync().GetAwaiter().GetResult();
+    }
+
+    private async Task OnNodeExpand(UANode expendedNode)
+    {
+        if (expendedNode.Children == null)
+        {
+            expendedNode.Children = await GetChildrenAsync(expendedNode).ConfigureAwait(false);
+        }
+    }
+
+    private async void SelectedNodeChanged(UANode node)
+    {
+        await VariableReadAsync(node).ConfigureAwait(false);
+    }
+
+    private async Task<List<UANode>> GetRootNodeAsync()
+    {
+        try
+        {
+            List<UANode> nodes = new();
+
+            ReferenceDescriptionCollection references = await BrowseNodeAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
+
+            nodes.Add(new UANode
+            {
+                Text = "Root",
+                NodeId = ObjectIds.ObjectsFolder.ToString()
+            });
+
+            return nodes;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+
+            _helper.Disconnect(SessionId);
+
+            return null;
+        }
+    }
+
+    private async Task<ReferenceDescriptionCollection> BrowseNodeAsync(NodeId nodeId)
+    {
+        ReferenceDescriptionCollection references = new();
+        byte[] continuationPoint;
+
+        try
+        {
+            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+
+            session.Browse(
+                null,
+                null,
+                nodeId,
+                0u,
+                BrowseDirection.Forward,
+                ReferenceTypeIds.HierarchicalReferences,
+                true,
+                0,
+                out continuationPoint,
+                out references);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+
+            _helper.Disconnect(SessionId);
+
+            throw;
+        }
+
+        return references;
+    }
+
+    private async Task<List<UANode>> GetChildrenAsync(UANode node)
+    {
+        List<UANode> nodes = new();
+
+        try
+        {
+            ReferenceDescriptionCollection references = await BrowseNodeAsync(node.NodeId).ConfigureAwait(false);
+            if (references != null)
+            {
+                List<string> processedReferences = new();
+                foreach (ReferenceDescription nodeReference in references)
+                {
+                    // filter out duplicates
+                    if (processedReferences.Contains(nodeReference.NodeId.ToString()))
+                    {
+                        continue;
+                    }
+
+                    ReferenceDescriptionCollection childReferences = null;
+                    try
+                    {
+                        Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+
+                        childReferences = await BrowseNodeAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
+                    }
+                    catch (Exception)
+                    {
+                        // skip this node
+                        continue;
+                    }
+
+                    nodes.Add(new UANode
+                    {
+                       NodeId = nodeReference.NodeId.ToString(),
+                       Text = nodeReference.DisplayName.ToString()
+                    });
+
+                    processedReferences.Add(nodeReference.NodeId.ToString());
+                }
+            }
+
+            return nodes;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+
+            _helper.Disconnect(SessionId);
+
+            return null;
+        }
+    }
+
+    private async Task VariableReadAsync(UANode node)
+    {
+        try
+        {
+            // set default values
+            NodeId = node.NodeId;
+            NodeDisplayName = node.Text;
+            NodeValue = string.Empty;
+            NodeNotPublishable = true;
+
+            DataValueCollection values = null;
+            DiagnosticInfoCollection diagnosticInfos = null;
+            ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
+            ReadValueId valueId = new ReadValueId();
+            valueId.NodeId = new NodeId(node.NodeId);
+            valueId.AttributeId = Attributes.Value;
+            valueId.IndexRange = null;
+            valueId.DataEncoding = null;
+            nodesToRead.Add(valueId);
+
+            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+            ResponseHeader responseHeader = session.Read(null, 0, TimestampsToReturn.Both, nodesToRead, out values, out diagnosticInfos);
+            string value = "";
+            if (values.Count > 0 && values[0].Value != null)
+            {
+                if (values[0].WrappedValue.ToString().Length > 40)
+                {
+                    value = values[0].WrappedValue.ToString().Substring(0, 40);
+                    value += "...";
+                }
+                else
+                {
+                    value = values[0].WrappedValue.ToString();
+                }
+
+                NodeId = new ExpandedNodeId(valueId.NodeId, session.NamespaceUris.ToArray()[valueId.NodeId.NamespaceIndex]).ToString();
+                NodeDisplayName = node.Text;
+                NodeValue = value;
+                NodeNotPublishable = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+
+            _helper.Disconnect(SessionId);
+        }
+    }
+
+    public async Task VariablePublishAsync()
+    {
+        try
+        {
+            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+
+            NodePublishingModel node = new NodePublishingModel
+                {
+                    ExpandedNodeId = new ExpandedNodeId(NodeId),
+                    EndpointUrl = EndpointUrl,
+                    SkipFirst = false,
+                    Username = null,
+                    Password = null,
+                    OpcAuthenticationMode = UserAuthModeEnum.Anonymous
+                };
+
+            if (!string.IsNullOrEmpty(Username) && (Password != null))
+            {
+                node.Username = Username;
+                node.Password = Password;
+                node.OpcAuthenticationMode = UserAuthModeEnum.UsernamePassword;
+            }
+
+            StatusMessage = await _client.PublishNodeAsync(node).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+
+            _helper.Disconnect(SessionId);
+        }
+    }
+}

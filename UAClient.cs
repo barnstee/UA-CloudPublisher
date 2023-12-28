@@ -432,7 +432,7 @@ namespace Opc.Ua.Cloud.Publisher
             _logger.LogInformation($"RECONNECTED session {session.SessionId}!");
         }
 
-        public async Task PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default)
+        public async Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default)
         {
             // find or create the session we need to monitor the node
             Session session = await ConnectSessionAsync(
@@ -578,6 +578,8 @@ namespace Opc.Ua.Cloud.Publisher
 
                 // update our persistency
                 PersistPublishedNodesAsync().GetAwaiter().GetResult();
+
+                return "Successfully published node " + nodeToPublish.ExpandedNodeId.ToString();
             }
             catch (ServiceResultException sre)
             {
@@ -611,10 +613,13 @@ namespace Opc.Ua.Cloud.Publisher
                             session.ConfiguredEndpoint.EndpointUrl);
                         break;
                 }
+
+                return sre.Message;
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "PublishNode: Exception while trying to add node {expandedNodeId} for monitoring.", nodeToPublish.ExpandedNodeId);
+                return e.Message;
             }
         }
 

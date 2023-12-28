@@ -33,6 +33,9 @@ namespace Opc.Ua.Cloud.Publisher
 
             services.AddSignalR();
 
+            services.AddRazorPages();
+            services.AddServerSideBlazor();
+
             string logFilePath = Configuration["LOG_FILE_PATH"];
             if (string.IsNullOrEmpty(logFilePath))
             {
@@ -113,6 +116,7 @@ namespace Opc.Ua.Cloud.Publisher
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
                 endpoints.MapHub<StatusHub>("/statushub");
+                endpoints.MapBlazorHub();
             });
 
             // do all further initialization on a background thread to load the webserver independently

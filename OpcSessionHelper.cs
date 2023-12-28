@@ -132,10 +132,11 @@ namespace Opc.Ua.Cloud.Publisher
                 configuredEndpoint,
                 true,
                 false,
-                sessionID,
-                60000,
+                _configuration.ApplicationName,
+                (uint)_configuration.ClientConfiguration.DefaultSessionTimeout,
                 userIdentity,
-                null).ConfigureAwait(false);
+                null
+            ).ConfigureAwait(false);
 
             if (session != null)
             {

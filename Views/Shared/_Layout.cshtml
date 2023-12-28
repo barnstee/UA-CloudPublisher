@@ -4,9 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - UA Cloud Publisher</title>
+    <base href="~/" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-table/bootstrap-table.css" />
     <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/styles.css" />
+    <link rel="stylesheet" href=https://use.fontawesome.com/releases/v5.8.1/css/all.css integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
 </head>
 <body>
     <header>
@@ -57,6 +60,7 @@
     <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.js"></script>
     <script src="~/js/aspnet-signalr/signalr.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="_framework/blazor.server.js"></script>
     @RenderSection("Scripts", required: false)
 </body>
 </html>

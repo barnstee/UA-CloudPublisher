@@ -9,7 +9,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
     public interface IUAClient : IDisposable
     {
-        Task PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);
+        Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);
 
         void UnpublishNode(NodePublishingModel nodeToUnpublish);
 
