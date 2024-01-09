@@ -9,7 +9,7 @@
 
 <div class="col-12 row">
     <div class="col-6">
-        <Tree Nodes="UANodes" TNode="UANode" ChildSelector="node => node.Children" SelectedNodeChanged="SelectedNodeChanged" OnNodeExpand="OnNodeExpand">
+        <Tree Nodes="UANodes" TNode="UANode" ChildSelector="node => node.Children" SelectedNodeChanged="SelectedNodeChanged" OnNodeExpand="OnNodeExpand" HasChildNodes="HasChildNodes">
             <TitleTemplate>@context.Text</TitleTemplate>
         </Tree>
     </div>
@@ -73,12 +73,27 @@
         await VariableReadAsync(node).ConfigureAwait(false);
     }
 
+    private bool HasChildNodes(UANode node)
+    {
+        if (node.Children == null)
+        {
+            return true;
+        }
+
+        if (node.Children.Count() == 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     private async Task<List<UANode>> GetRootNodeAsync()
     {
+        List<UANode> nodes = new();
+
         try
         {
-            List<UANode> nodes = new();
-
             ReferenceDescriptionCollection references = await BrowseNodeAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
 
             nodes.Add(new UANode
@@ -95,7 +110,7 @@
 
             _helper.Disconnect(SessionId);
 
-            return null;
+            return nodes;
         }
     }
 
@@ -181,7 +196,7 @@
 
             _helper.Disconnect(SessionId);
 
-            return null;
+            return nodes;
         }
     }
 
