@@ -23,35 +23,35 @@
     <br />
     <p>
         Apply Changes<br />
-        <input type="submit" name="Apply" value="Apply" />
+        <input class="btn btn-primary" type="submit" name="Apply" value="Apply" />
     </p>
     <p>
         MQTT Client Certificate Thumbprint<br />
-        @Html.TextBox("UACertThumbprint", @Model.UACertThumbprint, new { style = "width:100%", @readonly = "true" })<br />
+        @Html.TextBox("UACertThumbprint", @Model.UACertThumbprint, new { style = "width:100%;background-color:grey;color:white;", @readonly = "true" })<br />
     </p>
     <p>
         Publisher Name (<b>required</b>)<br />
-        @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;" })<br />
+        @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker URL (<b>required</b>)<br />
-        @Html.TextBox("BrokerUrl", @Model.BrokerUrl, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerUrl", @Model.BrokerUrl, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker Port (<b>required</b>)<br />
-        @Html.TextBox("BrokerPort", @Model.BrokerPort, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerPort", @Model.BrokerPort, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker Username (<b>required</b>)<br />
-        @Html.TextBox("BrokerUsername", @Model.BrokerUsername, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerUsername", @Model.BrokerUsername, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker Password (<b>required</b>)<br />
-        @Html.Password("BrokerPassword", @Model.BrokerPassword, new { style = "width:100%;" })<br />
+        @Html.Password("BrokerPassword", @Model.BrokerPassword, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker Message Topic (<b>required</b>)<br />
-        @Html.TextBox("BrokerMessageTopic", @Model.BrokerMessageTopic, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerMessageTopic", @Model.BrokerMessageTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Send OPC UA Metadata Messages<br />
@@ -59,7 +59,7 @@
     </p>
     <p>
         Broker Metadata Topic<br />
-        @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Use Alternative Broker For OPC UA Metadata Messages<br />
@@ -67,19 +67,19 @@
     </p>
     <p>
         Alternative Broker URL<br />
-        @Html.TextBox("AltBrokerUrl", @Model.AltBrokerUrl, new { style = "width:100%;" })<br />
+        @Html.TextBox("AltBrokerUrl", @Model.AltBrokerUrl, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Alternative Broker Port<br />
-        @Html.TextBox("AltBrokerPort", @Model.AltBrokerPort, new { style = "width:100%;" })<br />
+        @Html.TextBox("AltBrokerPort", @Model.AltBrokerPort, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Alternative Broker Username<br />
-        @Html.TextBox("AltBrokerUsername", @Model.AltBrokerUsername, new { style = "width:100%;" })<br />
+        @Html.TextBox("AltBrokerUsername", @Model.AltBrokerUsername, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Alternative Broker Password<br />
-        @Html.Password("AltBrokerPassword", @Model.AltBrokerPassword, new { style = "width:100%;" })<br />
+        @Html.Password("AltBrokerPassword", @Model.AltBrokerPassword, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Send OPC UA Status Messages<br />
@@ -87,19 +87,19 @@
     </p>
     <p>
         Metadata Send Interval in Seconds<br />
-        @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { style = "width:100%;" })<br />
+        @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
      <p>
         Broker Command Topic<br />
-        @Html.TextBox("BrokerCommandTopic", @Model.BrokerCommandTopic, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerCommandTopic", @Model.BrokerCommandTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker Command Response Topic<br />
-        @Html.TextBox("BrokerResponseTopic", @Model.BrokerResponseTopic, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerResponseTopic", @Model.BrokerResponseTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker Message Size<br />
-        @Html.TextBox("BrokerMessageSize", @Model.BrokerMessageSize, new { style = "width:100%;" })<br />
+        @Html.TextBox("BrokerMessageSize", @Model.BrokerMessageSize, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Create Broker SAS Token<br />
@@ -123,27 +123,27 @@
     </p>
     <p>
         Internal Queue Capacity<br />
-        @Html.TextBox("InternalQueueCapacity", @Model.InternalQueueCapacity, new { style = "width:100%;" })<br />
+        @Html.TextBox("InternalQueueCapacity", @Model.InternalQueueCapacity, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Default Send Interval in Seconds<br />
-        @Html.TextBox("DefaultSendIntervalSeconds", @Model.DefaultSendIntervalSeconds, new { style = "width:100%;" })<br />
+        @Html.TextBox("DefaultSendIntervalSeconds", @Model.DefaultSendIntervalSeconds, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Diagnostics Logging Interval in Seconds<br />
-        @Html.TextBox("DiagnosticsLoggingInterval", @Model.DiagnosticsLoggingInterval, new { style = "width:100%;" })<br />
+        @Html.TextBox("DiagnosticsLoggingInterval", @Model.DiagnosticsLoggingInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Default OPC UA Sampling Interval in Milliseconds<br />
-        @Html.TextBox("DefaultOpcSamplingInterval", @Model.DefaultOpcSamplingInterval, new { style = "width:100%;" })<br />
+        @Html.TextBox("DefaultOpcSamplingInterval", @Model.DefaultOpcSamplingInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Default OPC UA Publishing Interval in Milliseconds<br />
-        @Html.TextBox("DefaultOpcPublishingInterval", @Model.DefaultOpcPublishingInterval, new { style = "width:100%;" })<br />
+        @Html.TextBox("DefaultOpcPublishingInterval", @Model.DefaultOpcPublishingInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         OPC UA Stack Trace Mask<br />
-        @Html.TextBox("UAStackTraceMask", @Model.UAStackTraceMask, new { style = "width:100%;" })<br />
+        @Html.TextBox("UAStackTraceMask", @Model.UAStackTraceMask, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Use Reversible PubSub Encoding<br />
@@ -155,14 +155,14 @@
     </p>
     <p>
         Azure OpenAI API Endpoint, e.g. https://wotgpt4.openai.azure.com/<br />
-        @Html.TextBox("AzureOpenAIAPIEndpoint", @Model.AzureOpenAIAPIEndpoint, new { style = "width:100%;" })<br />
+        @Html.TextBox("AzureOpenAIAPIEndpoint", @Model.AzureOpenAIAPIEndpoint, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Azure OpenAI API Key<br />
-        @Html.TextBox("AzureOpenAIAPIKey", @Model.AzureOpenAIAPIKey, new { style = "width:100%;" })<br />
+        @Html.TextBox("AzureOpenAIAPIKey", @Model.AzureOpenAIAPIKey, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Azure OpenAI Deployment or Model Name<br />
-        @Html.TextBox("AzureOpenAIDeploymentName", @Model.AzureOpenAIDeploymentName, new { style = "width:100%;" })<br />
+        @Html.TextBox("AzureOpenAIDeploymentName", @Model.AzureOpenAIDeploymentName, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
 </form>

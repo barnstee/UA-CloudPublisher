@@ -9,7 +9,11 @@ a.navbar-brand {
 
 /* Provide sufficient contrast against white background */
 a {
-  color: #0366d6;
+    color: blueviolet;
+}
+
+.footer a,.text-muted>a {
+    color: blueviolet;
 }
 
 .btn-primary {

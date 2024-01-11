@@ -17,13 +17,19 @@
             <div class="row browser_select_connect_container">
                 <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="UserPassword">
                     <div class="browser_connect_selection_textbox">
-                        <p>@Html.TextBox("endpointUrl", null, new { style = "width:300%;" })</p>
+                        <p>
+                            @Html.TextBox("endpointUrl", null, new { style = "width:300%;background-color:grey;color:white;" })
+                        </p>
                     </div>
                     <div class="browser_browse_connect_button">
-                        <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
+                        <p>
+                            <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
+                        </p>
                     </div>
-                        <div class="row browser_browse_status_message_container">
-                        <p class="alert alert-light"><div class="alert alert-light" id="message">@Model.StatusMessage</div></p>
+                    <div class="text-danger" id="message">
+                        <p>
+                            @Model.StatusMessage
+                        </p>
                     </div>
                 </form>
             </div>

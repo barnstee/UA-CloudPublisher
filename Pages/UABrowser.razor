@@ -10,7 +10,9 @@
 <div class="col-12 row">
     <div class="col-6">
         <Tree Nodes="UANodes" TNode="UANode" ChildSelector="node => node.Children" SelectedNodeChanged="SelectedNodeChanged" OnNodeExpand="OnNodeExpand" HasChildNodes="HasChildNodes">
-            <TitleTemplate>@context.Text</TitleTemplate>
+            <TitleTemplate>
+                <span class="text-light">@context.Text</span>
+            </TitleTemplate>
         </Tree>
     </div>
     <div class="col-6">
@@ -20,8 +22,10 @@
         <button class="btn btn-primary" hidden="@NodeNotPublishable" @onclick="VariablePublishAsync">Publish</button>
     </div>
 </div>
-<div class="alert alert-light">
-    @StatusMessage
+<div class="text-danger">
+    <p>
+        @StatusMessage
+    </p>
 </div>
 
 @code {

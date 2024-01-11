@@ -15,31 +15,31 @@
        <a href ="https://eclipse.github.io/editdor/">Here</a> is a good online editor for WoT files. After validating its contents, choose the file below.<br />
        Finally, send it to UA Edge Translator via OPC UA to configure the asset.
     </p>
-    <hr />
+    <hr style="border-top: 1px solid blue" />
     <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Generate">
         <p>
             ChatGPT prompt to automatically generate the description file for your asset (e.g. enter "Siemens Sentron PAC4200")<br />
-            @Html.TextBox("chatprompt", null, new { style = "width:50%;" })
+            @Html.TextBox("chatprompt", null, new { style = "width:50%;background-color:grey;color:white;" })
         </p>
         <p>
             <input id="chatButton" class="btn btn-primary btn_browser" type="submit" value="Generate & Download File">
         </p>
     </form>
-    <hr />
+    <hr style="border-top: 1px solid blue" />
     <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
         <p>
             <input class="btn btn-primary" type="file" name="file">
         </p>
-        <hr />
+        <hr style="border-top: 1px solid blue" />
         <p>
             UA Edge Translator address. Format: opc.tcp://ipaddress:port <br />
-            @Html.TextBox("endpointUrl", null, new { style = "width:50%;" })
+            @Html.TextBox("endpointUrl", null, new { style = "width:50%;background-color:grey;color:white;" })
         </p>
         <p>
             <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Send">
         </p>
-        <p class="alert alert-light">
-            <div class="alert alert-light" id="message">
+        <p>
+            <div class="text-danger">
                 @Model
             </div>
         </p>

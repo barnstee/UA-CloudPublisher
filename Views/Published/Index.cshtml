@@ -10,7 +10,7 @@
 
 
 <div class="container-fluid browser_connect_container">
-    <p>  
+    <p>
         <div class="progress-bar active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="publishingStatus">
         </div>
     </p>
@@ -27,7 +27,7 @@
     </form>
     <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Load">
         <br />
-        <hr />
+        <hr style="border-top: 1px solid blue" />
         <br />
         <p>
             <h3>Open a local publishednodes.json file</h3>
@@ -40,7 +40,7 @@
         </p>
     </form>
         <br />
-        <hr />
+        <hr style="border-top: 1px solid blue" />
         <br />
         <p>
             <h3>List of Currently Published OPC UA Nodes</h3>
@@ -51,7 +51,7 @@
             </p>
         </form>
         <ul>
-            @foreach (var node in Model) 
+            @foreach (var node in Model)
             {
                 @if (node.StartsWith("Error"))
                 {
@@ -64,7 +64,7 @@
                         <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
                             <input name="@node" class="btn btn-primary" type="submit" value="Delete">
                         </form>
-                        <hr />
+                        <hr style="border-top: 1px solid blue" />
                     </li>
                 }
             }
@@ -103,9 +103,9 @@
                 // update progress function
                 connection.on("updateProgress", function(percentage)
                 {
-                    var status = document.getElementById("publishingStatus");  
-                    status.style.width = percentage + "%";  
-                    $("#publishingStatus").text('Publishing: ' + percentage + '% complete!');  
+                    var status = document.getElementById("publishingStatus");
+                    status.style.width = percentage + "%";
+                    $("#publishingStatus").text('Publishing: ' + percentage + '% complete!');
                 });
 
                 // start/continue the connection

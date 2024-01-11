@@ -17,10 +17,14 @@
             <div class="row browser_select_connect_container">
                 <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="Connect">
                         <div class="browser_connect_selection_textbox">
-                            <p>User Name: @Html.TextBox("username", null, new { style = "width:300%;" })</p>
+                            <p>
+                                User Name: @Html.TextBox("username", null, new { style = "width:300%;background-color:grey;color:white;" })
+                            </p>
                         </div>
                         <div class="browser_connect_selection_textbox">
-                            <p>Password: @Html.Password("password", null, new { style = "width:300%;" })</p>
+                            <p>
+                                Password: @Html.Password("password", null, new { style = "width:300%;background-color:grey;color:white;" })
+                            </p>
                         </div>
                         @Html.Hidden("endpointUrl", @Model.EndpointUrl)
                         <div class="browser_browse_connect_button">
