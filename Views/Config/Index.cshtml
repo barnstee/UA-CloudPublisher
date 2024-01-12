@@ -9,18 +9,18 @@
 <h1>@ViewData["Title"]</h1>
 
 <form method="post" enctype="multipart/form-data" asp-controller="Config" asp-action="LocalCertOpen">
-    <div class="container-fluid browser_connect_container">
-        <br />
-        By default, the OPC UA client cert is also used as the MQTT client cert, but a custom MQTT cert can also be provided here:
-        <br />
-        <p>
-            <input class="btn btn-primary" type="file" name="file" accept=".pfx,.der">
-            <input class="btn btn-primary" type="submit" value="Open">
-        </p>
-    </div>
-</form>
-<form action="/Config/Apply" method="post">
     <br />
+    By default, the OPC UA client cert is also used as the MQTT client cert, but a custom MQTT cert can also be provided here:
+    <br />
+    <p>
+        <input class="btn btn-primary" type="file" name="file" accept=".pfx,.der">
+        <input class="btn btn-primary" type="submit" value="Open">
+    </p>
+</form>
+<br />
+<hr style="border-top: 1px solid blue" />
+<br />
+<form action="/Config/Apply" method="post">
     <p>
         Apply Changes<br />
         <input class="btn btn-primary" type="submit" name="Apply" value="Apply" />
