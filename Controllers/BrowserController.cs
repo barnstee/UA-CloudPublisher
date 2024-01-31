@@ -13,6 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading.Tasks;
 
@@ -25,6 +26,20 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             _helper = helper;
             _logger = loggerFactory.CreateLogger("BrowserController");
+        }
+
+        [HttpPost]
+        public IActionResult DownloadUACert()
+        {
+            try
+            {
+                return File(_helper.GetCert().Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not download UA cert file");
+                return View("Index", new string[] { "Error:" + ex.Message });
+            }
         }
 
         [HttpGet]

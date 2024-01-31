@@ -6,6 +6,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.Collections.Concurrent;
+    using System.Security.Cryptography.X509Certificates;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -40,6 +41,11 @@ namespace Opc.Ua.Cloud.Publisher
         {
             _app = app;
             _configuration = app.UAApplicationInstance.ApplicationConfiguration;
+        }
+
+        public X509Certificate2 GetCert()
+        {
+            return _configuration.SecurityConfiguration.ApplicationCertificate.Certificate;
         }
 
         public void Disconnect(string sessionID)
