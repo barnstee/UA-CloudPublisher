@@ -139,7 +139,6 @@ namespace Opc.Ua.Cloud.Publisher
             ReverseConnectManager.StartService(UAApplicationInstance.ApplicationConfiguration);
         }
 
-
         private void OpcStackLoggingHandler(object sender, TraceEventArgs e)
         {
             if ((e.TraceMask & Settings.Instance.UAStackTraceMask) != 0)
