@@ -22,12 +22,18 @@
 <br />
 <form action="/Config/Apply" method="post">
     <p>
-        Apply Changes<br />
-        <input class="btn btn-primary" type="submit" name="Apply" value="Apply" />
+        OPC UA (by default) & MQTT Client Certificate Thumbprint<br />
+        @Html.Label("UACertThumbprint", @Model.UACertThumbprint, null)<br />
     </p>
     <p>
-        MQTT Client Certificate Thumbprint<br />
-        @Html.TextBox("UACertThumbprint", @Model.UACertThumbprint, new { style = "width:100%;background-color:grey;color:white;", @readonly = "true" })<br />
+        OPC UA (by default) & MQTT Client Certificate Expiry<br />
+        @Html.Label("UACertExpiry", @Model.UACertExpiry.ToString(), null)<br />
+    </p>
+    <br />
+    <hr style="border-top: 1px solid blue" />
+    <br />
+    <p>
+        <input class="btn btn-primary" type="submit" name="Apply" value="Apply Changes" />
     </p>
     <p>
         Publisher Name (<b>required</b>)<br />

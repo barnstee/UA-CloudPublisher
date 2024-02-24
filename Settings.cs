@@ -91,6 +91,8 @@ namespace Opc.Ua.Cloud.Publisher
 
         public string UACertThumbprint { get; set; } = string.Empty;
 
+        public DateTime UACertExpiry { get; set; } = DateTime.MinValue;
+
         public string PublisherName { get; set; } = "UACloudPublisher";
 
         public string BrokerUrl { get; set; } = string.Empty;

@@ -112,6 +112,7 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 // store UA cert thumbprint
                 Settings.Instance.UACertThumbprint = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.Thumbprint;
+                Settings.Instance.UACertExpiry = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.NotAfter;
 
                 // store app certs
                 foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), "*.der"))

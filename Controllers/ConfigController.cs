@@ -50,13 +50,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     await file.CopyToAsync(stream).ConfigureAwait(false);
                 }
 
-                // update cert file hash
+                // update cert file hash and expiry
                 X509Certificate2 cert = new X509Certificate2(filePath);
                 Settings.Instance.UACertThumbprint = cert.Thumbprint;
+                Settings.Instance.UACertExpiry = cert.NotAfter;
             }
             catch (Exception ex)
             {
                 Settings.Instance.UACertThumbprint = ex.Message;
+                Settings.Instance.UACertExpiry = DateTime.MinValue;
             }
 
             return View("Index", Settings.Instance);
