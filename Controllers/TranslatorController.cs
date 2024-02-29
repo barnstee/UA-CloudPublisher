@@ -107,7 +107,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("Invalid file specified!");
                 }
 
-                _client.ExecuteCommand("ConfigureAsset", "AssetManagement", "http://opcfoundation.org/UA/EdgeTranslator/", payload, endpointUrl);
+                _client.ExecuteCommand("CreateAsset", "WoTAssetConnectionManagement", "http://opcfoundation.org/UA/EdgeTranslator/", payload, endpointUrl);
 
                 return View("Index", "UA Edge Translator configured successfully!");
             }

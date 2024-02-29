@@ -118,7 +118,7 @@ namespace Opc.Ua.Cloud.Publisher
                 selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointURL, true);
             }
 
-            ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create());
+            ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create(_configuration));
 
 
             uint timeout = (uint)_configuration.ClientConfiguration.DefaultSessionTimeout;
