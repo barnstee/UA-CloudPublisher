@@ -1,3 +1,4 @@
+---
 name: Docker
 
 # This workflow uses actions that are not certified by GitHub.
@@ -9,11 +10,11 @@ on:
   schedule:
     - cron: '23 9 * * *'
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 env:
   # Use docker.io for Docker Hub if empty
