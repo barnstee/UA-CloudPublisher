@@ -1,0 +1,17 @@
+---
+image: gitpod/workspace-dotnet-8:latest
+
+tasks:
+  - name: Init workspace
+    init: |
+      dotnet restore "./UA-CloudPublisher.csproj"
+    command: |
+      # Installs renovate to validate renovate.json by running `renovate-config-validator`
+      npm install --location=global renovate && pip install --user yamllint
+      dotnet build "./UA-CloudPublisher.csproj"
+
+vscode:
+  extensions:
+    - muhammad-sammy.csharp
+    - mhutchie.git-graph
+    - ms-dotnettools.vscode-dotnet-runtime
