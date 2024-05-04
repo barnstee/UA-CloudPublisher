@@ -1,0 +1,13 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageRules": [
+  {
+    "matchPackagePatterns": ["OPCFoundation.NetStandard"],
+    "labels": ["OPC-F.NetStandard"],
+    "groupName": "OPC-F.NetStandard"
+  }
+]
+}

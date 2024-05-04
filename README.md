@@ -1,6 +1,6 @@
 # UA Cloud Publisher
 
-A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT. It runs in a Docker container on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
+A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT. It runs in a container image on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
 
 ## Features
 
@@ -8,7 +8,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Runs inside a Docker container and on Kubernetes
 * UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server
 * Generates a CSV file containing all OPC UA nodes from a connected server
-* Generates a publishednodes.json file containing all OPC UA variable nodes from a connected server
+* Generates a `publishednodes.json` file containing all OPC UA variable nodes from a connected server
 * Uses OPC UA PubSub JSON encoding
 * Uses plain MQTT broker as publishing endpoint
 * Optionally uses plain Kafka broker as publishing endpoint
@@ -31,34 +31,44 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * UI for configuration
 * Publishing from the cloud via a broker
 * Publishing on data changes or on regular intervals
-* Supports publishednodes.json imput file format
+* Supports `publishednodes.json` input file format
 * Support for storing configuration files locally
 * Support for storing configuration files in the Azure cloud
 * Support for storing configuration files in Microsoft OneLake
-* Support for Store & Forward during Internet connection outages
+* Support for Store & Forward during internet connection outages
 * Support for username and password authentication
-* Support for both Intel x64 and ARM x64 architectures (Raspberry Pi4, etc.) with pre-built Docker containers ready for use
+* Support for Intel/AMD `x64` and `arm64` architectures (Raspberry Pi4, etc.) with pre-built container images ready for use
 * Integration with [UA Edge Translator](https://github.com/barnstee/UA-EdgeTranslator)
 * Support for generating the Web of Things Thing Descriptions for UA Edge Translator automatically using ChatGPT
 
+## Build Status
+
+[![Docker](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml)
+
 ## Screenshots
 
-### Main Page:
+### Main Page
+
 ![Main Page](screenshots/mainpage.png)
 
-### Browser:
+### Browser
+
 ![Browser](screenshots/browser.png)
 
-### Published Nodes Management:
+### Published Nodes Management
+
 ![Published Nodes Management](screenshots/publishednodesmanagement.png)
 
-### Diagnostics:
+### Diagnostics
+
 ![Diagnostics](screenshots/diagnostics.png)
 
-### Configuration:
+### Configuration
+
 ![Configuration](screenshots/configuration.png)
 
-### UA Edge Translator Integration:
+### UA Edge Translator Integration
+
 ![Configuration](screenshots/translator.png)
 
 ## Usage
@@ -81,17 +91,17 @@ UA Cloud Publisher settings and published nodes configuration can be persisted l
 
 `docker run -itd -v c:/publisher/logs:/app/logs -v c:/publisher/settings:/app/settings -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
 
-For Linux hosts, remove the "c:" instances from the command above.
+For Linux hosts, remove the `c:` instances from the command above.
 
-And then point your browser to <http://yourIPAddress>.
+And then point your browser to `http://yourIPAddress`.
 
 ## Optional Environment Variables
 
-* LOG_FILE_PATH - path to the log file to use. Default is /app/logs/UACloudPublisher.log (in the Docker container).
-* STORAGE_TYPE - type of storage to use for settings and configuration files. Current options are "Azure" and "OneLake". Default is local file storage (under /app/settings/ in the Docker container).
-* STORAGE_CONNECTION_STRING - when using STORAGE_TYPE="Azure" or "OneLake", specifies the connection string to the cloud storage. For OneLake, this is called "URL" and can be retrieved from your Lakehouse `Files` folder properties in Microsoft Fabric.
-* STORAGE_CONTAINER_NAME - when using STORAGE_TYPE="Azure" or "OneLake", specifies the storage container name. Default is "uacloudpublisher".
-* USE_KAFKA - **if present**, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
+* `LOG_FILE_PATH` - path to the log file to use. Default is /app/logs/UACloudPublisher.log (in the Docker container).
+* `STORAGE_TYPE` - type of storage to use for settings and configuration files. Current options are `Azure` and `OneLake`. Default is local file storage (under `/app/settings/` in the Docker container).
+* `STORAGE_CONNECTION_STRING` - when using `STORAGE_TYPE`=`Azure` or `OneLake`, specifies the connection string to the cloud storage. For `OneLake`, this is called `URL` and can be retrieved from your Lakehouse `Files` folder properties in Microsoft Fabric.
+* `STORAGE_CONTAINER_NAME` - when using STORAGE_TYPE="Azure" or "OneLake", specifies the storage container name. Default is "uacloudpublisher".
+* `USE_KAFKA` - **if present**, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
 
 ## PublishedNodes.json File Format
 
@@ -313,7 +323,3 @@ Response:
  ]
 }
 ```
-
-## Build Status
-
-[![Docker](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml)
