@@ -44,7 +44,7 @@ namespace Opc.Ua.Cloud.Publisher
             Session session,
             MonitoredItem monitoredItem,
             EventFieldList notification,
-            Dictionary<NodeId,NodeId> eventTypeMappings)
+            Dictionary<NodeId, NodeId> eventTypeMappings)
         {
             // find the event type.
             NodeId eventTypeId = FindEventType(monitoredItem, notification);
@@ -127,11 +127,7 @@ namespace Opc.Ua.Cloud.Publisher
                 case ObjectTypes.NonExclusiveLimitAlarmType: { e = new NonExclusiveLimitAlarmState(null); break; }
                 case ObjectTypes.AuditEventType: { e = new AuditEventState(null); break; }
                 case ObjectTypes.AuditUpdateMethodEventType: { e = new AuditUpdateMethodEventState(null); break; }
-                default:
-                {
-                    e = new BaseEventState(null);
-                    break;
-                }
+                default: { e = new BaseEventState(null); break; }
             }
 
             // get the filter which defines the contents of the notification.
