@@ -18,6 +18,11 @@ namespace Opc.Ua.Cloud.Publisher
 
     public class UAClient : IUAClient
     {
+        private const uint WoTAssetConnectionManagement = 31;
+        private const uint WoTAssetConnectionManagement_CreateAsset = 32;
+        private const uint WoTAssetConnectionManagement_DeleteAsset = 35;
+        private const uint WoTAssetFileType_CloseAndUpdate = 111;
+
         private readonly IUAApplication _app;
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
@@ -197,10 +202,14 @@ namespace Opc.Ua.Cloud.Publisher
                 _logger.LogInformation("The Server has updated the EndpointUrl to {endpointUrl}", selectedEndpoint.EndpointUrl);
             }
 
+            // enable diagnostics
+            newSession.ReturnDiagnostics = DiagnosticsMasks.All;
+
             // register keep alive callback
             newSession.KeepAlive += KeepAliveHandler;
 
             // enable subscriptions transfer
+            newSession.DeleteSubscriptionsOnClose = false;
             newSession.TransferSubscriptionsOnReconnect = true;
 
             // add the session to our list
@@ -815,55 +824,107 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public void ExecuteCommand(string nodeIDString, string parentNodeIDString, string uaNamespace, string argument, string endpoint)
+        public void WoTConUpload(string endpoint, byte[] bytes, string assetName)
         {
-            // find or create the session we need to monitor the node
-            Session session = ConnectSessionAsync(endpoint, null, null).GetAwaiter().GetResult();
-            if (session == null)
-            {
-                // couldn't create the session
-                throw new Exception($"Could not create session for endpoint {endpoint}!");
-            }
-
+            Session session = null;
+            NodeId fileId = null;
+            object fileHandle = null;
             try
             {
-                ExpandedNodeId nodeID = ExpandedNodeId.Parse("nsu=" + uaNamespace + ";" + nodeIDString, session.NamespaceUris);
-                ExpandedNodeId parentNodeID = ExpandedNodeId.Parse("nsu=" + uaNamespace + ";" + parentNodeIDString, session.NamespaceUris);
-
-                CallMethodRequest request = new CallMethodRequest
+                session = ConnectSessionAsync(endpoint, null, null).GetAwaiter().GetResult();
+                if (session == null)
                 {
-                    ObjectId = new NodeId(parentNodeID.Identifier, parentNodeID.NamespaceIndex),
-                    MethodId = new NodeId(nodeID.Identifier, nodeID.NamespaceIndex),
+                    // couldn't create the session
+                    throw new Exception($"Could not create session for endpoint {endpoint}!");
+                }
+
+                NodeId createNodeId = new(WoTAssetConnectionManagement_CreateAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+                NodeId deleteNodeId = new(WoTAssetConnectionManagement_DeleteAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+                NodeId closeNodeId = new(WoTAssetFileType_CloseAndUpdate, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+                NodeId parentNodeId = new(WoTAssetConnectionManagement, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+
+                Variant assetId = new(string.Empty);
+
+                StatusCode status = new StatusCode(0);
+                assetId = ExecuteCommand(session, createNodeId, parentNodeId, assetName, null, out status);
+                if (StatusCode.IsNotGood(status))
+                {
+                    if (status == StatusCodes.BadBrowseNameDuplicated)
+                    {
+                        // delete existing asset first
+                        assetId = ExecuteCommand(session, deleteNodeId, parentNodeId, new NodeId(assetId.Value.ToString()), null, out status);
+                        if (StatusCode.IsNotGood(status))
+                        {
+                            throw new Exception(status.ToString());
+                        }
+
+                        // now try again
+                        assetId = ExecuteCommand(session, createNodeId, parentNodeId, assetName, null, out status);
+                        if (StatusCode.IsNotGood(status))
+                        {
+                            throw new Exception(status.ToString());
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception(status.ToString());
+                    }
+                }
+
+                BrowseDescriptionCollection nodesToBrowse = new()
+                {
+                    new BrowseDescription {
+                        NodeId = (NodeId)assetId.Value,
+                        BrowseDirection = BrowseDirection.Forward,
+                        NodeClassMask = (uint)NodeClass.Object,
+                        ResultMask = (uint)BrowseResultMask.All
+                    }
                 };
 
-                request.InputArguments = new VariantCollection
-                {
-                    new Variant(argument)
-                };
-
-                CallMethodRequestCollection requests = new CallMethodRequestCollection
-                {
-                    request
-                };
-
-                CallMethodResultCollection results;
-                DiagnosticInfoCollection diagnosticInfos;
-
-                ResponseHeader responseHeader = session.Call(
+                session.Browse(
                     null,
-                    requests,
-                    out results,
-                    out diagnosticInfos);
+                    null,
+                    0,
+                    nodesToBrowse,
+                    out BrowseResultCollection results,
+                    out DiagnosticInfoCollection diagnosticInfos);
 
-                if (StatusCode.IsBad(results[0].StatusCode))
+                ClientBase.ValidateResponse(results, nodesToBrowse);
+                ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToBrowse);
+
+                fileId = (NodeId)results[0].References[0].NodeId;
+                fileHandle = ExecuteCommand(session, MethodIds.FileType_Open, fileId, (byte)6, null, out status);
+                if (StatusCode.IsNotGood(status))
                 {
-                    string hexString = "0x" + results[0].StatusCode.Code.ToString("X");
-                    throw new Exception("Call failed with: " + hexString);
+                    throw new Exception(status.ToString());
+                }
+
+                for (int i = 0; i < bytes.Length; i += 3000)
+                {
+                    byte[] chunk = bytes.AsSpan(i, Math.Min(3000, bytes.Length - i)).ToArray();
+
+                    ExecuteCommand(session, MethodIds.FileType_Write, fileId, fileHandle, chunk, out status);
+                    if (StatusCode.IsNotGood(status))
+                    {
+                        throw new Exception(status.ToString());
+                    }
+                }
+
+                Variant result = ExecuteCommand(session, closeNodeId, fileId, fileHandle, null, out status);
+                if (StatusCode.IsNotGood(status))
+                {
+                    throw new Exception(status.ToString() + ": " + result.ToString());
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Executing OPC UA command failed!");
+                _logger.LogError(ex.Message);
+
+                if ((session != null) && (fileId != null) && (fileHandle != null))
+                {
+                    ExecuteCommand(session, MethodIds.FileType_Close, fileId, fileHandle, null, out StatusCode status);
+                }
+
                 throw;
             }
             finally
@@ -877,6 +938,67 @@ namespace Opc.Ua.Cloud.Publisher
 
                     session.Dispose();
                 }
+            }
+        }
+
+        private Variant ExecuteCommand(Session session, NodeId nodeId, NodeId parentNodeId, object argument1, object argument2, out StatusCode status)
+        {
+            try
+            {
+                CallMethodRequestCollection requests = new CallMethodRequestCollection
+                {
+                    new CallMethodRequest
+                    {
+                        ObjectId = parentNodeId,
+                        MethodId = nodeId,
+                        InputArguments = new VariantCollection { new Variant(argument1) }
+                    }
+                };
+
+                if (argument1 != null)
+                {
+                    requests[0].InputArguments = new VariantCollection { new Variant(argument1) };
+                }
+
+                if ((argument1 != null) && (argument2 != null))
+                {
+                    requests[0].InputArguments.Add(new Variant(argument2));
+                }
+
+                CallMethodResultCollection results;
+                DiagnosticInfoCollection diagnosticInfos;
+
+                ResponseHeader responseHeader = session.Call(
+                    null,
+                    requests,
+                    out results,
+                    out diagnosticInfos);
+
+                ClientBase.ValidateResponse(results, requests);
+                ClientBase.ValidateDiagnosticInfos(diagnosticInfos, requests);
+
+                status = new StatusCode(0);
+                if ((results != null) && (results.Count > 0))
+                {
+                    status = results[0].StatusCode;
+
+                    if (StatusCode.IsBad(results[0].StatusCode) && (responseHeader.StringTable != null) && (responseHeader.StringTable.Count > 0))
+                    {
+                        return responseHeader.StringTable[0];
+                    }
+
+                    if ((results[0].OutputArguments != null) && (results[0].OutputArguments.Count > 0))
+                    {
+                        return results[0].OutputArguments[0];
+                    }
+                }
+
+                return new Variant(string.Empty);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Executing OPC UA command failed!");
+                throw;
             }
         }
     }

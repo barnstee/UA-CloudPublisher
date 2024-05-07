@@ -146,6 +146,9 @@ namespace Opc.Ua.Cloud.Publisher
 
             if (session != null)
             {
+                // enable diagnostics
+                session.ReturnDiagnostics = DiagnosticsMasks.All;
+
                 // Update our cache data
                 if (OpcSessionCache.TryGetValue(sessionID, out entry))
                 {

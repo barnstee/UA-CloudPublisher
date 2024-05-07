@@ -17,6 +17,6 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes();
 
-        void ExecuteCommand(string nodeIDString, string parentNodeIDString, string uaNamespace, string argument, string endpoint);
+        void WoTConUpload(string endpoint, byte[] bytes, string assetName);
     }
 }

@@ -8,7 +8,7 @@ namespace Opc.Ua.Cloud.Publisher
 
     public static class EventUtils
     {
-        public static NodeId[] KnownEventTypes = new NodeId[] 
+        public static NodeId[] KnownEventTypes = new NodeId[]
         {
             ObjectTypeIds.BaseEventType,
             ObjectTypeIds.ConditionType,
@@ -69,7 +69,7 @@ namespace Opc.Ua.Cloud.Publisher
                         break;
                     }
                 }
-                
+
                 // browse for the supertypes of the event type.
                 if (knownTypeId == null)
                 {
@@ -146,7 +146,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             return e;
         }
-        
+
         public static ReferenceDescriptionCollection Browse(Session session, BrowseDescription nodeToBrowse, bool throwOnError)
         {
             try
@@ -154,20 +154,19 @@ namespace Opc.Ua.Cloud.Publisher
                 ReferenceDescriptionCollection references = new ReferenceDescriptionCollection();
 
                 // construct browse request.
-                BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection();
-                nodesToBrowse.Add(nodeToBrowse);
+                BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection
+                {
+                    nodeToBrowse
+                };
 
                 // start the browse operation.
-                BrowseResultCollection results = null;
-                DiagnosticInfoCollection diagnosticInfos = null;
-
                 session.Browse(
                     null,
                     null,
                     0,
                     nodesToBrowse,
-                    out results,
-                    out diagnosticInfos);
+                    out BrowseResultCollection results,
+                    out DiagnosticInfoCollection diagnosticInfos);
 
                 ClientBase.ValidateResponse(results, nodesToBrowse);
                 ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToBrowse);
@@ -193,8 +192,10 @@ namespace Opc.Ua.Cloud.Publisher
                     }
 
                     // continue browse operation.
-                    ByteStringCollection continuationPoints = new ByteStringCollection();
-                    continuationPoints.Add(results[0].ContinuationPoint);
+                    ByteStringCollection continuationPoints = new ByteStringCollection
+                    {
+                        results[0].ContinuationPoint
+                    };
 
                     session.BrowseNext(
                         null,
@@ -208,7 +209,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
                 while (true);
 
-                //return complete list.
+                // return complete list.
                 return references;
             }
             catch (Exception exception)
@@ -235,15 +236,15 @@ namespace Opc.Ua.Cloud.Publisher
                 nodeToBrowse.BrowseDirection = BrowseDirection.Inverse;
                 nodeToBrowse.ReferenceTypeId = ReferenceTypeIds.HasSubtype;
                 nodeToBrowse.IncludeSubtypes = false; // more efficient to use IncludeSubtypes=False when possible.
-                nodeToBrowse.NodeClassMask = 0; // the HasSubtype reference already restricts the targets to Types. 
+                nodeToBrowse.NodeClassMask = 0; // the HasSubtype reference already restricts the targets to Types.
                 nodeToBrowse.ResultMask = (uint)BrowseResultMask.All;
-                                
+
                 ReferenceDescriptionCollection references = Browse(session, nodeToBrowse, throwOnError);
 
                 while (references != null && references.Count > 0)
                 {
                     // should never be more than one supertype.
-                    supertypes.Add(references[0]); 
+                    supertypes.Add(references[0]);
 
                     // only follow references within this server.
                     if (references[0].NodeId.IsAbsolute)

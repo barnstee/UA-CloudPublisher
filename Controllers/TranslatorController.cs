@@ -6,6 +6,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
+    using Newtonsoft.Json.Linq;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.IO;
@@ -94,20 +95,17 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("Invalid file specified!");
                 }
 
-                string payload = string.Empty;
+                string name = "asset";
+                byte[] bytes = new byte[file.Length];
                 using (Stream content = file.OpenReadStream())
                 {
-                    byte[] bytes = new byte[file.Length];
                     content.Read(bytes, 0, (int)file.Length);
-                    payload = Encoding.UTF8.GetString(bytes);
+                    string payload = Encoding.UTF8.GetString(bytes);
+                    JObject jsonObject = JObject.Parse(payload);
+                    name = jsonObject["name"].ToString();
                 }
 
-                if (string.IsNullOrEmpty(payload))
-                {
-                    throw new ArgumentException("Invalid file specified!");
-                }
-
-                _client.ExecuteCommand("CreateAsset", "WoTAssetConnectionManagement", "http://opcfoundation.org/UA/EdgeTranslator/", payload, endpointUrl);
+                _client.WoTConUpload(endpointUrl, bytes, name);
 
                 return View("Index", "UA Edge Translator configured successfully!");
             }
