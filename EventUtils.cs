@@ -127,7 +127,6 @@ namespace Opc.Ua.Cloud.Publisher
                 case ObjectTypes.NonExclusiveLimitAlarmType: { e = new NonExclusiveLimitAlarmState(null); break; }
                 case ObjectTypes.AuditEventType: { e = new AuditEventState(null); break; }
                 case ObjectTypes.AuditUpdateMethodEventType: { e = new AuditUpdateMethodEventState(null); break; }
-
                 default:
                 {
                     e = new BaseEventState(null);
