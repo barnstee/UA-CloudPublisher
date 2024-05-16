@@ -10,8 +10,10 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Generates a CSV file containing all OPC UA nodes from a connected server
 * Generates a `publishednodes.json` file containing all OPC UA variable nodes from a connected server
 * Uses OPC UA PubSub JSON encoding
-* Uses plain MQTT broker as publishing endpoint
-* Optionally uses plain Kafka broker as publishing endpoint
+* Uses MQTT broker as publishing endpoint
+* Uses Kafka broker as publishing endpoint
+* Support for multiple Kafka brokers for publishing (one for UA data, one more UA metadata)
+* Support for subscribing to MQTT broker to read UA Binary PubSub data and reencode it as UA JSON to be published
 * Support for websockets transport with MQTT broker
 * Support for username/password authentication for Kafka broker
 * Support for username/password authentication for MQTT broker
@@ -95,7 +97,7 @@ For Linux hosts, remove the `c:` instances from the command above.
 
 And then point your browser to `http://yourIPAddress`.
 
-## Using the alternative broker
+## Using the Alternative Broker
 
 UA Cloud Publisher contains a second broker client that can be used either to **send** OPC UA PubSub metadata via Kafka to a second broker **or** it can be used to **receive** OPC UA PubSub binary via MQTT. However, both features together can't be used right now.
 
