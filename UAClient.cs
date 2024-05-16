@@ -881,6 +881,8 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                 };
 
+                ReferenceDescriptionCollection references = new ReferenceDescriptionCollection();
+
                 session.Browse(
                     null,
                     null,
@@ -892,7 +894,45 @@ namespace Opc.Ua.Cloud.Publisher
                 ClientBase.ValidateResponse(results, nodesToBrowse);
                 ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToBrowse);
 
-                fileId = (NodeId)results[0].References[0].NodeId;
+                do
+                {
+                    // check for error.
+                    if (StatusCode.IsBad(results[0].StatusCode))
+                    {
+                        break;
+                    }
+
+                    // process results.
+                    for (int i = 0; i < results[0].References.Count; i++)
+                    {
+                        references.Add(results[0].References[i]);
+                    }
+
+                    // check if all references have been fetched.
+                    if (results[0].References.Count == 0 || results[0].ContinuationPoint == null)
+                    {
+                        break;
+                    }
+
+                    // continue browse operation.
+                    ByteStringCollection continuationPoints = new ByteStringCollection
+                    {
+                        results[0].ContinuationPoint
+                    };
+
+                    session.BrowseNext(
+                        null,
+                        false,
+                        continuationPoints,
+                        out results,
+                        out diagnosticInfos);
+
+                    ClientBase.ValidateResponse(results, continuationPoints);
+                    ClientBase.ValidateDiagnosticInfos(diagnosticInfos, continuationPoints);
+                }
+                while (true);
+
+                fileId = (NodeId)references[0].NodeId;
                 fileHandle = ExecuteCommand(session, MethodIds.FileType_Open, fileId, (byte)6, null, out status);
                 if (StatusCode.IsNotGood(status))
                 {

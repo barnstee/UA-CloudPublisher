@@ -230,10 +230,24 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         private async Task<ReferenceDescriptionCollection> BrowseNodeAsync(NodeId nodeId)
         {
             ReferenceDescriptionCollection references = new();
-            byte[] continuationPoint;
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
+
+            BrowseDescription nodeToBrowse = new BrowseDescription
+            {
+                NodeId = nodeId,
+                BrowseDirection = BrowseDirection.Forward,
+                ReferenceTypeId = null,
+                IncludeSubtypes = true,
+                NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
+                ResultMask = (uint)BrowseResultMask.All
+            };
+
+            BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection
+            {
+                nodeToBrowse
+            };
 
             try
             {
@@ -242,14 +256,51 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 session.Browse(
                     null,
                     null,
-                    nodeId,
-                    0u,
-                    BrowseDirection.Forward,
-                    ReferenceTypeIds.HierarchicalReferences,
-                    true,
                     0,
-                    out continuationPoint,
-                    out references);
+                    nodesToBrowse,
+                    out BrowseResultCollection results,
+                    out DiagnosticInfoCollection diagnosticInfos);
+
+                ClientBase.ValidateResponse(results, nodesToBrowse);
+                ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToBrowse);
+
+                do
+                {
+                    // check for error.
+                    if (Ua.StatusCode.IsBad(results[0].StatusCode))
+                    {
+                        break;
+                    }
+
+                    // process results.
+                    for (int i = 0; i < results[0].References.Count; i++)
+                    {
+                        references.Add(results[0].References[i]);
+                    }
+
+                    // check if all references have been fetched.
+                    if (results[0].References.Count == 0 || results[0].ContinuationPoint == null)
+                    {
+                        break;
+                    }
+
+                    // continue browse operation.
+                    ByteStringCollection continuationPoints = new ByteStringCollection
+                    {
+                        results[0].ContinuationPoint
+                    };
+
+                    session.BrowseNext(
+                        null,
+                        false,
+                        continuationPoints,
+                        out results,
+                        out diagnosticInfos);
+
+                    ClientBase.ValidateResponse(results, continuationPoints);
+                    ClientBase.ValidateDiagnosticInfos(diagnosticInfos, continuationPoints);
+                }
+                while (true);
             }
             catch (Exception ex)
             {
