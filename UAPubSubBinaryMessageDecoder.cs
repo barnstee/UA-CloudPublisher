@@ -1,6 +1,8 @@
 ﻿
 namespace Opc.Ua.Cloud.Dashboard
 {
+    using Microsoft.Extensions.Logging;
+    using Newtonsoft.Json;
     using Opc.Ua;
     using Opc.Ua.Cloud.Publisher;
     using Opc.Ua.Cloud.Publisher.Interfaces;
@@ -11,21 +13,61 @@ namespace Opc.Ua.Cloud.Dashboard
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
 
     public class UAPubSubBinaryMessageDecoder
     {
         private readonly IUAApplication _app;
+        private readonly ILogger _logger;
 
         private Dictionary<string, DataSetReaderDataType> _dataSetReaders;
 
-        public UAPubSubBinaryMessageDecoder(IUAApplication app)
+        public UAPubSubBinaryMessageDecoder(IUAApplication app, ILoggerFactory loggerFactory)
         {
+            _logger = loggerFactory.CreateLogger("UAPubSubBinaryMessageDecoder");
             _app = app;
 
             _dataSetReaders = new Dictionary<string, DataSetReaderDataType>();
 
             // add default dataset readers
             AddUadpDataSetReader("default_uadp", 0, new DataSetMetaDataType());
+            AddJsonDataSetReader("default_json", 0, new DataSetMetaDataType());
+        }
+
+        public void ProcessMessage(byte[] payload, DateTime receivedTime, string contentType)
+        {
+            string message = string.Empty;
+            try
+            {
+                message = Encoding.UTF8.GetString(payload);
+                if (message != null)
+                {
+                    if (((contentType != null) && (contentType == "application/json")) || message.TrimStart().StartsWith('{') || message.TrimStart().StartsWith('['))
+                    {
+                        if (message.TrimStart().StartsWith('['))
+                        {
+                            // we received an array of messages
+                            object[] messageArray = JsonConvert.DeserializeObject<object[]>(message);
+                            foreach (object singleMessage in messageArray)
+                            {
+                                DecodeMessage(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(singleMessage)), receivedTime, new JsonNetworkMessage());
+                            }
+                        }
+                        else
+                        {
+                            DecodeMessage(payload, receivedTime, new JsonNetworkMessage());
+                        }
+                    }
+                    else
+                    {
+                        DecodeMessage(payload, receivedTime, new UadpNetworkMessage());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Exception {ex.Message} processing message {message}");
+            }
         }
 
         private void AddUadpDataSetReader(string publisherId, ushort dataSetWriterId, DataSetMetaDataType metadata)
@@ -61,14 +103,58 @@ namespace Opc.Ua.Cloud.Dashboard
                 _dataSetReaders.Add(uadpDataSetReader.Name, uadpDataSetReader);
             }
         }
-        public void DecodeMessage(byte[] payload, DateTime receivedTime)
+
+        private void AddJsonDataSetReader(string publisherId, ushort dataSetWriterId, DataSetMetaDataType metadata)
         {
-            UadpNetworkMessage encodedMessage = new();
+            DataSetReaderDataType jsonDataSetReader = new DataSetReaderDataType();
+            jsonDataSetReader.Name = publisherId + ":" + dataSetWriterId.ToString();
+            jsonDataSetReader.PublisherId = publisherId;
+            jsonDataSetReader.DataSetWriterId = dataSetWriterId;
+            jsonDataSetReader.Enabled = true;
+            jsonDataSetReader.DataSetFieldContentMask = (uint)DataSetFieldContentMask.None;
+            jsonDataSetReader.KeyFrameCount = 1;
+            jsonDataSetReader.TransportSettings = new ExtensionObject(new BrokerDataSetReaderTransportDataType());
+            jsonDataSetReader.DataSetMetaData = metadata;
+
+            JsonDataSetReaderMessageDataType jsonDataSetReaderMessageSettings = new JsonDataSetReaderMessageDataType()
+            {
+                NetworkMessageContentMask = (uint)(JsonNetworkMessageContentMask.NetworkMessageHeader | JsonNetworkMessageContentMask.DataSetMessageHeader | JsonNetworkMessageContentMask.DataSetClassId | JsonNetworkMessageContentMask.PublisherId),
+                DataSetMessageContentMask = (uint)JsonDataSetMessageContentMask.None,
+            };
+
+            jsonDataSetReader.MessageSettings = new ExtensionObject(jsonDataSetReaderMessageSettings);
+
+            TargetVariablesDataType subscribedDataSet = new TargetVariablesDataType();
+            subscribedDataSet.TargetVariables = new FieldTargetDataTypeCollection();
+            jsonDataSetReader.SubscribedDataSet = new ExtensionObject(subscribedDataSet);
+
+            if (_dataSetReaders.ContainsKey(jsonDataSetReader.Name))
+            {
+                _dataSetReaders[jsonDataSetReader.Name] = jsonDataSetReader;
+            }
+            else
+            {
+                _dataSetReaders.Add(jsonDataSetReader.Name, jsonDataSetReader);
+            }
+        }
+
+        private void DecodeMessage(byte[] payload, DateTime receivedTime, UaNetworkMessage encodedMessage)
+        {
             encodedMessage.Decode(ServiceMessageContext.GlobalContext, payload, null);
             if (encodedMessage.IsMetaDataMessage)
             {
-                UadpNetworkMessage uadpMessage = encodedMessage;
-                AddUadpDataSetReader(uadpMessage.PublisherId.ToString(), uadpMessage.DataSetWriterId, encodedMessage.DataSetMetaData);
+                // setup dataset reader
+                if (encodedMessage is JsonNetworkMessage)
+                {
+                    JsonNetworkMessage jsonMessage = (JsonNetworkMessage)encodedMessage;
+
+                    AddJsonDataSetReader(jsonMessage.PublisherId, jsonMessage.DataSetWriterId, encodedMessage.DataSetMetaData);
+                }
+                else
+                {
+                    UadpNetworkMessage uadpMessage = (UadpNetworkMessage)encodedMessage;
+                    AddUadpDataSetReader(uadpMessage.PublisherId.ToString(), uadpMessage.DataSetWriterId, encodedMessage.DataSetMetaData);
+                }
             }
             else
             {
@@ -76,8 +162,17 @@ namespace Opc.Ua.Cloud.Dashboard
 
                 // reset metadata fields on default dataset readers
                 _dataSetReaders["default_uadp:0"].DataSetMetaData.Fields.Clear();
+                _dataSetReaders["default_json:0"].DataSetMetaData.Fields.Clear();
 
-                string publisherID = encodedMessage.PublisherId?.ToString();
+                string publisherID = string.Empty;
+                if (encodedMessage is JsonNetworkMessage)
+                {
+                    publisherID = ((JsonNetworkMessage)encodedMessage).PublisherId?.ToString();
+                }
+                else
+                {
+                    publisherID = ((UadpNetworkMessage)encodedMessage).PublisherId?.ToString();
+                }
 
                 Dictionary<string, DataValue> flattenedPublishedNodes = new();
                 foreach (UaDataSetMessage datasetmessage in encodedMessage.DataSetMessages)

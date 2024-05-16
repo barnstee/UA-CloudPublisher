@@ -26,6 +26,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     public class MQTTClient : IBrokerClient
     {
         private IMqttClient _client = null;
+        private bool _isAltBroker = false;
 
         private readonly ILogger _logger;
         private readonly ICommandProcessor _commandProcessor;
@@ -73,6 +74,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
         public void Connect(bool altBroker = false)
         {
+            _isAltBroker = altBroker;
+
             try
             {
                 // disconnect if still connected
@@ -284,9 +287,10 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
             try
             {
-                if (args.ApplicationMessage.ContentType != "application/json")
+                // check if this should be a data message (and we are the alternative broker) or a command
+                if (_isAltBroker)
                 {
-                    new UAPubSubBinaryMessageDecoder(_uAApplication).DecodeMessage(args.ApplicationMessage.PayloadSegment.ToArray(), DateTime.UtcNow);
+                    new UAPubSubBinaryMessageDecoder(_uAApplication, new LoggerFactory()).ProcessMessage(args.ApplicationMessage.PayloadSegment.ToArray(), DateTime.UtcNow, args.ApplicationMessage.ContentType);
                 }
                 else
                 {

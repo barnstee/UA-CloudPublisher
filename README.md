@@ -13,7 +13,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 * Uses MQTT broker as publishing endpoint
 * Uses Kafka broker as publishing endpoint
 * Support for multiple Kafka brokers for publishing (one for UA data, one more UA metadata)
-* Support for subscribing to MQTT broker to read UA Binary PubSub data and reencode it as UA JSON to be published
+* Support for subscribing to MQTT broker to read UA PubSub data and re-encode it, with metadata, as UA JSON to be published (the broker bridge design pattern)
 * Support for websockets transport with MQTT broker
 * Support for username/password authentication for Kafka broker
 * Support for username/password authentication for MQTT broker
@@ -99,7 +99,7 @@ And then point your browser to `http://yourIPAddress`.
 
 ## Using the Alternative Broker
 
-UA Cloud Publisher contains a second broker client that can be used either to **send** OPC UA PubSub metadata via Kafka to a second broker **or** it can be used to **receive** OPC UA PubSub binary via MQTT. However, both features together can't be used right now.
+UA Cloud Publisher contains a second broker client that can be used either to **send** OPC UA PubSub metadata via Kafka to a second broker **or** it can be used to **receive** OPC UA PubSub data via MQTT. However, both features together can't be used right now.
 
 ## Optional Environment Variables
 
