@@ -8,6 +8,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using MQTTnet.Packets;
     using MQTTnet.Protocol;
     using Newtonsoft.Json;
+    using Opc.Ua.Cloud.Dashboard;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
@@ -70,7 +71,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             }
         }
 
-        public void Connect()
+        public void Connect(bool altBroker = false)
         {
             try
             {
@@ -84,7 +85,15 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     Diagnostics.Singleton.Info.ConnectedToBroker = false;
                 }
 
-                if (string.IsNullOrEmpty(Settings.Instance.BrokerUrl))
+                // read our settings
+                string brokerUrl = altBroker? Settings.Instance.AltBrokerUrl : Settings.Instance.BrokerUrl;
+                uint brokerPort = altBroker? Settings.Instance.AltBrokerPort : Settings.Instance.BrokerPort;
+                string publisherName = Settings.Instance.PublisherName;
+                string username = altBroker? Settings.Instance.AltBrokerUsername : Settings.Instance.BrokerUsername;
+                string password = altBroker? Settings.Instance.AltBrokerPassword : Settings.Instance.BrokerPassword;
+                string receiveTopic = altBroker? Settings.Instance.BrokerDataReceivedTopic : Settings.Instance.BrokerCommandTopic;
+
+                if (string.IsNullOrEmpty(brokerUrl))
                 {
                     // no broker URL configured = nothing to connect to!
                     _logger.LogError("Broker URL not configured. Cannot connect to broker!");
@@ -92,17 +101,16 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 }
 
                 // create MQTT password
-                string password = Settings.Instance.BrokerPassword;
                 if (Settings.Instance.CreateBrokerSASToken)
                 {
                     // create SAS token as password
                     TimeSpan sinceEpoch = DateTime.UtcNow - new DateTime(1970, 1, 1);
                     int week = 60 * 60 * 24 * 7;
                     string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
-                    string stringToSign = HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.PublisherName) + "\n" + expiry;
+                    string stringToSign = HttpUtility.UrlEncode(brokerUrl + "/devices/" + publisherName) + "\n" + expiry;
                     HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
                     string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
-                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(Settings.Instance.BrokerUrl + "/devices/" + Settings.Instance.PublisherName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
+                    password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(brokerUrl + "/devices/" + publisherName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
                 }
 
                 // create MQTT client
@@ -110,33 +118,33 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 _client.ApplicationMessageReceivedAsync += msg => HandleMessageAsync(msg);
 
                 MqttClientOptionsBuilder clientOptions = new MqttClientOptionsBuilder()
-                        .WithTcpServer(Settings.Instance.BrokerUrl, (int?)Settings.Instance.BrokerPort)
-                        .WithClientId(Settings.Instance.PublisherName)
+                        .WithTcpServer(brokerUrl, (int?)brokerPort)
+                        .WithClientId(publisherName)
                         .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                         .WithTimeout(TimeSpan.FromSeconds(10))
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                         .WithCleanSession(true) // clear existing subscriptions
-                        .WithCredentials(Settings.Instance.BrokerUsername, password);
+                        .WithCredentials(username, password);
 
-                if (Settings.Instance.BrokerPort == 443)
+                if (brokerPort == 443)
                 {
                     clientOptions = new MqttClientOptionsBuilder()
-                        .WithWebSocketServer( o => o.WithUri(Settings.Instance.BrokerUrl))
-                        .WithClientId(Settings.Instance.PublisherName)
+                        .WithWebSocketServer( o => o.WithUri(brokerUrl))
+                        .WithClientId(publisherName)
                         .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
                         .WithTimeout(TimeSpan.FromSeconds(10))
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                         .WithCleanSession(true) // clear existing subscriptions
-                        .WithCredentials(Settings.Instance.BrokerUsername, password);
+                        .WithCredentials(username, password);
                 }
 
                 if (Settings.Instance.UseUACertAuth || Settings.Instance.UseCustomCertAuth)
                 {
                     clientOptions = new MqttClientOptionsBuilder()
-                        .WithTcpServer(Settings.Instance.BrokerUrl)
-                        .WithClientId(Settings.Instance.PublisherName)
+                        .WithTcpServer(brokerUrl)
+                        .WithClientId(publisherName)
                         .WithTlsOptions(new MqttClientTlsOptions
                         {
                             UseTls = true,
@@ -148,7 +156,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         .WithTimeout(TimeSpan.FromSeconds(10))
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                         .WithCleanSession(true) // clear existing subscriptions
-                        .WithCredentials(Settings.Instance.PublisherName, string.Empty);
+                        .WithCredentials(publisherName, string.Empty);
                 }
 
                 // setup disconnection handling
@@ -181,12 +189,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
                     }
 
-                    if (!string.IsNullOrEmpty(Settings.Instance.BrokerCommandTopic))
+                    if (!string.IsNullOrEmpty(receiveTopic))
                     {
                         MqttClientSubscribeResult subscribeResult = _client.SubscribeAsync(
                         new MqttTopicFilter
                         {
-                            Topic = Settings.Instance.BrokerCommandTopic,
+                            Topic = receiveTopic,
                             QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
                         }).GetAwaiter().GetResult();
 
@@ -267,10 +275,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
         // handles all incoming messages
         private async Task HandleMessageAsync(MqttApplicationMessageReceivedEventArgs args)
         {
-            _logger.LogInformation($"Received cloud command with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
-
-            string requestTopic = Settings.Instance.BrokerCommandTopic;
-            string requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
+            string requestID = string.Empty;
 
             ResponseModel response = new()
             {
@@ -279,54 +284,66 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
             try
             {
-                string requestPayload = args.ApplicationMessage.ConvertPayloadToString();
-
-                // parse the message
-                RequestModel request = JsonConvert.DeserializeObject<RequestModel>(requestPayload);
-
-                // discard messages that are older than 15 seconds
-                if (request.TimeStamp < DateTime.UtcNow.AddSeconds(-15))
+                if (args.ApplicationMessage.ContentType != "application/json")
                 {
-                    _logger.LogInformation($"Discarding old message with timestamp {request.TimeStamp}");
-                    return;
-                }
-
-                response.CorrelationId = request.CorrelationId;
-                // route this to the right handler
-                if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
-                {
-                    response.Status = Encoding.UTF8.GetString(_commandProcessor.PublishNodes(requestPayload));
-                    response.Success = true;
-                }
-                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
-                {
-                    response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishNodes(requestPayload));
-                    response.Success = true;
-                }
-                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
-                {
-                    response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishAllNodes());
-                    response.Success = true;
-                }
-                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))
-                {
-                    response.Status = Encoding.UTF8.GetString(_commandProcessor.GetPublishedNodes());
-                    response.Success = true;
-                }
-                else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
-                {
-                    response.Status = Encoding.UTF8.GetString(_commandProcessor.GetInfo());
-                    response.Success = true;
+                    new UAPubSubBinaryMessageDecoder(_uAApplication).DecodeMessage(args.ApplicationMessage.PayloadSegment.ToArray(), DateTime.UtcNow);
                 }
                 else
                 {
-                    _logger.LogError("Unknown command received: " + args.ApplicationMessage.Topic);
-                    response.Status = "Unkown command " + args.ApplicationMessage.Topic;
-                    response.Success = false;
-                }
+                    _logger.LogInformation($"Received cloud command with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
 
-                // send reponse to MQTT broker
-                await _client.PublishAsync(BuildResponse("200", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))), _cancellationTokenSource.Token).ConfigureAwait(false);
+                    string requestTopic = Settings.Instance.BrokerCommandTopic;
+                    requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
+
+                    string requestPayload = args.ApplicationMessage.ConvertPayloadToString();
+
+                    // parse the message
+                    RequestModel request = JsonConvert.DeserializeObject<RequestModel>(requestPayload);
+
+                    // discard messages that are older than 15 seconds
+                    if (request.TimeStamp < DateTime.UtcNow.AddSeconds(-15))
+                    {
+                        _logger.LogInformation($"Discarding old message with timestamp {request.TimeStamp}");
+                        return;
+                    }
+
+                    response.CorrelationId = request.CorrelationId;
+                    // route this to the right handler
+                    if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
+                    {
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.PublishNodes(requestPayload));
+                        response.Success = true;
+                    }
+                    else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
+                    {
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishNodes(requestPayload));
+                        response.Success = true;
+                    }
+                    else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
+                    {
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishAllNodes());
+                        response.Success = true;
+                    }
+                    else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))
+                    {
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.GetPublishedNodes());
+                        response.Success = true;
+                    }
+                    else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetInfo"))
+                    {
+                        response.Status = Encoding.UTF8.GetString(_commandProcessor.GetInfo());
+                        response.Success = true;
+                    }
+                    else
+                    {
+                        _logger.LogError("Unknown command received: " + args.ApplicationMessage.Topic);
+                        response.Status = "Unkown command " + args.ApplicationMessage.Topic;
+                        response.Success = false;
+                    }
+
+                    // send reponse to MQTT broker
+                    await _client.PublishAsync(BuildResponse("200", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))), _cancellationTokenSource.Token).ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {

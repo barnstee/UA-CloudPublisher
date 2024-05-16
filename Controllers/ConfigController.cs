@@ -11,12 +11,21 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
     public class ConfigController : Controller
     {
-        private readonly IBrokerClient _subscriber;
+        private IBrokerClient _brokerClient;
+        private IBrokerClient _alternativeBrokerClient;
         private readonly IMessageProcessor _messageProcessor;
 
-        public ConfigController(IBrokerClient subscriber, IMessageProcessor messageProcessor)
+        public ConfigController(Settings.BrokerResolver brokerResolver, IMessageProcessor messageProcessor)
         {
-            _subscriber = subscriber;
+            if (Settings.Instance.UseKafka)
+            {
+                _brokerClient = brokerResolver("Kafka");
+            }
+            else
+            {
+                _brokerClient = brokerResolver("MQTT");
+            }
+
             _messageProcessor = messageProcessor;
         }
 
@@ -65,15 +74,31 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult Apply(Settings settings)
+        public IActionResult Apply(Settings settings, Settings.BrokerResolver brokerResolver)
         {
             if (ModelState.IsValid)
             {
                 Settings.Instance = settings;
                 Settings.Instance.Save();
 
+                if (Settings.Instance.UseKafka)
+                {
+                    _brokerClient = brokerResolver("Kafka");
+                }
+                else
+                {
+                    _brokerClient = brokerResolver("MQTT");
+                }
+
                 // reconnect to broker with new settings
-                _subscriber.Connect();
+                _brokerClient.Connect();
+
+                // check if we need a second broker
+                if (Settings.Instance.UseAltBrokerForReceivingUABinaryOverMQTT)
+                {
+                    _alternativeBrokerClient = brokerResolver("MQTT");
+                    _alternativeBrokerClient.Connect(true);
+                }
 
                 // clear metadata message cache
                 _messageProcessor.ClearMetadataMessageCache();

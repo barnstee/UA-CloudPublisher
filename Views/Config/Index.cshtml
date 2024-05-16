@@ -68,8 +68,12 @@
         @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
-        Use Alternative Broker For OPC UA Metadata Messages<br />
+        Use Alternative Broker For OPC UA Metadata Messages (must not be enabled in conjunction with Use Alt Broker For Receiving UABinary Over MQTT)<br />
         @Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata)<br />
+    </p>
+    <p>
+        Use Alternative Broker For Receiving OPC UA PubSub Binary Over MQTT Messages (must not be enabled in conjunction with Use Al tBroker For Metadata)<br />
+        @Html.CheckBox("UseAltBrokerForReceivingUABinaryOverMQTT", @Model.UseAltBrokerForReceivingUABinaryOverMQTT)<br />
     </p>
     <p>
         Alternative Broker URL<br />
@@ -95,9 +99,13 @@
         Metadata Send Interval in Seconds<br />
         @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
-     <p>
+    <p>
         Broker Command Topic<br />
         @Html.TextBox("BrokerCommandTopic", @Model.BrokerCommandTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
+    </p>
+    <p>
+        Broker Data Received Topic<br />
+        @Html.TextBox("BrokerDataReceivedTopic", @Model.BrokerDataReceivedTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
         Broker Command Response Topic<br />
@@ -106,6 +114,10 @@
     <p>
         Broker Message Size<br />
         @Html.TextBox("BrokerMessageSize", @Model.BrokerMessageSize, new { style = "width:100%;background-color:grey;color:white;" })<br />
+    </p>
+    <p>
+        Use Kafka<br />
+        @Html.CheckBox("UseKafka", @Model.UseKafka)<br />
     </p>
     <p>
         Create Broker SAS Token<br />

@@ -50,14 +50,21 @@ namespace Opc.Ua.Cloud.Publisher
             services.AddSingleton<IUAApplication, UAApplication>();
             services.AddSingleton<IUAClient, UAClient>();
 
-            if (!string.IsNullOrEmpty(Configuration["USE_KAFKA"]))
+            services.AddSingleton<KafkaClient>();
+            services.AddSingleton<MQTTClient>();
+
+            services.AddSingleton<Settings.BrokerResolver>(serviceProvider => key =>
             {
-                services.AddSingleton<IBrokerClient, KafkaClient>();
-            }
-            else
-            {
-                services.AddSingleton<IBrokerClient, MQTTClient>();
-            }
+                switch (key)
+                {
+                    case "MQTT":
+                        return serviceProvider.GetService<MQTTClient>();
+                    case "Kafka":
+                        return serviceProvider.GetService<KafkaClient>();
+                    default:
+                        return null;
+                }
+            });
 
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
             services.AddSingleton<ICommandProcessor, CommandProcessor>();
@@ -84,7 +91,7 @@ namespace Opc.Ua.Cloud.Publisher
                               ILoggerFactory loggerFactory,
                               IUAApplication uaApp,
                               IMessageProcessor engine,
-                              IBrokerClient subscriber,
+                              Settings.BrokerResolver brokerResolver,
                               IPublishedNodesFileHandler publishedNodesFileHandler,
                               IFileStorage storage)
         {
@@ -128,8 +135,26 @@ namespace Opc.Ua.Cloud.Publisher
                 // create our app
                 uaApp.CreateAsync().GetAwaiter().GetResult();
 
+                IBrokerClient broker;
+                IBrokerClient altBroker;
+                if (Settings.Instance.UseKafka)
+                {
+                    broker = brokerResolver("Kafka");
+                }
+                else
+                {
+                    broker = brokerResolver("MQTT");
+                }
+
                 // connect to broker
-                subscriber.Connect();
+                broker.Connect();
+
+                // check if we need a second broker
+                if (Settings.Instance.UseAltBrokerForReceivingUABinaryOverMQTT)
+                {
+                    altBroker = brokerResolver("MQTT");
+                    altBroker.Connect(true);
+                }
 
                 // run the telemetry engine
                 _ = Task.Run(() => engine.Run());

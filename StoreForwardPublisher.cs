@@ -17,10 +17,18 @@ namespace Opc.Ua.Cloud.Publisher
         private Queue<long> _lastMessageLatencies = new Queue<long>();
         private object _lastMessageLatenciesLock = new object();
 
-        public StoreForwardPublisher(ILoggerFactory loggerFactory, IBrokerClient subscriber)
+        public StoreForwardPublisher(ILoggerFactory loggerFactory, Settings.BrokerResolver brokerResolver)
         {
             _logger = loggerFactory.CreateLogger("StoreForwardPublisher");
-            _client = subscriber;
+
+            if (Settings.Instance.UseKafka)
+            {
+                _client = brokerResolver("Kafka");
+            }
+            else
+            {
+                _client = brokerResolver("MQTT");
+            }
         }
 
         public bool SendMetadata(byte[] message)

@@ -3,7 +3,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     public interface IBrokerClient
     {
-        void Connect();
+        void Connect(bool altBroker = false);
 
         void Publish(byte[] payload);
 

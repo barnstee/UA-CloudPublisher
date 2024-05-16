@@ -25,7 +25,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             _commandProcessor = commandProcessor;
         }
 
-        public void Connect()
+        public void Connect(bool altBroker = false)
         {
             try
             {

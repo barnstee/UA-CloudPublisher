@@ -95,13 +95,16 @@ For Linux hosts, remove the `c:` instances from the command above.
 
 And then point your browser to `http://yourIPAddress`.
 
+## Using the alternative broker
+
+UA Cloud Publisher contains a second broker client that can be used either to **send** OPC UA PubSub metadata via Kafka to a second broker **or** it can be used to **receive** OPC UA PubSub binary via MQTT. However, both features together can't be used right now.
+
 ## Optional Environment Variables
 
 * `LOG_FILE_PATH` - path to the log file to use. Default is /app/logs/UACloudPublisher.log (in the Docker container).
 * `STORAGE_TYPE` - type of storage to use for settings and configuration files. Current options are `Azure` and `OneLake`. Default is local file storage (under `/app/settings/` in the Docker container).
 * `STORAGE_CONNECTION_STRING` - when using `STORAGE_TYPE`=`Azure` or `OneLake`, specifies the connection string to the cloud storage. For `OneLake`, this is called `URL` and can be retrieved from your Lakehouse `Files` folder properties in Microsoft Fabric.
 * `STORAGE_CONTAINER_NAME` - when using STORAGE_TYPE="Azure" or "OneLake", specifies the storage container name. Default is "uacloudpublisher".
-* `USE_KAFKA` - **if present**, use a Kafka broker instead of an MQTT broker to send messages to and receive commands from.
 
 ## PublishedNodes.json File Format
 

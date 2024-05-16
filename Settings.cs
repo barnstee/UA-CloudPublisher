@@ -16,6 +16,8 @@ namespace Opc.Ua.Cloud.Publisher
             // needed for serialization
         }
 
+        public delegate IBrokerClient BrokerResolver(string key);
+
         private static Settings _instance = null;
         private static object _instanceLock = new object();
 
@@ -105,6 +107,8 @@ namespace Opc.Ua.Cloud.Publisher
 
         public bool UseAltBrokerForMetadata { get; set; } = false;
 
+        public bool UseAltBrokerForReceivingUABinaryOverMQTT { get; set; } = false;
+
         public string AltBrokerUrl { get; set; } = string.Empty;
 
         public uint AltBrokerPort { get; set; } = 8883;
@@ -125,9 +129,13 @@ namespace Opc.Ua.Cloud.Publisher
 
         public string BrokerCommandTopic { get; set; } = string.Empty;
 
+        public string BrokerDataReceivedTopic { get; set; } = string.Empty;
+
         public string BrokerResponseTopic { get; set; } = string.Empty;
 
         public uint BrokerMessageSize { get; set; } = HubMessageSizeMax;
+
+        public bool UseKafka { get; set; } = false;
 
         public bool CreateBrokerSASToken { get; set; } = false;
 
