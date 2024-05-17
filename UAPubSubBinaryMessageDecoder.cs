@@ -270,6 +270,8 @@ namespace Opc.Ua.Cloud.Dashboard
                     Value = item.Value
                 };
 
+                messageData.Value.ServerTimestamp = receivedTime;
+
                 MessageProcessor.Enqueue(messageData);
             }
         }
