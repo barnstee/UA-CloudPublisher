@@ -150,7 +150,7 @@ namespace Opc.Ua.Cloud.Publisher
                 broker.Connect();
 
                 // check if we need a second broker
-                if (Settings.Instance.UseAltBrokerForReceivingUABinaryOverMQTT)
+                if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
                 {
                     altBroker = brokerResolver("MQTT");
                     altBroker.Connect(true);

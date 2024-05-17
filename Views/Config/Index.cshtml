@@ -68,12 +68,12 @@
         @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>
     <p>
-        Use Alternative Broker For OPC UA Metadata Messages (must not be enabled in conjunction with Use Alt Broker For Receiving UABinary Over MQTT)<br />
+        Use Alternative Broker For OPC UA Metadata Messages (must not be enabled in conjunction with Use Alt Broker For Receiving UA Over MQTT)<br />
         @Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata)<br />
     </p>
     <p>
-        Use Alternative Broker For Receiving OPC UA PubSub Binary Over MQTT Messages (must not be enabled in conjunction with Use Al tBroker For Metadata)<br />
-        @Html.CheckBox("UseAltBrokerForReceivingUABinaryOverMQTT", @Model.UseAltBrokerForReceivingUABinaryOverMQTT)<br />
+        Use Alternative Broker For Receiving OPC UA PubSub Over MQTT Messages (must not be enabled in conjunction with Use Alt Broker For Metadata)<br />
+        @Html.CheckBox("UseAltBrokerForReceivingUAOverMQTT", @Model.UseAltBrokerForReceivingUAOverMQTT)<br />
     </p>
     <p>
         Alternative Broker URL<br />

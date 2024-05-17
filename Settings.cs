@@ -107,7 +107,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         public bool UseAltBrokerForMetadata { get; set; } = false;
 
-        public bool UseAltBrokerForReceivingUABinaryOverMQTT { get; set; } = false;
+        public bool UseAltBrokerForReceivingUAOverMQTT { get; set; } = false;
 
         public string AltBrokerUrl { get; set; } = string.Empty;
 
