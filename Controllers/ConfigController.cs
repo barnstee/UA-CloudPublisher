@@ -13,17 +13,21 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     {
         private IBrokerClient _brokerClient;
         private IBrokerClient _alternativeBrokerClient;
+
         private readonly IMessageProcessor _messageProcessor;
+        private readonly Settings.BrokerResolver _brokerResolver;
 
         public ConfigController(Settings.BrokerResolver brokerResolver, IMessageProcessor messageProcessor)
         {
+            _brokerResolver = brokerResolver;
+
             if (Settings.Instance.UseKafka)
             {
-                _brokerClient = brokerResolver("Kafka");
+                _brokerClient = _brokerResolver("Kafka");
             }
             else
             {
-                _brokerClient = brokerResolver("MQTT");
+                _brokerClient = _brokerResolver("MQTT");
             }
 
             _messageProcessor = messageProcessor;
@@ -74,7 +78,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult Apply(Settings settings, Settings.BrokerResolver brokerResolver)
+        public IActionResult Apply(Settings settings)
         {
             if (ModelState.IsValid)
             {
@@ -83,11 +87,11 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 if (Settings.Instance.UseKafka)
                 {
-                    _brokerClient = brokerResolver("Kafka");
+                    _brokerClient = _brokerResolver("Kafka");
                 }
                 else
                 {
-                    _brokerClient = brokerResolver("MQTT");
+                    _brokerClient = _brokerResolver("MQTT");
                 }
 
                 // reconnect to broker with new settings
@@ -96,7 +100,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 // check if we need a second broker
                 if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
                 {
-                    _alternativeBrokerClient = brokerResolver("MQTT");
+                    _alternativeBrokerClient = _brokerResolver("MQTT");
                     _alternativeBrokerClient.Connect(true);
                 }
 
