@@ -261,7 +261,7 @@ namespace Opc.Ua.Cloud.Dashboard
         {
             foreach (KeyValuePair<string, DataValue> item in flattenedPublishedNodes)
             {
-                MessageProcessorModel messageData = new MessageProcessorModel
+                MessageProcessorModel messageData = new()
                 {
                     ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;i=" + Math.Abs(item.Key.GetHashCode()),
                     ApplicationUri = _app.UAApplicationInstance.ApplicationConfiguration.ApplicationUri,

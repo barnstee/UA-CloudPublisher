@@ -56,7 +56,7 @@ namespace Opc.Ua.Cloud.Publisher
                     return;
                 }
 
-                MessageProcessorModel messageData = new MessageProcessorModel
+                MessageProcessorModel messageData = new()
                 {
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
                     ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
@@ -209,13 +209,21 @@ namespace Opc.Ua.Cloud.Publisher
                     return;
                 }
 
+                string dataType = string.Empty;
+                VariableNode variable = (VariableNode)monitoredItem.Subscription.Session.NodeCache.Find(monitoredItem.StartNodeId);
+                if (variable != null)
+                {
+                    dataType = NodeId.ToExpandedNodeId(variable.DataType, monitoredItem.Subscription.Session.NamespaceUris).ToString();
+                }
+
                 MessageProcessorModel messageData = new MessageProcessorModel
                 {
                     ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
                     ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
                     Name = monitoredItem.DisplayName,
-                    Value = value
+                    Value = value,
+                    DataType = dataType
                 };
 
                 // skip event if needed

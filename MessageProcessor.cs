@@ -104,7 +104,7 @@ namespace Opc.Ua.Cloud.Publisher
                 try
                 {
                     // read the next message from our queue
-                    MessageProcessorModel messageData = new MessageProcessorModel();
+                    MessageProcessorModel messageData = new();
                     int timeout = CalculateBatchTimeout(cancellationToken);
                     bool gotItem = _monitoredItemsDataQueue.TryTake(out messageData, timeout, cancellationToken);
                     if (!gotItem)

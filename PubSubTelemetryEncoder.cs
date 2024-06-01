@@ -87,7 +87,7 @@ namespace Opc.Ua.Cloud.Publisher
                         BuiltInType = (byte)messageData.Value.WrappedValue.TypeInfo.BuiltInType,
                         DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
                         ValueRank = messageData.Value.WrappedValue.TypeInfo.ValueRank,
-                        Description = LocalizedText.Null
+                        Description = new LocalizedText(messageData.DataType)
                     };
 
                     dataSetMetaData.Fields.Add(fieldData);
