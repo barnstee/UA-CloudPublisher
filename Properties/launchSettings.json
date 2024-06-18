@@ -12,8 +12,7 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "USE_KAFKA": "1"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
     "UACloudPublisher": {
@@ -32,7 +31,6 @@
       "useSSL": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "USE_KAFKA": "1",
         "STORAGE_TYPE": "",
         "STORAGE_CONTAINER_NAME": "uacloudpublisher",
         "STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=[yourstorageaccountname];AccountKey=[key];EndpointSuffix=core.windows.net",
