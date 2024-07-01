@@ -2,8 +2,8 @@
 
 We provide a Docker composition with the following containers:
 
-- UA Cloud Publisher: https://github.com/barnstee/UA-CloudPublisher
-- PLC-Simulator: https://github.com/Azure-Samples/iot-edge-opc-plc
+- UA Cloud Publisher: <https://github.com/barnstee/UA-CloudPublisher>
+- PLC-Simulator: <https://github.com/Azure-Samples/iot-edge-opc-plc>
 - MQTT Broker HiveMQ
 
 All containers are on the same virtual network.
@@ -12,18 +12,18 @@ In addition, we provide local Python MQTT clients to test publishing and subscri
 
 ## UA Cloud Publisher
 
-- Frontend: http://localhost
+- Frontend: <http://localhost>
 - Connect to Simulated OPC Server: opc.tcp://plc-sim:50000/
 - Configuration (in UI):
-    - Broker URL: hivemq4
-    - Broker Port: 1883
-    - Message Topic: data
-    - uncheck SAS
-    - uncheck TLS
+  - Broker URL: hivemq4
+  - Broker Port: 1883
+  - Message Topic: data
+  - uncheck SAS
+  - uncheck TLS
 
 ## HiveMQ
 
-- Control center: http://localhost:8888
+- Control center: <http://localhost:8888>
 - Credentials: admin / hivemq
 
 ## Testing MQTT Broker with Python Clients
