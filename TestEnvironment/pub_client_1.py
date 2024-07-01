@@ -1,28 +1,36 @@
-#simulator device 1 for mqtt message publishing
-import paho.mqtt.client as paho
-import time
+"""
+Simulator device 1 for MQTT message publishing.
+"""
+
 import random
+import time
 
-#brokersettings
-broker="localhost" # mqtt broker url + port exposed to local
-port=1883
+import paho.mqtt.client as paho
 
-def on_publish(client,userdata,result):
-    print("Device 1 : Data published.")
-    pass
+# Broker settings
+BROKER = "localhost"  # MQTT broker URL
+PORT = 1883
 
-client= paho.Client(client_id="admin")
-client.on_publish = on_publish
-client.connect(host=broker,port=port)
-for i in range(20):
-    d=random.randint(1,5)
-    
- #telemetry to send 
-    message="Device 1 : Data " + str(i)
-    time.sleep(d)
-    
 
-    #publish message
-    ret= client.publish(topic="data",payload=message)
+def on_publish(client, userdata, result):  # pylint: disable=unused-argument
+    """Callback function for when a message is published."""
+    print("Device 1: Data published.")
 
-print("Stopped...")
+
+def main():
+    """Main function to publish MQTT messages."""
+    client = paho.Client(client_id="admin")
+    client.on_publish = on_publish
+    client.connect(host=BROKER, port=PORT)
+
+    for i in range(20):
+        delay = random.randint(1, 5)
+        message = f"Device 1: Data {i}"
+        time.sleep(delay)
+        client.publish(topic="data", payload=message)
+
+    print("Stopped...")
+
+
+if __name__ == "__main__":
+    main()
