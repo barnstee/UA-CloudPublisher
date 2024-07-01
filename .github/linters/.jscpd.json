@@ -1,6 +1,6 @@
 {
   "threshold": 12,
   "reporters": ["consoleFull"],
-  "ignore": ["**/wwwroot/lib/**"],
+  "ignore": ["**/wwwroot/lib/**", "**/*.json"],
   "absolute": true
 }
