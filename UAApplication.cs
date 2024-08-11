@@ -144,13 +144,20 @@ namespace Opc.Ua.Cloud.Publisher
         {
             if ((e.TraceMask & Settings.Instance.UAStackTraceMask) != 0)
             {
-                if (e.Arguments != null)
+                if (e.Exception != null)
                 {
-                    _logger.LogInformation("OPC UA Stack: " + string.Format(CultureInfo.InvariantCulture, e.Format, e.Arguments).Trim());
+                    _logger.LogError(e.Exception, e.Format, e.Arguments);
+                    return;
                 }
-                else
+
+                switch (e.TraceMask)
                 {
-                    _logger.LogInformation("OPC UA Stack: " + e.Format.Trim());
+                    case Utils.TraceMasks.StartStop:
+                    case Utils.TraceMasks.Information: _logger.LogInformation(e.Format, e.Arguments); break;
+                    case Utils.TraceMasks.Error: _logger.LogError(e.Format, e.Arguments); break;
+                    case Utils.TraceMasks.StackTrace:
+                    case Utils.TraceMasks.Security: _logger.LogWarning(e.Format, e.Arguments); break;
+                    default: _logger.LogTrace(e.Format, e.Arguments); break;
                 }
             }
         }
