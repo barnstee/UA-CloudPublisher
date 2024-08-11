@@ -313,7 +313,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 stopwatch.Stop();
             }
 
-            _logger.LogInformation("Browing all childeren info of node '{0}' took {0} ms", nodeId, stopwatch.ElapsedMilliseconds);
+            _logger.LogInformation("Browsing all childeren info of node '{0}' took {0} ms", nodeId, stopwatch.ElapsedMilliseconds);
 
             return references;
         }
