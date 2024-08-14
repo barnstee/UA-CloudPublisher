@@ -11,7 +11,16 @@
     <div class="col-6">
         <Tree Nodes="UANodes" TNode="UANode" ChildSelector="node => node.Children" SelectedNodeChanged="SelectedNodeChanged" OnNodeExpand="OnNodeExpand" HasChildNodes="HasChildNodes">
             <TitleTemplate>
-                <span class="text-light">@context.Text</span>
+                @{
+                    if (context.NodeId.StartsWith("ns="))
+                    {
+                        <span class="text-light"><b>@context.Text</b></span>
+                    }
+                    else
+                    {
+                        <span class="text-light">@context.Text</span>
+                    }
+                }
             </TitleTemplate>
         </Tree>
     </div>
@@ -214,12 +223,6 @@
                 List<string> processedReferences = new();
                 foreach (ReferenceDescription nodeReference in references)
                 {
-                    // filter out duplicates
-                    if (processedReferences.Contains(nodeReference.NodeId.ToString()))
-                    {
-                        continue;
-                    }
-
                     ReferenceDescriptionCollection childReferences = null;
                     try
                     {
@@ -242,6 +245,8 @@
                     processedReferences.Add(nodeReference.NodeId.ToString());
                 }
             }
+
+            nodes.Sort((x, y) => x.Text.CompareTo(y.Text));
 
             return nodes;
         }
