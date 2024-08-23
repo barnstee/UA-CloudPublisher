@@ -32,6 +32,14 @@
     </div>
 </p>
 <p>
+    <div class="row browser_browse_gds_push_button">
+        @using (Html.BeginForm("PushCert", "Browser"))
+        {
+            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Send new certificate and trust list to the server (GDS Server Push)" />
+        }
+    </div>
+</p>
+<p>
     <div class="row browser_browse_disconnect_button">
         @using (Html.BeginForm("Disconnect", "Browser"))
         {

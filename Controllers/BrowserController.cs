@@ -10,20 +10,27 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Opc.Ua.Cloud.Publisher;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
+    using Opc.Ua.Gds.Client;
+    using Opc.Ua.Security.Certificates;
+    using Opc.Ua.Server;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Linq;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class BrowserController : Controller
     {
+        private readonly IUAApplication _app;
         private readonly OpcSessionHelper _helper;
         private readonly ILogger _logger;
 
-        public BrowserController(OpcSessionHelper helper, IUAClient client, ILoggerFactory loggerFactory)
+        public BrowserController(OpcSessionHelper helper, IUAApplication app, ILoggerFactory loggerFactory)
         {
+            _app = app;
             _helper = helper;
             _logger = loggerFactory.CreateLogger("BrowserController");
         }
@@ -70,7 +77,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             SessionModel sessionModel = new SessionModel { UserName = username, Password = password, EndpointUrl = endpointUrl };
 
-            Session session = null;
+            Client.Session session = null;
 
             try
             {
@@ -138,7 +145,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             {
                 List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
 
-                Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                Client.Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
 
                 PublishNodesInterfaceModel model = new()
                 {
@@ -227,6 +234,205 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<ActionResult> PushCert()
+        {
+            SessionModel sessionModel = new SessionModel
+            {
+                StatusMessage = string.Empty,
+                SessionId = HttpContext.Session.Id,
+                EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
+            };
+
+            try
+            {
+                ServerPushConfigurationClient serverPushClient = new(_app.UAApplicationInstance.ApplicationConfiguration);
+
+                OpcSessionCacheData entry;
+                if (_helper.OpcSessionCache.TryGetValue(sessionModel.SessionId, out entry))
+                {
+                    if (entry.OPCSession != null)
+                    {
+                        serverPushClient.AdminCredentials = new UserIdentity(entry.Username, entry.Password);
+                    }
+                }
+
+                await serverPushClient.Connect(sessionModel.EndpointUrl).ConfigureAwait(false);
+
+                byte[] unusedNonce = new byte[0];
+                byte[] certificateRequest = serverPushClient.CreateSigningRequest(
+                    NodeId.Null,
+                    serverPushClient.ApplicationCertificateType,
+                string.Empty,
+                false,
+                unusedNonce);
+
+                string[] domainNames = _helper.GetCert().SubjectName.Name.Split(',');
+
+                X509Certificate2 certificate = await ProcessSigningRequestAsync(
+                    _app.UAApplicationInstance.ApplicationConfiguration.ApplicationUri,
+                    domainNames,
+                    certificateRequest).ConfigureAwait(false);
+
+                X509Certificate2 x509 = new X509Certificate2(certificate.Export(X509ContentType.Pfx), string.Empty, X509KeyStorageFlags.Exportable);
+                byte[] privateKeyPFX = x509.Export(X509ContentType.Pfx);
+
+                byte[][] issuerCertificates = new byte[1][];
+                issuerCertificates[0] = _helper.GetCert().RawData;
+
+                byte[] unusedPrivateKey = new byte[0];
+                serverPushClient.UpdateCertificate(
+                    NodeId.Null,
+                    serverPushClient.ApplicationCertificateType,
+                    certificate.Export(X509ContentType.Pfx),
+                    (privateKeyPFX != null) ? "pfx" : string.Empty,
+                    (privateKeyPFX != null) ? privateKeyPFX : unusedPrivateKey,
+                    issuerCertificates);
+
+                // store in our own trust list
+                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
+
+                // update trust list on server
+                TrustListDataType trustList = GetTrustLists();
+                serverPushClient.UpdateTrustList(trustList);
+
+                serverPushClient.ApplyChanges();
+                serverPushClient.Disconnect();
+            }
+            catch (Exception ex)
+            {
+                sessionModel.StatusMessage = ex.Message;
+            }
+
+            return View("Browse", sessionModel);
+        }
+
+        private async Task<X509Certificate2> ProcessSigningRequestAsync(string applicationUri, string[] domainNames, byte[] certificateRequest)
+        {
+            try
+            {
+                var pkcs10CertificationRequest = new Org.BouncyCastle.Pkcs.Pkcs10CertificationRequest(certificateRequest);
+
+                if (!pkcs10CertificationRequest.Verify())
+                {
+                    throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, "CSR signature invalid.");
+                }
+
+                var info = pkcs10CertificationRequest.GetCertificationRequestInfo();
+                var altNameExtension = GetAltNameExtensionFromCSRInfo(info);
+                if (altNameExtension != null)
+                {
+                    if (altNameExtension.Uris.Count > 0)
+                    {
+                        if (!altNameExtension.Uris.Contains(applicationUri))
+                        {
+                            var applicationUriMissing = new StringBuilder();
+                            applicationUriMissing.AppendLine("Expected AltNameExtension (ApplicationUri):");
+                            applicationUriMissing.AppendLine(applicationUri);
+                            applicationUriMissing.AppendLine("CSR AltNameExtensions found:");
+                            foreach (string uri in altNameExtension.Uris)
+                            {
+                                applicationUriMissing.AppendLine(uri);
+                            }
+                            throw new ServiceResultException(Ua.StatusCodes.BadCertificateUriInvalid,
+                                applicationUriMissing.ToString());
+                        }
+                    }
+
+                    if (altNameExtension.IPAddresses.Count > 0 || altNameExtension.DomainNames.Count > 0)
+                    {
+                        var domainNameList = new List<string>();
+                        domainNameList.AddRange(altNameExtension.DomainNames);
+                        domainNameList.AddRange(altNameExtension.IPAddresses);
+                        domainNames = domainNameList.ToArray();
+                    }
+                }
+
+                DateTime yesterday = DateTime.Today.AddDays(-1);
+                using (var signingKey = await LoadSigningKeyAsync().ConfigureAwait(false))
+                {
+                    X500DistinguishedName subjectName = new X500DistinguishedName(info.Subject.GetEncoded());
+                    return CertificateBuilder.Create(subjectName)
+                        .AddExtension(new X509SubjectAltNameExtension(applicationUri, domainNames))
+                        .SetNotBefore(yesterday)
+                        .SetLifeTime(12)
+                        .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
+                        .SetIssuer(signingKey)
+                        .SetRSAPublicKey(info.SubjectPublicKeyInfo.GetEncoded())
+                        .CreateForRSA();
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex is ServiceResultException)
+                {
+                    throw;
+                }
+                throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, ex.Message);
+            }
+        }
+
+        protected X509SubjectAltNameExtension GetAltNameExtensionFromCSRInfo(Org.BouncyCastle.Asn1.Pkcs.CertificationRequestInfo info)
+        {
+            try
+            {
+                for (int i = 0; i < info.Attributes.Count; i++)
+                {
+                    var sequence = Org.BouncyCastle.Asn1.Asn1Sequence.GetInstance(info.Attributes[i].ToAsn1Object());
+                    var oid = Org.BouncyCastle.Asn1.DerObjectIdentifier.GetInstance(sequence[0].ToAsn1Object());
+
+                    if (oid.Equals(Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.Pkcs9AtExtensionRequest))
+                    {
+                        var extensionInstance = Org.BouncyCastle.Asn1.DerSet.GetInstance(sequence[1]);
+                        var extensionSequence = Org.BouncyCastle.Asn1.Asn1Sequence.GetInstance(extensionInstance[0]);
+                        var extensions = Org.BouncyCastle.Asn1.X509.X509Extensions.GetInstance(extensionSequence);
+                        Org.BouncyCastle.Asn1.X509.X509Extension extension = extensions.GetExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.SubjectAlternativeName);
+                        var asnEncodedAltNameExtension = new System.Security.Cryptography.AsnEncodedData(Org.BouncyCastle.Asn1.X509.X509Extensions.SubjectAlternativeName.ToString(), extension.Value.GetOctets());
+                        var altNameExtension = new X509SubjectAltNameExtension(asnEncodedAltNameExtension, extension.IsCritical);
+                        return altNameExtension;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, "CSR altNameExtension invalid.");
+            }
+            return null;
+        }
+
+        private async Task<X509Certificate2> LoadSigningKeyAsync()
+        {
+            CertificateIdentifier certIdentifier = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate;
+            return await certIdentifier.LoadPrivateKey(string.Empty).ConfigureAwait(false);
+        }
+
+        private TrustListDataType GetTrustLists()
+        {
+            ByteStringCollection trusted = new ByteStringCollection();
+            ByteStringCollection trustedCrls = new ByteStringCollection();
+            ByteStringCollection issuers = new ByteStringCollection();
+            ByteStringCollection issuersCrls = new ByteStringCollection();
+
+            CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
+            foreach (X509Certificate2 cert in ownTrustList.GetCertificates().GetAwaiter().GetResult())
+            {
+                trusted.Add(cert.RawData);
+            }
+
+            issuers.Add(_helper.GetCert().RawData);
+
+            TrustListDataType trustList = new TrustListDataType()
+            {
+                SpecifiedLists = (uint)(TrustListMasks.All),
+                TrustedCertificates = trusted,
+                TrustedCrls = trustedCrls,
+                IssuerCertificates = issuers,
+                IssuerCrls = issuersCrls
+            };
+
+            return trustList;
+        }
+
         private async Task<ReferenceDescriptionCollection> BrowseNodeAsync(NodeId nodeId)
         {
             ReferenceDescriptionCollection references = new();
@@ -251,7 +457,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
             try
             {
-                Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                Client.Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
 
                 session.Browse(
                     null,
@@ -349,7 +555,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                         try
                         {
-                            Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                            Client.Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
 
                             nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
 

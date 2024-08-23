@@ -7,7 +7,6 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Configuration;
     using System;
-    using System.Globalization;
     using System.IO;
     using System.Threading;
     using System.Threading.Tasks;

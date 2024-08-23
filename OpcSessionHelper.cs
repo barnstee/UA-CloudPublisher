@@ -12,20 +12,20 @@ namespace Opc.Ua.Cloud.Publisher
 
     public class OpcSessionCacheData
     {
-        public bool Trusted { get; set; }
-
         public Session OPCSession { get; set; }
-
-        public string CertThumbprint { get; set; }
 
         public string EndpointURL { get; set; }
 
+        public string Username { get; set; }
+
+        public string Password { get; set; }
+
         public OpcSessionCacheData()
         {
-            Trusted = false;
-            EndpointURL = string.Empty;
-            CertThumbprint = string.Empty;
             OPCSession = null;
+            EndpointURL = string.Empty;
+            Username = string.Empty;
+            Password = string.Empty;
         }
     }
 
@@ -74,10 +74,10 @@ namespace Opc.Ua.Cloud.Publisher
                 return null;
             }
 
-            OpcSessionCacheData entry;
+            OpcSessionCacheData entry = null;
             if (OpcSessionCache.TryGetValue(sessionID, out entry))
             {
-                if (entry.OPCSession != null)
+                if ((entry != null) && (entry.OPCSession != null))
                 {
                     if (entry.OPCSession.Connected)
                     {
@@ -88,9 +88,11 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         entry.OPCSession.Close(500);
                     }
-                    catch
+                    catch (Exception)
                     {
+                        // do nothing
                     }
+
                     entry.OPCSession = null;
                 }
             }
@@ -156,10 +158,10 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         OpcSessionCacheData newValue = new OpcSessionCacheData
                         {
-                            CertThumbprint = entry.CertThumbprint,
                             EndpointURL = entry.EndpointURL,
-                            Trusted = entry.Trusted,
-                            OPCSession = session
+                            OPCSession = session,
+                            Username = username,
+                            Password = password
                         };
                         OpcSessionCache.TryUpdate(sessionID, newValue, entry);
                     }

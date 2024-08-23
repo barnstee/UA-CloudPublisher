@@ -148,7 +148,7 @@
 
         try
         {
-            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
 
             session.Browse(
                     null,
@@ -226,7 +226,7 @@
                     ReferenceDescriptionCollection childReferences = null;
                     try
                     {
-                        Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+                        Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
 
                         childReferences = await BrowseNodeAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
                     }
@@ -280,7 +280,7 @@
             valueId.DataEncoding = null;
             nodesToRead.Add(valueId);
 
-            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
             ResponseHeader responseHeader = session.Read(null, 0, TimestampsToReturn.Both, nodesToRead, out values, out diagnosticInfos);
             string value = "";
             if (values.Count > 0 && values[0].Value != null)
@@ -313,7 +313,7 @@
     {
         try
         {
-            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl).ConfigureAwait(false);
+            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
 
             NodePublishingModel node = new NodePublishingModel
                 {
