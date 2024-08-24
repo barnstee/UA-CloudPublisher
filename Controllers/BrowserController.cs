@@ -40,7 +40,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             try
             {
-                return File(_helper.GetCert().Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
+                return File(_helper.GetCert(), "APPLICATION/octet-stream", "cert.der");
             }
             catch (Exception ex)
             {
@@ -267,18 +267,16 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 false,
                 unusedNonce);
 
-                string[] domainNames = _helper.GetCert().SubjectName.Name.Split(',');
-
                 X509Certificate2 certificate = await ProcessSigningRequestAsync(
-                    _app.UAApplicationInstance.ApplicationConfiguration.ApplicationUri,
-                    domainNames,
+                    serverPushClient.Session.ServerUris.ToArray()[0],
+                    null,
                     certificateRequest).ConfigureAwait(false);
 
                 X509Certificate2 x509 = new X509Certificate2(certificate.Export(X509ContentType.Pfx), string.Empty, X509KeyStorageFlags.Exportable);
                 byte[] privateKeyPFX = x509.Export(X509ContentType.Pfx);
 
                 byte[][] issuerCertificates = new byte[1][];
-                issuerCertificates[0] = _helper.GetCert().RawData;
+                issuerCertificates[0] = _helper.GetCert();
 
                 byte[] unusedPrivateKey = new byte[0];
                 serverPushClient.UpdateCertificate(
@@ -298,6 +296,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 serverPushClient.ApplyChanges();
                 serverPushClient.Disconnect();
+
+                sessionModel.StatusMessage = "New certificate and trust list pushed successfully to server!";
             }
             catch (Exception ex)
             {
@@ -416,10 +416,10 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
             foreach (X509Certificate2 cert in ownTrustList.GetCertificates().GetAwaiter().GetResult())
             {
-                trusted.Add(cert.RawData);
+                trusted.Add(cert.Export(X509ContentType.Cert));
             }
 
-            issuers.Add(_helper.GetCert().RawData);
+            issuers.Add(_helper.GetCert());
 
             TrustListDataType trustList = new TrustListDataType()
             {
