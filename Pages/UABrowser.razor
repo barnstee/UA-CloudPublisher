@@ -48,6 +48,12 @@
     [Parameter]
     public string Password { get; set; } = string.Empty;
 
+    [Parameter]
+    public string StatusMessage { get; set; } = string.Empty;
+
+    [Parameter]
+    public string SessionId { get; set; } = string.Empty;
+
     private class UANode
     {
         public string Text { get; set; } = string.Empty;
@@ -63,10 +69,6 @@
     private string NodeDisplayName { get; set; } = string.Empty;
     private string NodeValue { get; set; } = string.Empty;
     private bool NodeNotPublishable { get; set; } = true;
-
-    private string StatusMessage { get; set; } = string.Empty;
-
-    private string SessionId { get; set; } = Guid.NewGuid().ToString();
 
     protected override void OnInitialized()
     {

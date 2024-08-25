@@ -6,13 +6,11 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua;
-    using Opc.Ua.Client;
     using Opc.Ua.Cloud.Publisher;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using Opc.Ua.Gds.Client;
     using Opc.Ua.Security.Certificates;
-    using Opc.Ua.Server;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -40,7 +38,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             try
             {
-                return File(_helper.GetCert(), "APPLICATION/octet-stream", "cert.der");
+                return File(_helper.GetAppCert().Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
             }
             catch (Exception ex)
             {
@@ -75,7 +73,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> ConnectAsync(string username, string password, string endpointUrl)
         {
-            SessionModel sessionModel = new SessionModel { UserName = username, Password = password, EndpointUrl = endpointUrl };
+            SessionModel sessionModel = new()
+            {
+                UserName = username,
+                Password = password,
+                EndpointUrl = endpointUrl,
+                SessionId = HttpContext.Session.Id
+            };
 
             Client.Session session = null;
 
@@ -97,17 +101,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             else
             {
                 HttpContext.Session.SetString("EndpointUrl", endpointUrl);
-            }
-
-            if (!string.IsNullOrEmpty(username) && (password != null))
-            {
-                HttpContext.Session.SetString("UserName", username);
-                HttpContext.Session.SetString("Password", password);
-            }
-            else
-            {
-                HttpContext.Session.Remove("UserName");
-                HttpContext.Session.Remove("Password");
             }
 
             if (session == null)
@@ -267,24 +260,20 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 false,
                 unusedNonce);
 
-                X509Certificate2 certificate = await ProcessSigningRequestAsync(
+                X509Certificate2 certificate = ProcessSigningRequest(
                     serverPushClient.Session.ServerUris.ToArray()[0],
                     null,
-                    certificateRequest).ConfigureAwait(false);
-
-                X509Certificate2 x509 = new X509Certificate2(certificate.Export(X509ContentType.Pfx), string.Empty, X509KeyStorageFlags.Exportable);
-                byte[] privateKeyPFX = x509.Export(X509ContentType.Pfx);
-
+                    certificateRequest);
+                
                 byte[][] issuerCertificates = new byte[1][];
-                issuerCertificates[0] = _helper.GetCert();
+                issuerCertificates[0] = _helper.GetAppCert().Export(X509ContentType.Cert);
 
-                byte[] unusedPrivateKey = new byte[0];
                 serverPushClient.UpdateCertificate(
                     NodeId.Null,
                     serverPushClient.ApplicationCertificateType,
                     certificate.Export(X509ContentType.Pfx),
-                    (privateKeyPFX != null) ? "pfx" : string.Empty,
-                    (privateKeyPFX != null) ? privateKeyPFX : unusedPrivateKey,
+                    string.Empty,
+                    new byte[0],
                     issuerCertificates);
 
                 // store in our own trust list
@@ -307,7 +296,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             return View("Browse", sessionModel);
         }
 
-        private async Task<X509Certificate2> ProcessSigningRequestAsync(string applicationUri, string[] domainNames, byte[] certificateRequest)
+        private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
         {
             try
             {
@@ -349,18 +338,17 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 }
 
                 DateTime yesterday = DateTime.Today.AddDays(-1);
-                using (var signingKey = await LoadSigningKeyAsync().ConfigureAwait(false))
-                {
-                    X500DistinguishedName subjectName = new X500DistinguishedName(info.Subject.GetEncoded());
-                    return CertificateBuilder.Create(subjectName)
-                        .AddExtension(new X509SubjectAltNameExtension(applicationUri, domainNames))
-                        .SetNotBefore(yesterday)
-                        .SetLifeTime(12)
-                        .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
-                        .SetIssuer(signingKey)
-                        .SetRSAPublicKey(info.SubjectPublicKeyInfo.GetEncoded())
-                        .CreateForRSA();
-                }
+                X509Certificate2 signingKey = _helper.GetAppCert();
+                X500DistinguishedName subjectName = new X500DistinguishedName(info.Subject.GetEncoded());
+
+                return CertificateBuilder.Create(subjectName)
+                    .AddExtension(new X509SubjectAltNameExtension(applicationUri, domainNames))
+                    .SetNotBefore(yesterday)
+                    .SetLifeTime(12)
+                    .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
+                    .SetIssuer(signingKey)
+                    .SetRSAPublicKey(info.SubjectPublicKeyInfo.GetEncoded())
+                    .CreateForRSA();
             }
             catch (Exception ex)
             {
@@ -400,12 +388,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             return null;
         }
 
-        private async Task<X509Certificate2> LoadSigningKeyAsync()
-        {
-            CertificateIdentifier certIdentifier = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate;
-            return await certIdentifier.LoadPrivateKey(string.Empty).ConfigureAwait(false);
-        }
-
         private TrustListDataType GetTrustLists()
         {
             ByteStringCollection trusted = new ByteStringCollection();
@@ -419,7 +401,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 trusted.Add(cert.Export(X509ContentType.Cert));
             }
 
-            issuers.Add(_helper.GetCert());
+            issuers.Add(_helper.GetAppCert().Export(X509ContentType.Cert));
 
             TrustListDataType trustList = new TrustListDataType()
             {

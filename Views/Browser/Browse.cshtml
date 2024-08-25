@@ -12,7 +12,15 @@
 <br />
 
 <p>
-    <component>@(await Html.RenderComponentAsync<UABrowser>(RenderMode.Server, new { EndpointUrl = Model.EndpointUrl, Username = Model.UserName, Password = Model.Password }).ConfigureAwait(false))</component>
+    <component>@(await Html.RenderComponentAsync<UABrowser>(
+        RenderMode.Server,
+        new {
+            EndpointUrl = Model.EndpointUrl,
+            Username = Model.UserName,
+            Password = Model.Password,
+            SessionId = Model.SessionId,
+            StatusMessage = Model.StatusMessage
+        }).ConfigureAwait(false))</component>
 </p>
 
 <p>

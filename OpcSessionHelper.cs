@@ -37,18 +37,18 @@ namespace Opc.Ua.Cloud.Publisher
 
         private readonly IUAApplication _app;
 
-        private byte[] _appCertBytes = null;
+        private X509Certificate2 _appCert = null;
 
         public OpcSessionHelper(IUAApplication app)
         {
             _app = app;
             _configuration = app.UAApplicationInstance.ApplicationConfiguration;
-            _appCertBytes = _configuration.SecurityConfiguration.ApplicationCertificate.Certificate.Export(X509ContentType.Cert);
+            _appCert = _configuration.SecurityConfiguration.ApplicationCertificate.Certificate;
         }
 
-        public byte[] GetCert()
+        public X509Certificate2 GetAppCert()
         {
-            return _appCertBytes;
+            return _appCert;
         }
 
         public void Disconnect(string sessionID)
