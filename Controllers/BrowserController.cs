@@ -26,119 +26,121 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         private readonly OpcSessionHelper _helper;
         private readonly ILogger _logger;
 
+        private SessionModel _session;
+
         public BrowserController(OpcSessionHelper helper, IUAApplication app, ILoggerFactory loggerFactory)
         {
             _app = app;
             _helper = helper;
             _logger = loggerFactory.CreateLogger("BrowserController");
+            _session = new();
         }
 
         [HttpPost]
         public IActionResult DownloadUACert()
         {
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+
             try
             {
                 return File(_helper.GetAppCert().Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Could not download UA cert file");
-                return View("Index", new string[] { "Error:" + ex.Message });
+                _session.StatusMessage = ex.Message;
+                return View("Index", _session);
             }
         }
 
         [HttpGet]
         public ActionResult Index()
         {
-            SessionModel sessionModel = new SessionModel();
-            sessionModel.SessionId = HttpContext.Session.Id;
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             OpcSessionCacheData entry = null;
-            if (_helper.OpcSessionCache.TryGetValue(HttpContext.Session.Id, out entry))
+            if (_helper.OpcSessionCache.TryGetValue(_session.SessionId, out entry))
             {
-                sessionModel.EndpointUrl = entry.EndpointURL;
-                HttpContext.Session.SetString("EndpointUrl", entry.EndpointURL);
-                return View("Browse", sessionModel);
+                _session.EndpointUrl = entry.EndpointURL;
+                return View("Browse", _session);
             }
 
-            return View("Index", sessionModel);
+            return View("Index", _session);
         }
 
         [HttpPost]
         public ActionResult UserPassword(string endpointUrl)
         {
-            return View("User", new SessionModel { EndpointUrl = endpointUrl });
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = endpointUrl;
+
+            HttpContext.Session.SetString("EndpointUrl", endpointUrl);
+
+            return View("User", _session);
         }
 
         [HttpPost]
-        public async Task<ActionResult> ConnectAsync(string username, string password, string endpointUrl)
+        public async Task<ActionResult> ConnectAsync(string username, string password)
         {
-            SessionModel sessionModel = new()
-            {
-                UserName = username,
-                Password = password,
-                EndpointUrl = endpointUrl,
-                SessionId = HttpContext.Session.Id
-            };
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+
+            _session.UserName = username;
+            _session.Password = password;
 
             Client.Session session = null;
-
             try
             {
-                session = await _helper.GetSessionAsync(HttpContext.Session.Id, endpointUrl, username, password).ConfigureAwait(false);
+                session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                sessionModel.StatusMessage = ex.Message;
-                return View("Index", sessionModel);
-            }
-
-            if (string.IsNullOrEmpty(endpointUrl))
-            {
-                sessionModel.StatusMessage = "The endpoint URL specified is invalid!";
-                return View("Index", sessionModel);
-            }
-            else
-            {
-                HttpContext.Session.SetString("EndpointUrl", endpointUrl);
+                _session.StatusMessage = ex.Message;
+                return View("Index", _session);
             }
 
             if (session == null)
             {
-                sessionModel.StatusMessage = "Unable to create session!";
-                return View("Index", sessionModel);
+                _session.StatusMessage = "Unable to create session!";
+                return View("Index", _session);
             }
             else
             {
-                sessionModel.StatusMessage = "Connected to: " + endpointUrl;
-                return View("Browse", sessionModel);
+                _session.StatusMessage = "Connected to: " + _session.EndpointUrl;
+                return View("Browse", _session);
             }
         }
 
         [HttpPost]
         public ActionResult Disconnect()
         {
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+
             try
             {
-                _helper.Disconnect(HttpContext.Session.Id);
-                HttpContext.Session.SetString("EndpointUrl", string.Empty);
+                _helper.Disconnect(_session.SessionId);
             }
             catch (Exception)
             {
                 // do nothing
             }
 
-            return View("Index", new SessionModel());
+            return View("Index", _session);
         }
 
         [HttpPost]
         public async Task<ActionResult> GeneratePN()
         {
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+
             try
             {
                 List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
 
-                Client.Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
 
                 PublishNodesInterfaceModel model = new()
                 {
@@ -169,20 +171,17 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                SessionModel sessionModel = new SessionModel
-                {
-                    StatusMessage = ex.Message,
-                    SessionId = HttpContext.Session.Id,
-                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
-                };
-
-                return View("Browse", sessionModel);
+                _session.StatusMessage = ex.Message;
+                return View("Browse", _session);
             }
         }
 
         [HttpPost]
         public async Task<ActionResult> GenerateCSV()
         {
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+
             try
             {
                 List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
@@ -216,33 +215,23 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                SessionModel sessionModel = new SessionModel
-                {
-                    StatusMessage = ex.Message,
-                    SessionId = HttpContext.Session.Id,
-                    EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
-                };
-
-                return View("Browse", sessionModel);
+                _session.StatusMessage = ex.Message;
+                return View("Browse", _session);
             }
         }
 
         [HttpPost]
         public async Task<ActionResult> PushCert()
         {
-            SessionModel sessionModel = new SessionModel
-            {
-                StatusMessage = string.Empty,
-                SessionId = HttpContext.Session.Id,
-                EndpointUrl = HttpContext.Session.GetString("EndpointUrl")
-            };
+            _session.SessionId = HttpContext.Session.Id;
+            _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             try
             {
                 ServerPushConfigurationClient serverPushClient = new(_app.UAApplicationInstance.ApplicationConfiguration);
 
                 OpcSessionCacheData entry;
-                if (_helper.OpcSessionCache.TryGetValue(sessionModel.SessionId, out entry))
+                if (_helper.OpcSessionCache.TryGetValue(_session.SessionId, out entry))
                 {
                     if (entry.OPCSession != null)
                     {
@@ -250,7 +239,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     }
                 }
 
-                await serverPushClient.Connect(sessionModel.EndpointUrl).ConfigureAwait(false);
+                await serverPushClient.Connect(_session.EndpointUrl).ConfigureAwait(false);
 
                 byte[] unusedNonce = new byte[0];
                 byte[] certificateRequest = serverPushClient.CreateSigningRequest(
@@ -286,14 +275,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 serverPushClient.ApplyChanges();
                 serverPushClient.Disconnect();
 
-                sessionModel.StatusMessage = "New certificate and trust list pushed successfully to server!";
+                _session.StatusMessage = "New certificate and trust list pushed successfully to server!";
             }
             catch (Exception ex)
             {
-                sessionModel.StatusMessage = ex.Message;
+                _session.StatusMessage = ex.Message;
             }
 
-            return View("Browse", sessionModel);
+            return View("Browse", _session);
         }
 
         private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
@@ -360,7 +349,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
         }
 
-        protected X509SubjectAltNameExtension GetAltNameExtensionFromCSRInfo(Org.BouncyCastle.Asn1.Pkcs.CertificationRequestInfo info)
+        private X509SubjectAltNameExtension GetAltNameExtensionFromCSRInfo(Org.BouncyCastle.Asn1.Pkcs.CertificationRequestInfo info)
         {
             try
             {
@@ -439,7 +428,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
             try
             {
-                Client.Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
 
                 session.Browse(
                     null,
@@ -537,7 +526,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                         try
                         {
-                            Client.Session session = await _helper.GetSessionAsync(HttpContext.Session.Id, HttpContext.Session.GetString("EndpointUrl")).ConfigureAwait(false);
+                            Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
 
                             nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
 
