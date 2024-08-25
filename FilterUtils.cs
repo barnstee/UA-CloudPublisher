@@ -126,7 +126,7 @@ namespace Opc.Ua.Cloud.Publisher
             nodeToBrowse.NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable);
             nodeToBrowse.ResultMask = (uint)BrowseResultMask.All;
 
-            ReferenceDescriptionCollection children = EventUtils.Browse(session, nodeToBrowse, false);
+            ReferenceDescriptionCollection children = UAClient.Browse(session, nodeToBrowse, false);
 
             if (children == null)
             {

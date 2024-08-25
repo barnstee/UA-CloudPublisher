@@ -7,6 +7,11 @@
 @inject OpcSessionHelper _helper
 @inject IUAClient _client
 
+<div class="text-danger">
+    <p>
+        <b>@StatusMessage</b>
+    </p>
+</div>
 <div class="col-12 row">
     <div class="col-6">
         <Tree Nodes="UANodes" TNode="UANode" ChildSelector="node => node.Children" SelectedNodeChanged="SelectedNodeChanged" OnNodeExpand="OnNodeExpand" HasChildNodes="HasChildNodes">
@@ -30,11 +35,6 @@
         NodeValue: <b>@NodeValue</b><br />
         <button class="btn btn-primary" hidden="@NodeNotPublishable" @onclick="VariablePublishAsync">Publish</button>
     </div>
-</div>
-<div class="text-danger">
-    <p>
-        @StatusMessage
-    </p>
 </div>
 
 @code {
@@ -63,7 +63,7 @@
         public IEnumerable<UANode> Children { get; set; } = null;
     }
 
-    private IEnumerable<UANode> UANodes;
+    private List<UANode> UANodes = new();
 
     private string NodeId { get; set; } = string.Empty;
     private string NodeDisplayName { get; set; } = string.Empty;
@@ -72,7 +72,10 @@
 
     protected override void OnInitialized()
     {
-        UANodes = GetRootNodeAsync().GetAwaiter().GetResult();
+        UANodes.Add(new UANode() {
+            Text = "Root",
+            NodeId = ObjectIds.ObjectsFolder.ToString()
+        });
     }
 
     private async Task OnNodeExpand(UANode expendedNode)
@@ -103,151 +106,38 @@
         return true;
     }
 
-    private async Task<List<UANode>> GetRootNodeAsync()
+    private async Task<List<UANode>> GetChildrenAsync(UANode node)
     {
         List<UANode> nodes = new();
 
-        try
+        BrowseDescription nodeToBrowse = new()
         {
-            ReferenceDescriptionCollection references = await BrowseNodeAsync(ObjectIds.ObjectsFolder).ConfigureAwait(false);
-
-            nodes.Add(new UANode
-            {
-                Text = "Root",
-                NodeId = ObjectIds.ObjectsFolder.ToString()
-            });
-
-            return nodes;
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-
-            _helper.Disconnect(SessionId);
-
-            return nodes;
-        }
-    }
-
-    private async Task<ReferenceDescriptionCollection> BrowseNodeAsync(NodeId nodeId)
-    {
-        ReferenceDescriptionCollection references = new();
-
-        BrowseDescription nodeToBrowse = new BrowseDescription
-        {
-            NodeId = nodeId,
+            NodeId = string.IsNullOrEmpty(node.NodeId)? ObjectIds.ObjectsFolder : node.NodeId,
             BrowseDirection = BrowseDirection.Forward,
-            ReferenceTypeId = null,
+            ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
             IncludeSubtypes = true,
             NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
             ResultMask = (uint)BrowseResultMask.All
-        };
-
-        BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection
-        {
-            nodeToBrowse
         };
 
         try
         {
             Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
 
-            session.Browse(
-                    null,
-                    null,
-                    0,
-                    nodesToBrowse,
-                    out BrowseResultCollection results,
-                    out DiagnosticInfoCollection diagnosticInfos);
-
-            ClientBase.ValidateResponse(results, nodesToBrowse);
-            ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToBrowse);
-
-            do
+            ReferenceDescriptionCollection references = UAClient.Browse(session, nodeToBrowse, true);
+            
+            List<string> processedReferences = new();
+            foreach (ReferenceDescription nodeReference in references)
             {
-                // check for error.
-                if (Ua.StatusCode.IsBad(results[0].StatusCode))
+                nodes.Add(new UANode
                 {
-                    break;
-                }
+                    NodeId = nodeReference.NodeId.ToString(),
+                    Text = nodeReference.DisplayName.ToString()
+                });
 
-                // process results.
-                for (int i = 0; i < results[0].References.Count; i++)
-                {
-                    references.Add(results[0].References[i]);
-                }
-
-                // check if all references have been fetched.
-                if (results[0].References.Count == 0 || results[0].ContinuationPoint == null)
-                {
-                    break;
-                }
-
-                // continue browse operation.
-                ByteStringCollection continuationPoints = new ByteStringCollection
-                    {
-                        results[0].ContinuationPoint
-                    };
-
-                session.BrowseNext(
-                    null,
-                    false,
-                    continuationPoints,
-                    out results,
-                    out diagnosticInfos);
-
-                ClientBase.ValidateResponse(results, continuationPoints);
-                ClientBase.ValidateDiagnosticInfos(diagnosticInfos, continuationPoints);
+                processedReferences.Add(nodeReference.NodeId.ToString());
             }
-            while (true);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-
-            _helper.Disconnect(SessionId);
-
-            throw;
-        }
-
-        return references;
-    }
-
-    private async Task<List<UANode>> GetChildrenAsync(UANode node)
-    {
-        List<UANode> nodes = new();
-
-        try
-        {
-            ReferenceDescriptionCollection references = await BrowseNodeAsync(node.NodeId).ConfigureAwait(false);
-            if (references != null)
-            {
-                List<string> processedReferences = new();
-                foreach (ReferenceDescription nodeReference in references)
-                {
-                    ReferenceDescriptionCollection childReferences = null;
-                    try
-                    {
-                        Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
-
-                        childReferences = await BrowseNodeAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
-                    }
-                    catch (Exception)
-                    {
-                        // skip this node
-                        continue;
-                    }
-
-                    nodes.Add(new UANode
-                    {
-                       NodeId = nodeReference.NodeId.ToString(),
-                       Text = nodeReference.DisplayName.ToString()
-                    });
-
-                    processedReferences.Add(nodeReference.NodeId.ToString());
-                }
-            }
-
+            
             nodes.Sort((x, y) => x.Text.CompareTo(y.Text));
 
             return nodes;

@@ -824,65 +824,19 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public void WoTConUpload(string endpoint, byte[] bytes, string assetName)
+        public static ReferenceDescriptionCollection Browse(Session session, BrowseDescription nodeToBrowse, bool throwOnError)
         {
-            Session session = null;
-            NodeId fileId = null;
-            object fileHandle = null;
             try
             {
-                session = ConnectSessionAsync(endpoint, null, null).GetAwaiter().GetResult();
-                if (session == null)
-                {
-                    // couldn't create the session
-                    throw new Exception($"Could not create session for endpoint {endpoint}!");
-                }
-
-                NodeId createNodeId = new(WoTAssetConnectionManagement_CreateAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
-                NodeId deleteNodeId = new(WoTAssetConnectionManagement_DeleteAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
-                NodeId closeNodeId = new(WoTAssetFileType_CloseAndUpdate, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
-                NodeId parentNodeId = new(WoTAssetConnectionManagement, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
-
-                Variant assetId = new(string.Empty);
-
-                StatusCode status = new StatusCode(0);
-                assetId = ExecuteCommand(session, createNodeId, parentNodeId, assetName, null, out status);
-                if (StatusCode.IsNotGood(status))
-                {
-                    if (status == StatusCodes.BadBrowseNameDuplicated)
-                    {
-                        // delete existing asset first
-                        assetId = ExecuteCommand(session, deleteNodeId, parentNodeId, new NodeId(assetId.Value.ToString()), null, out status);
-                        if (StatusCode.IsNotGood(status))
-                        {
-                            throw new Exception(status.ToString());
-                        }
-
-                        // now try again
-                        assetId = ExecuteCommand(session, createNodeId, parentNodeId, assetName, null, out status);
-                        if (StatusCode.IsNotGood(status))
-                        {
-                            throw new Exception(status.ToString());
-                        }
-                    }
-                    else
-                    {
-                        throw new Exception(status.ToString());
-                    }
-                }
-
-                BrowseDescriptionCollection nodesToBrowse = new()
-                {
-                    new BrowseDescription {
-                        NodeId = (NodeId)assetId.Value,
-                        BrowseDirection = BrowseDirection.Forward,
-                        NodeClassMask = (uint)NodeClass.Object,
-                        ResultMask = (uint)BrowseResultMask.All
-                    }
-                };
-
                 ReferenceDescriptionCollection references = new ReferenceDescriptionCollection();
 
+                // construct browse request.
+                BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection
+                {
+                    nodeToBrowse
+                };
+
+                // start the browse operation.
                 session.Browse(
                     null,
                     null,
@@ -931,6 +885,77 @@ namespace Opc.Ua.Cloud.Publisher
                     ClientBase.ValidateDiagnosticInfos(diagnosticInfos, continuationPoints);
                 }
                 while (true);
+
+                // return complete list.
+                return references;
+            }
+            catch (Exception exception)
+            {
+                if (throwOnError)
+                {
+                    throw new ServiceResultException(exception, StatusCodes.BadUnexpectedError);
+                }
+
+                return null;
+            }
+        }
+
+        public void WoTConUpload(string endpoint, byte[] bytes, string assetName)
+        {
+            Session session = null;
+            NodeId fileId = null;
+            object fileHandle = null;
+            try
+            {
+                session = ConnectSessionAsync(endpoint, null, null).GetAwaiter().GetResult();
+                if (session == null)
+                {
+                    // couldn't create the session
+                    throw new Exception($"Could not create session for endpoint {endpoint}!");
+                }
+
+                NodeId createNodeId = new(WoTAssetConnectionManagement_CreateAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+                NodeId deleteNodeId = new(WoTAssetConnectionManagement_DeleteAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+                NodeId closeNodeId = new(WoTAssetFileType_CloseAndUpdate, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+                NodeId parentNodeId = new(WoTAssetConnectionManagement, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+
+                Variant assetId = new(string.Empty);
+
+                StatusCode status = new StatusCode(0);
+                assetId = ExecuteCommand(session, createNodeId, parentNodeId, assetName, null, out status);
+                if (StatusCode.IsNotGood(status))
+                {
+                    if (status == StatusCodes.BadBrowseNameDuplicated)
+                    {
+                        // delete existing asset first
+                        assetId = ExecuteCommand(session, deleteNodeId, parentNodeId, new NodeId(assetId.Value.ToString()), null, out status);
+                        if (StatusCode.IsNotGood(status))
+                        {
+                            throw new Exception(status.ToString());
+                        }
+
+                        // now try again
+                        assetId = ExecuteCommand(session, createNodeId, parentNodeId, assetName, null, out status);
+                        if (StatusCode.IsNotGood(status))
+                        {
+                            throw new Exception(status.ToString());
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception(status.ToString());
+                    }
+                }
+
+                BrowseDescription nodeToBrowse = new()
+                {
+                    NodeId = (NodeId)assetId.Value,
+                    BrowseDirection = BrowseDirection.Forward,
+                    NodeClassMask = (uint)NodeClass.Object,
+                    ResultMask = (uint)BrowseResultMask.All
+                };
+
+                ReferenceDescriptionCollection references = Browse(session, nodeToBrowse, true);
 
                 fileId = (NodeId)references[0].NodeId;
                 fileHandle = ExecuteCommand(session, MethodIds.FileType_Open, fileId, (byte)6, null, out status);

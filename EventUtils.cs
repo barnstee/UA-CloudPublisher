@@ -142,82 +142,6 @@ namespace Opc.Ua.Cloud.Publisher
             return e;
         }
 
-        public static ReferenceDescriptionCollection Browse(Session session, BrowseDescription nodeToBrowse, bool throwOnError)
-        {
-            try
-            {
-                ReferenceDescriptionCollection references = new ReferenceDescriptionCollection();
-
-                // construct browse request.
-                BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection
-                {
-                    nodeToBrowse
-                };
-
-                // start the browse operation.
-                session.Browse(
-                    null,
-                    null,
-                    0,
-                    nodesToBrowse,
-                    out BrowseResultCollection results,
-                    out DiagnosticInfoCollection diagnosticInfos);
-
-                ClientBase.ValidateResponse(results, nodesToBrowse);
-                ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToBrowse);
-
-                do
-                {
-                    // check for error.
-                    if (StatusCode.IsBad(results[0].StatusCode))
-                    {
-                        break;
-                    }
-
-                    // process results.
-                    for (int i = 0; i < results[0].References.Count; i++)
-                    {
-                        references.Add(results[0].References[i]);
-                    }
-
-                    // check if all references have been fetched.
-                    if (results[0].References.Count == 0 || results[0].ContinuationPoint == null)
-                    {
-                        break;
-                    }
-
-                    // continue browse operation.
-                    ByteStringCollection continuationPoints = new ByteStringCollection
-                    {
-                        results[0].ContinuationPoint
-                    };
-
-                    session.BrowseNext(
-                        null,
-                        false,
-                        continuationPoints,
-                        out results,
-                        out diagnosticInfos);
-
-                    ClientBase.ValidateResponse(results, continuationPoints);
-                    ClientBase.ValidateDiagnosticInfos(diagnosticInfos, continuationPoints);
-                }
-                while (true);
-
-                // return complete list.
-                return references;
-            }
-            catch (Exception exception)
-            {
-                if (throwOnError)
-                {
-                    throw new ServiceResultException(exception, StatusCodes.BadUnexpectedError);
-                }
-
-                return null;
-            }
-        }
-
         public static ReferenceDescriptionCollection BrowseSuperTypes(Session session, NodeId typeId, bool throwOnError)
         {
             ReferenceDescriptionCollection supertypes = new ReferenceDescriptionCollection();
@@ -234,7 +158,7 @@ namespace Opc.Ua.Cloud.Publisher
                 nodeToBrowse.NodeClassMask = 0; // the HasSubtype reference already restricts the targets to Types.
                 nodeToBrowse.ResultMask = (uint)BrowseResultMask.All;
 
-                ReferenceDescriptionCollection references = Browse(session, nodeToBrowse, throwOnError);
+                ReferenceDescriptionCollection references = UAClient.Browse(session, nodeToBrowse, throwOnError);
 
                 while (references != null && references.Count > 0)
                 {
@@ -249,7 +173,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     // get the references for the next level up.
                     nodeToBrowse.NodeId = (NodeId)references[0].NodeId;
-                    references = Browse(session, nodeToBrowse, throwOnError);
+                    references = UAClient.Browse(session, nodeToBrowse, throwOnError);
                 }
 
                 // return complete list.

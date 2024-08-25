@@ -220,6 +220,111 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
         }
 
+        private async Task<List<UANodeInformation>> BrowseNodeResursiveAsync(NodeId nodeId)
+        {
+            List<UANodeInformation> results = new();
+
+            if (nodeId == null)
+            {
+                nodeId = ObjectIds.ObjectsFolder;
+            }
+
+            try
+            {
+                BrowseDescription nodeToBrowse = new BrowseDescription
+                {
+                    NodeId = nodeId,
+                    BrowseDirection = BrowseDirection.Forward,
+                    ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
+                    IncludeSubtypes = true,
+                    NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
+                    ResultMask = (uint)BrowseResultMask.All
+                };
+
+                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+
+                ReferenceDescriptionCollection references = UAClient.Browse(session, nodeToBrowse, true);
+
+                List<string> processedReferences = new();
+                foreach (ReferenceDescription nodeReference in references)
+                {
+                    UANodeInformation nodeInfo = new()
+                    {
+                        DisplayName = nodeReference.DisplayName.Text,
+                        Type = nodeReference.NodeClass.ToString()
+                    };
+
+                    try
+                    {
+                        nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
+                        nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
+
+                        if (nodeId.NamespaceIndex == 0)
+                        {
+                            nodeInfo.Parent = "nsu=http://opcfoundation.org/UA;" + nodeId.ToString();
+                        }
+                        else
+                        {
+                            nodeInfo.Parent = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                        }
+
+                        if (nodeReference.NodeId.NamespaceIndex == 0)
+                        {
+                            nodeInfo.ExpandedNodeId = "nsu=http://opcfoundation.org/UA;" + nodeReference.NodeId.ToString();
+                        }
+                        else
+                        {
+                            nodeInfo.ExpandedNodeId = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                        }
+
+                        if (nodeReference.NodeClass == NodeClass.Variable)
+                        {
+                            try
+                            {
+                                DataValue value = session.ReadValue(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris));
+                                if ((value != null) && (value.WrappedValue != Variant.Null))
+                                {
+                                    nodeInfo.VariableCurrentValue = value.ToString();
+                                    nodeInfo.VariableType = value.WrappedValue.TypeInfo.ToString();
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                // do nothing
+                            }
+                        }
+
+                        List<UANodeInformation> childReferences = await BrowseNodeResursiveAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
+
+                        nodeInfo.References = new string[childReferences.Count];
+                        for (int i = 0; i < childReferences.Count; i++)
+                        {
+                            nodeInfo.References[i] = childReferences[i].ExpandedNodeId.ToString();
+                        }
+
+                        results.AddRange(childReferences);
+                    }
+                    catch (Exception)
+                    {
+                        // skip this node
+                        continue;
+                    }
+
+                    processedReferences.Add(nodeReference.NodeId.ToString());
+                    results.Add(nodeInfo);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Cannot browse node {0}: {1}", nodeId, ex.Message);
+
+                throw;
+            }
+
+            return results;
+        }
+
         [HttpPost]
         public async Task<ActionResult> PushCert()
         {
@@ -402,200 +507,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             };
 
             return trustList;
-        }
-
-        private async Task<ReferenceDescriptionCollection> BrowseNodeAsync(NodeId nodeId)
-        {
-            ReferenceDescriptionCollection references = new();
-
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            BrowseDescription nodeToBrowse = new BrowseDescription
-            {
-                NodeId = nodeId,
-                BrowseDirection = BrowseDirection.Forward,
-                ReferenceTypeId = null,
-                IncludeSubtypes = true,
-                NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
-                ResultMask = (uint)BrowseResultMask.All
-            };
-
-            BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection
-            {
-                nodeToBrowse
-            };
-
-            try
-            {
-                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
-
-                session.Browse(
-                    null,
-                    null,
-                    0,
-                    nodesToBrowse,
-                    out BrowseResultCollection results,
-                    out DiagnosticInfoCollection diagnosticInfos);
-
-                ClientBase.ValidateResponse(results, nodesToBrowse);
-                ClientBase.ValidateDiagnosticInfos(diagnosticInfos, nodesToBrowse);
-
-                do
-                {
-                    // check for error.
-                    if (Ua.StatusCode.IsBad(results[0].StatusCode))
-                    {
-                        break;
-                    }
-
-                    // process results.
-                    for (int i = 0; i < results[0].References.Count; i++)
-                    {
-                        references.Add(results[0].References[i]);
-                    }
-
-                    // check if all references have been fetched.
-                    if (results[0].References.Count == 0 || results[0].ContinuationPoint == null)
-                    {
-                        break;
-                    }
-
-                    // continue browse operation.
-                    ByteStringCollection continuationPoints = new ByteStringCollection
-                    {
-                        results[0].ContinuationPoint
-                    };
-
-                    session.BrowseNext(
-                        null,
-                        false,
-                        continuationPoints,
-                        out results,
-                        out diagnosticInfos);
-
-                    ClientBase.ValidateResponse(results, continuationPoints);
-                    ClientBase.ValidateDiagnosticInfos(diagnosticInfos, continuationPoints);
-                }
-                while (true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Cannot browse node {0}: {1}", nodeId, ex.Message);
-
-                throw;
-            }
-            finally
-            {
-                stopwatch.Stop();
-            }
-
-            _logger.LogInformation("Browsing all childeren info of node '{0}' took {0} ms", nodeId, stopwatch.ElapsedMilliseconds);
-
-            return references;
-        }
-
-        private async Task<List<UANodeInformation>> BrowseNodeResursiveAsync(NodeId nodeId)
-        {
-            List<UANodeInformation> results = new();
-
-            try
-            {
-                if (nodeId == null)
-                {
-                    nodeId = ObjectIds.ObjectsFolder;
-                }
-
-                ReferenceDescriptionCollection references = await BrowseNodeAsync(nodeId).ConfigureAwait(false);
-                if (references != null)
-                {
-                    List<string> processedReferences = new();
-                    foreach (ReferenceDescription nodeReference in references)
-                    {
-                        // filter out duplicates
-                        if (processedReferences.Contains(nodeReference.NodeId.ToString()))
-                        {
-                            continue;
-                        }
-
-                        UANodeInformation nodeInfo = new()
-                        {
-                            DisplayName = nodeReference.DisplayName.Text,
-                            Type = nodeReference.NodeClass.ToString()
-                        };
-
-                        try
-                        {
-                            Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
-
-                            nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
-
-                            nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
-
-                            if (nodeId.NamespaceIndex == 0)
-                            {
-                                nodeInfo.Parent = "nsu=http://opcfoundation.org/UA;" + nodeId.ToString();
-                            }
-                            else
-                            {
-                                nodeInfo.Parent = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris), session.NamespaceUris).ToString();
-                            }
-
-                            if (nodeReference.NodeId.NamespaceIndex == 0)
-                            {
-                                nodeInfo.ExpandedNodeId = "nsu=http://opcfoundation.org/UA;" + nodeReference.NodeId.ToString();
-                            }
-                            else
-                            {
-                                nodeInfo.ExpandedNodeId = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris), session.NamespaceUris).ToString();
-                            }
-
-                            if (nodeReference.NodeClass == NodeClass.Variable)
-                            {
-                                try
-                                {
-                                    DataValue value = session.ReadValue(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris));
-                                    if ((value != null) && (value.WrappedValue != Variant.Null))
-                                    {
-                                        nodeInfo.VariableCurrentValue = value.ToString();
-                                        nodeInfo.VariableType = value.WrappedValue.TypeInfo.ToString();
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    // do nothing
-                                }
-                            }
-
-                            List<UANodeInformation> childReferences = await BrowseNodeResursiveAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
-
-                            nodeInfo.References = new string[childReferences.Count];
-                            for (int i = 0; i < childReferences.Count; i++)
-                            {
-                                nodeInfo.References[i] = childReferences[i].ExpandedNodeId.ToString();
-                            }
-
-                            results.AddRange(childReferences);
-                        }
-                        catch (Exception)
-                        {
-                            // skip this node
-                            continue;
-                        }
-
-                        processedReferences.Add(nodeReference.NodeId.ToString());
-                        results.Add(nodeInfo);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Cannot browse node {0}: {1}", nodeId, ex.Message);
-
-                throw;
-            }
-
-            return results;
         }
     }
 }
