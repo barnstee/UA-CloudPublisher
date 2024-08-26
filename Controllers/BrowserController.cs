@@ -13,7 +13,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Opc.Ua.Security.Certificates;
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Linq;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
@@ -358,17 +357,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     serverPushClient.Session.ServerUris.ToArray()[0],
                     null,
                     certificateRequest);
-                
+
                 byte[][] issuerCertificates = new byte[1][];
                 issuerCertificates[0] = _helper.GetAppCert().Export(X509ContentType.Cert);
-
-                serverPushClient.UpdateCertificate(
-                    NodeId.Null,
-                    serverPushClient.ApplicationCertificateType,
-                    certificate.Export(X509ContentType.Pfx),
-                    string.Empty,
-                    new byte[0],
-                    issuerCertificates);
 
                 // store in our own trust list
                 await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
@@ -378,6 +369,26 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 serverPushClient.UpdateTrustList(trustList);
 
                 serverPushClient.ApplyChanges();
+
+                validateNewCert(
+                    certificate,
+                    string.Empty,
+                    new byte[0],
+                    issuerCertificates,
+                    NodeId.Null,
+                    serverPushClient.ApplicationCertificateType,
+                    serverPushClient.Session.SystemContext);
+
+                serverPushClient.UpdateCertificate(
+                    NodeId.Null,
+                    serverPushClient.ApplicationCertificateType,
+                    certificate.Export(X509ContentType.Pfx),
+                    string.Empty,
+                    new byte[0],
+                    issuerCertificates);
+        
+                serverPushClient.ApplyChanges();
+
                 serverPushClient.Disconnect();
 
                 _session.StatusMessage = "New certificate and trust list pushed successfully to server!";
@@ -390,6 +401,57 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             return View("Browse", _session);
         }
 
+        private void validateNewCert(
+            X509Certificate2 certificate,
+            string privateKeyFormat,
+            byte[] privateKey,
+            byte[][] issuerCertificates,
+            NodeId certificateGroupId,
+           NodeId certificateTypeId,
+           ISystemContext context)
+        {
+            X509Certificate2Collection newIssuerCollection = new X509Certificate2Collection();
+            X509Certificate2 newCert;
+
+            try
+            {
+                // build issuer chain
+                if (issuerCertificates != null)
+                {
+                    foreach (byte[] issuerRawCert in issuerCertificates)
+                    {
+                        var newIssuerCert = new X509Certificate2(issuerRawCert);
+                        newIssuerCollection.Add(newIssuerCert);
+                    }
+                }
+
+                newCert = new X509Certificate2(certificate);
+            }
+            catch
+            {
+                throw new ServiceResultException(Ua.StatusCodes.BadCertificateInvalid, "Certificate data is invalid.");
+            }
+
+            try
+            {
+                // verify cert with issuer chain
+                CertificateValidator certValidator = new CertificateValidator();
+                CertificateTrustList issuerStore = new CertificateTrustList();
+                CertificateIdentifierCollection issuerCollection = new CertificateIdentifierCollection();
+                foreach (var issuerCert in newIssuerCollection)
+                {
+                    issuerCollection.Add(new CertificateIdentifier(issuerCert));
+                }
+                issuerStore.TrustedCertificates = issuerCollection;
+                certValidator.Update(issuerStore, issuerStore, null);
+                certValidator.Validate(newCert);
+            }
+            catch (Exception ex)
+            {
+                throw new ServiceResultException(Ua.StatusCodes.BadSecurityChecksFailed, "Failed to verify integrity of the new certificate and the issuer list.", ex);
+            }
+        }
+    
         private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
         {
             try
