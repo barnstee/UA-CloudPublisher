@@ -39,20 +39,20 @@
 
 @code {
 
-    [Parameter]
-    public string EndpointUrl { get; set; } = string.Empty;
+        [Parameter]
+        public string EndpointUrl { get; set; } = string.Empty;
 
-    [Parameter]
-    public string Username { get; set; } = string.Empty;
+        [Parameter]
+        public string Username { get; set; } = string.Empty;
 
-    [Parameter]
-    public string Password { get; set; } = string.Empty;
+        [Parameter]
+        public string Password { get; set; } = string.Empty;
 
-    [Parameter]
-    public string StatusMessage { get; set; } = string.Empty;
+        [Parameter]
+        public string StatusMessage { get; set; } = string.Empty;
 
-    [Parameter]
-    public string SessionId { get; set; } = string.Empty;
+        [Parameter]
+        public string SessionId { get; set; } = string.Empty;
 
     private class UANode
     {
@@ -108,8 +108,6 @@
 
     private async Task<List<UANode>> GetChildrenAsync(UANode node)
     {
-        List<UANode> nodes = new();
-
         BrowseDescription nodeToBrowse = new()
         {
             NodeId = string.IsNullOrEmpty(node.NodeId)? ObjectIds.ObjectsFolder : node.NodeId,
@@ -125,21 +123,23 @@
             Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
 
             ReferenceDescriptionCollection references = UAClient.Browse(session, nodeToBrowse, true);
-            
-            List<string> processedReferences = new();
+
+            Dictionary<string, UANode> processedReferences = new();
             foreach (ReferenceDescription nodeReference in references)
             {
-                nodes.Add(new UANode
-                {
+                UANode newNode = new() {
                     NodeId = nodeReference.NodeId.ToString(),
                     Text = nodeReference.DisplayName.ToString()
-                });
+                };
 
-                processedReferences.Add(nodeReference.NodeId.ToString());
+                if (!processedReferences.ContainsKey(newNode.NodeId))
+                {
+                    processedReferences.Add(newNode.NodeId, newNode);
+                }
             }
-            
-            nodes.Sort((x, y) => x.Text.CompareTo(y.Text));
 
+            List<UANode> nodes = processedReferences.Values.ToList();
+            nodes.Sort((x, y) => x.Text.CompareTo(y.Text));
             return nodes;
         }
         catch (Exception ex)
@@ -148,7 +148,7 @@
 
             _helper.Disconnect(SessionId);
 
-            return nodes;
+            return new List<UANode>();
         }
     }
 
@@ -165,31 +165,22 @@
             DataValueCollection values = null;
             DiagnosticInfoCollection diagnosticInfos = null;
             ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
-            ReadValueId valueId = new ReadValueId();
-            valueId.NodeId = new NodeId(node.NodeId);
-            valueId.AttributeId = Attributes.Value;
-            valueId.IndexRange = null;
-            valueId.DataEncoding = null;
+
+            ReadValueId valueId = new() {
+                NodeId = new NodeId(node.NodeId),
+                AttributeId = Attributes.Value,
+                IndexRange = null,
+                DataEncoding = null
+            };
             nodesToRead.Add(valueId);
 
             Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
             ResponseHeader responseHeader = session.Read(null, 0, TimestampsToReturn.Both, nodesToRead, out values, out diagnosticInfos);
-            string value = "";
             if (values.Count > 0 && values[0].Value != null)
             {
-                if (values[0].WrappedValue.ToString().Length > 40)
-                {
-                    value = values[0].WrappedValue.ToString().Substring(0, 40);
-                    value += "...";
-                }
-                else
-                {
-                    value = values[0].WrappedValue.ToString();
-                }
-
                 NodeId = new ExpandedNodeId(valueId.NodeId, session.NamespaceUris.ToArray()[valueId.NodeId.NamespaceIndex]).ToString();
                 NodeDisplayName = node.Text;
-                NodeValue = value;
+                NodeValue = values[0].WrappedValue.ToString(); ;
                 NodeNotPublishable = false;
             }
         }
