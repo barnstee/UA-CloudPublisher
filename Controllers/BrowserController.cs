@@ -43,7 +43,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
             try
             {
-                return File(_helper.GetAppCert().Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
+                return File(_app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
             }
             catch (Exception ex)
             {
@@ -359,25 +359,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     certificateRequest);
 
                 byte[][] issuerCertificates = new byte[1][];
-                issuerCertificates[0] = _helper.GetAppCert().Export(X509ContentType.Cert);
-
-                // store in our own trust list
-                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
-
-                // update trust list on server
-                TrustListDataType trustList = GetTrustLists();
-                serverPushClient.UpdateTrustList(trustList);
-
-                serverPushClient.ApplyChanges();
-
-                validateNewCert(
-                    certificate,
-                    string.Empty,
-                    new byte[0],
-                    issuerCertificates,
-                    NodeId.Null,
-                    serverPushClient.ApplicationCertificateType,
-                    serverPushClient.Session.SystemContext);
+                issuerCertificates[0] = _app.IssuerCert.Export(X509ContentType.Cert);
 
                 serverPushClient.UpdateCertificate(
                     NodeId.Null,
@@ -386,7 +368,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     string.Empty,
                     new byte[0],
                     issuerCertificates);
-        
+
+                // store in our own trust list
+                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
+
+                // update trust list on server
+                TrustListDataType trustList = GetTrustLists();
+                serverPushClient.UpdateTrustList(trustList);
+
                 serverPushClient.ApplyChanges();
 
                 serverPushClient.Disconnect();
@@ -401,57 +390,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             return View("Browse", _session);
         }
 
-        private void validateNewCert(
-            X509Certificate2 certificate,
-            string privateKeyFormat,
-            byte[] privateKey,
-            byte[][] issuerCertificates,
-            NodeId certificateGroupId,
-           NodeId certificateTypeId,
-           ISystemContext context)
-        {
-            X509Certificate2Collection newIssuerCollection = new X509Certificate2Collection();
-            X509Certificate2 newCert;
-
-            try
-            {
-                // build issuer chain
-                if (issuerCertificates != null)
-                {
-                    foreach (byte[] issuerRawCert in issuerCertificates)
-                    {
-                        var newIssuerCert = new X509Certificate2(issuerRawCert);
-                        newIssuerCollection.Add(newIssuerCert);
-                    }
-                }
-
-                newCert = new X509Certificate2(certificate);
-            }
-            catch
-            {
-                throw new ServiceResultException(Ua.StatusCodes.BadCertificateInvalid, "Certificate data is invalid.");
-            }
-
-            try
-            {
-                // verify cert with issuer chain
-                CertificateValidator certValidator = new CertificateValidator();
-                CertificateTrustList issuerStore = new CertificateTrustList();
-                CertificateIdentifierCollection issuerCollection = new CertificateIdentifierCollection();
-                foreach (var issuerCert in newIssuerCollection)
-                {
-                    issuerCollection.Add(new CertificateIdentifier(issuerCert));
-                }
-                issuerStore.TrustedCertificates = issuerCollection;
-                certValidator.Update(issuerStore, issuerStore, null);
-                certValidator.Validate(newCert);
-            }
-            catch (Exception ex)
-            {
-                throw new ServiceResultException(Ua.StatusCodes.BadSecurityChecksFailed, "Failed to verify integrity of the new certificate and the issuer list.", ex);
-            }
-        }
-    
         private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
         {
             try
@@ -493,16 +431,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     }
                 }
 
-                DateTime yesterday = DateTime.Today.AddDays(-1);
-                X509Certificate2 signingKey = _helper.GetAppCert();
-                X500DistinguishedName subjectName = new X500DistinguishedName(info.Subject.GetEncoded());
-
-                return CertificateBuilder.Create(subjectName)
+                return CertificateBuilder.Create(new X500DistinguishedName(info.Subject.GetEncoded()))
                     .AddExtension(new X509SubjectAltNameExtension(applicationUri, domainNames))
-                    .SetNotBefore(yesterday)
+                    .SetNotBefore(DateTime.Today.AddDays(-1))
                     .SetLifeTime(12)
                     .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
-                    .SetIssuer(signingKey)
+                    .SetIssuer(_app.IssuerCert)
                     .SetRSAPublicKey(info.SubjectPublicKeyInfo.GetEncoded())
                     .CreateForRSA();
             }
@@ -557,7 +491,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 trusted.Add(cert.Export(X509ContentType.Cert));
             }
 
-            issuers.Add(_helper.GetAppCert().Export(X509ContentType.Cert));
+            issuers.Add(_app.IssuerCert.Export(X509ContentType.Cert));
 
             TrustListDataType trustList = new TrustListDataType()
             {
