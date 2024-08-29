@@ -5,31 +5,28 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
-    using Opc.Ua;
     using Opc.Ua.Cloud.Publisher;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
-    using Opc.Ua.Gds.Client;
-    using Opc.Ua.Security.Certificates;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
 
     public class BrowserController : Controller
     {
         private readonly IUAApplication _app;
+        private readonly IUAClient _client;
         private readonly OpcSessionHelper _helper;
         private readonly ILogger _logger;
 
         private SessionModel _session;
 
-        public BrowserController(OpcSessionHelper helper, IUAApplication app, ILoggerFactory loggerFactory)
+        public BrowserController(OpcSessionHelper helper, IUAApplication app, IUAClient client, ILoggerFactory loggerFactory)
         {
             _app = app;
+            _client = client;
             _helper = helper;
             _logger = loggerFactory.CreateLogger("BrowserController");
             _session = new();
@@ -137,9 +134,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
             try
             {
-                List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
-
                 Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+
+                List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(session, null).ConfigureAwait(false);
 
                 PublishNodesInterfaceModel model = new()
                 {
@@ -183,7 +180,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
             try
             {
-                List<UANodeInformation> results = await BrowseNodeResursiveAsync(null).ConfigureAwait(false);
+                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+
+                List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(session, null).ConfigureAwait(false);
 
                 string content = "Endpoint,ApplicationUri,ExpandedNodeId,DisplayName,Type,VariableCurrentValue,VariableType,Parent,References\r\n";
                 foreach (UANodeInformation nodeInfo in results)
@@ -218,112 +217,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 return View("Browse", _session);
             }
         }
-
-        private async Task<List<UANodeInformation>> BrowseNodeResursiveAsync(NodeId nodeId)
-        {
-            List<UANodeInformation> results = new();
-
-            if (nodeId == null)
-            {
-                nodeId = ObjectIds.ObjectsFolder;
-            }
-
-            try
-            {
-                BrowseDescription nodeToBrowse = new BrowseDescription
-                {
-                    NodeId = nodeId,
-                    BrowseDirection = BrowseDirection.Forward,
-                    ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
-                    IncludeSubtypes = true,
-                    NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
-                    ResultMask = (uint)BrowseResultMask.All
-                };
-
-                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
-
-                ReferenceDescriptionCollection references = UAClient.Browse(session, nodeToBrowse, true);
-
-                List<string> processedReferences = new();
-                foreach (ReferenceDescription nodeReference in references)
-                {
-                    UANodeInformation nodeInfo = new()
-                    {
-                        DisplayName = nodeReference.DisplayName.Text,
-                        Type = nodeReference.NodeClass.ToString()
-                    };
-
-                    try
-                    {
-                        nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
-                        nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
-
-                        if (nodeId.NamespaceIndex == 0)
-                        {
-                            nodeInfo.Parent = "nsu=http://opcfoundation.org/UA;" + nodeId.ToString();
-                        }
-                        else
-                        {
-                            nodeInfo.Parent = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris), session.NamespaceUris).ToString();
-                        }
-
-                        if (nodeReference.NodeId.NamespaceIndex == 0)
-                        {
-                            nodeInfo.ExpandedNodeId = "nsu=http://opcfoundation.org/UA;" + nodeReference.NodeId.ToString();
-                        }
-                        else
-                        {
-                            nodeInfo.ExpandedNodeId = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris), session.NamespaceUris).ToString();
-                        }
-
-                        if (nodeReference.NodeClass == NodeClass.Variable)
-                        {
-                            try
-                            {
-                                DataValue value = session.ReadValue(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris));
-                                if ((value != null) && (value.WrappedValue != Variant.Null))
-                                {
-                                    nodeInfo.VariableCurrentValue = value.ToString();
-                                    nodeInfo.VariableType = value.WrappedValue.TypeInfo.ToString();
-                                }
-                            }
-                            catch (Exception)
-                            {
-                                // do nothing
-                            }
-                        }
-
-                        List<UANodeInformation> childReferences = await BrowseNodeResursiveAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
-
-                        nodeInfo.References = new string[childReferences.Count];
-                        for (int i = 0; i < childReferences.Count; i++)
-                        {
-                            nodeInfo.References[i] = childReferences[i].ExpandedNodeId.ToString();
-                        }
-
-                        results.AddRange(childReferences);
-                    }
-                    catch (Exception)
-                    {
-                        // skip this node
-                        continue;
-                    }
-
-                    processedReferences.Add(nodeReference.NodeId.ToString());
-                    results.Add(nodeInfo);
-                }
-
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Cannot browse node {0}: {1}", nodeId, ex.Message);
-
-                throw;
-            }
-
-            return results;
-        }
-
+        
         [HttpPost]
         public async Task<ActionResult> PushCert()
         {
@@ -332,53 +226,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
             try
             {
-                ServerPushConfigurationClient serverPushClient = new(_app.UAApplicationInstance.ApplicationConfiguration);
-
                 OpcSessionCacheData entry;
                 if (_helper.OpcSessionCache.TryGetValue(_session.SessionId, out entry))
                 {
                     if (entry.OPCSession != null)
                     {
-                        serverPushClient.AdminCredentials = new UserIdentity(entry.Username, entry.Password);
+                        await _client.GDSServerPush(_session.EndpointUrl, entry.Username, entry.Password).ConfigureAwait(false);
                     }
                 }
-
-                await serverPushClient.Connect(_session.EndpointUrl).ConfigureAwait(false);
-
-                byte[] unusedNonce = new byte[0];
-                byte[] certificateRequest = serverPushClient.CreateSigningRequest(
-                    NodeId.Null,
-                    serverPushClient.ApplicationCertificateType,
-                string.Empty,
-                false,
-                unusedNonce);
-
-                X509Certificate2 certificate = ProcessSigningRequest(
-                    serverPushClient.Session.ServerUris.ToArray()[0],
-                    null,
-                    certificateRequest);
-
-                byte[][] issuerCertificates = new byte[1][];
-                issuerCertificates[0] = _app.IssuerCert.Export(X509ContentType.Cert);
-
-                serverPushClient.UpdateCertificate(
-                    NodeId.Null,
-                    serverPushClient.ApplicationCertificateType,
-                    certificate.Export(X509ContentType.Pfx),
-                    string.Empty,
-                    new byte[0],
-                    issuerCertificates);
-
-                // store in our own trust list
-                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
-
-                // update trust list on server
-                TrustListDataType trustList = GetTrustLists();
-                serverPushClient.UpdateTrustList(trustList);
-
-                serverPushClient.ApplyChanges();
-
-                serverPushClient.Disconnect();
 
                 _session.StatusMessage = "New certificate and trust list pushed successfully to server!";
             }
@@ -388,121 +243,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
 
             return View("Browse", _session);
-        }
-
-        private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
-        {
-            try
-            {
-                var pkcs10CertificationRequest = new Org.BouncyCastle.Pkcs.Pkcs10CertificationRequest(certificateRequest);
-
-                if (!pkcs10CertificationRequest.Verify())
-                {
-                    throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, "CSR signature invalid.");
-                }
-
-                var info = pkcs10CertificationRequest.GetCertificationRequestInfo();
-                var altNameExtension = GetAltNameExtensionFromCSRInfo(info);
-                if (altNameExtension != null)
-                {
-                    if (altNameExtension.Uris.Count > 0)
-                    {
-                        if (!altNameExtension.Uris.Contains(applicationUri))
-                        {
-                            var applicationUriMissing = new StringBuilder();
-                            applicationUriMissing.AppendLine("Expected AltNameExtension (ApplicationUri):");
-                            applicationUriMissing.AppendLine(applicationUri);
-                            applicationUriMissing.AppendLine("CSR AltNameExtensions found:");
-                            foreach (string uri in altNameExtension.Uris)
-                            {
-                                applicationUriMissing.AppendLine(uri);
-                            }
-                            throw new ServiceResultException(Ua.StatusCodes.BadCertificateUriInvalid,
-                                applicationUriMissing.ToString());
-                        }
-                    }
-
-                    if (altNameExtension.IPAddresses.Count > 0 || altNameExtension.DomainNames.Count > 0)
-                    {
-                        var domainNameList = new List<string>();
-                        domainNameList.AddRange(altNameExtension.DomainNames);
-                        domainNameList.AddRange(altNameExtension.IPAddresses);
-                        domainNames = domainNameList.ToArray();
-                    }
-                }
-
-                return CertificateBuilder.Create(new X500DistinguishedName(info.Subject.GetEncoded()))
-                    .AddExtension(new X509SubjectAltNameExtension(applicationUri, domainNames))
-                    .SetNotBefore(DateTime.Today.AddDays(-1))
-                    .SetLifeTime(12)
-                    .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
-                    .SetIssuer(_app.IssuerCert)
-                    .SetRSAPublicKey(info.SubjectPublicKeyInfo.GetEncoded())
-                    .CreateForRSA();
-            }
-            catch (Exception ex)
-            {
-                if (ex is ServiceResultException)
-                {
-                    throw;
-                }
-                throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, ex.Message);
-            }
-        }
-
-        private X509SubjectAltNameExtension GetAltNameExtensionFromCSRInfo(Org.BouncyCastle.Asn1.Pkcs.CertificationRequestInfo info)
-        {
-            try
-            {
-                for (int i = 0; i < info.Attributes.Count; i++)
-                {
-                    var sequence = Org.BouncyCastle.Asn1.Asn1Sequence.GetInstance(info.Attributes[i].ToAsn1Object());
-                    var oid = Org.BouncyCastle.Asn1.DerObjectIdentifier.GetInstance(sequence[0].ToAsn1Object());
-
-                    if (oid.Equals(Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.Pkcs9AtExtensionRequest))
-                    {
-                        var extensionInstance = Org.BouncyCastle.Asn1.DerSet.GetInstance(sequence[1]);
-                        var extensionSequence = Org.BouncyCastle.Asn1.Asn1Sequence.GetInstance(extensionInstance[0]);
-                        var extensions = Org.BouncyCastle.Asn1.X509.X509Extensions.GetInstance(extensionSequence);
-                        Org.BouncyCastle.Asn1.X509.X509Extension extension = extensions.GetExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.SubjectAlternativeName);
-                        var asnEncodedAltNameExtension = new System.Security.Cryptography.AsnEncodedData(Org.BouncyCastle.Asn1.X509.X509Extensions.SubjectAlternativeName.ToString(), extension.Value.GetOctets());
-                        var altNameExtension = new X509SubjectAltNameExtension(asnEncodedAltNameExtension, extension.IsCritical);
-                        return altNameExtension;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, "CSR altNameExtension invalid.");
-            }
-            return null;
-        }
-
-        private TrustListDataType GetTrustLists()
-        {
-            ByteStringCollection trusted = new ByteStringCollection();
-            ByteStringCollection trustedCrls = new ByteStringCollection();
-            ByteStringCollection issuers = new ByteStringCollection();
-            ByteStringCollection issuersCrls = new ByteStringCollection();
-
-            CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in ownTrustList.GetCertificates().GetAwaiter().GetResult())
-            {
-                trusted.Add(cert.Export(X509ContentType.Cert));
-            }
-
-            issuers.Add(_app.IssuerCert.Export(X509ContentType.Cert));
-
-            TrustListDataType trustList = new TrustListDataType()
-            {
-                SpecifiedLists = (uint)(TrustListMasks.All),
-                TrustedCertificates = trusted,
-                TrustedCrls = trustedCrls,
-                IssuerCertificates = issuers,
-                IssuerCrls = issuersCrls
-            };
-
-            return trustList;
         }
     }
 }

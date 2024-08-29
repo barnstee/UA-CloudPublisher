@@ -46,7 +46,22 @@
             3. Send the loaded asset description file to UA Edge Translator. UA Translator address format: opc.tcp://ipaddress:port <br />
         </p>
         <p>
+            Address:<br />
+        </p>
+        <p>
             @Html.TextBox("endpointUrl", null, new { style = "width:50%;background-color:grey;color:white;" })
+        </p>
+        <p>
+            Username:<br />
+        </p>
+        <p>
+            @Html.TextBox("username", null, new { style = "width:50%;background-color:grey;color:white;" })
+        </p>
+        <p>
+            Password:<br />
+        </p>
+        <p>
+            @Html.TextBox("password", null, new { style = "width:50%;background-color:grey;color:white;" })
         </p>
         <p>
             <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Send">

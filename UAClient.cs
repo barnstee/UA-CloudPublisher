@@ -8,10 +8,13 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Client.ComplexTypes;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
+    using Opc.Ua.Gds.Client;
+    using Opc.Ua.Security.Certificates;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -492,8 +495,8 @@ namespace Opc.Ua.Cloud.Publisher
                         }
                     }
 
-                    eventFilter.SelectClauses = FilterUtils.ConstructSelectClauses(session);
-                    eventFilter.WhereClause = FilterUtils.ConstructWhereClause(ofTypes, EventSeverity.Min);
+                    eventFilter.SelectClauses = ConstructSelectClauses(session);
+                    eventFilter.WhereClause = ConstructWhereClause(ofTypes, EventSeverity.Min);
                 }
 
                 // if no nodeid was specified, select the server object root
@@ -900,14 +903,266 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public void WoTConUpload(string endpoint, byte[] bytes, string assetName)
+        public async Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(Session session, NodeId nodeId)
+        {
+            List<UANodeInformation> results = new();
+
+            if (nodeId == null)
+            {
+                nodeId = ObjectIds.ObjectsFolder;
+            }
+
+            BrowseDescription nodeToBrowse = new BrowseDescription
+            {
+                NodeId = nodeId,
+                BrowseDirection = BrowseDirection.Forward,
+                ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
+                IncludeSubtypes = true,
+                NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable),
+                ResultMask = (uint)BrowseResultMask.All
+            };
+
+            ReferenceDescriptionCollection references = Browse(session, nodeToBrowse, true);
+
+            List<string> processedReferences = new();
+            foreach (ReferenceDescription nodeReference in references)
+            {
+                UANodeInformation nodeInfo = new()
+                {
+                    DisplayName = nodeReference.DisplayName.Text,
+                    Type = nodeReference.NodeClass.ToString()
+                };
+
+                try
+                {
+                    nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
+                    nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
+
+                    if (nodeId.NamespaceIndex == 0)
+                    {
+                        nodeInfo.Parent = "nsu=http://opcfoundation.org/UA;" + nodeId.ToString();
+                    }
+                    else
+                    {
+                        nodeInfo.Parent = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                    }
+
+                    if (nodeReference.NodeId.NamespaceIndex == 0)
+                    {
+                        nodeInfo.ExpandedNodeId = "nsu=http://opcfoundation.org/UA;" + nodeReference.NodeId.ToString();
+                    }
+                    else
+                    {
+                        nodeInfo.ExpandedNodeId = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                    }
+
+                    if (nodeReference.NodeClass == NodeClass.Variable)
+                    {
+                        try
+                        {
+                            DataValue value = session.ReadValue(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris));
+                            if ((value != null) && (value.WrappedValue != Variant.Null))
+                            {
+                                nodeInfo.VariableCurrentValue = value.ToString();
+                                nodeInfo.VariableType = value.WrappedValue.TypeInfo.ToString();
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // do nothing
+                        }
+                    }
+
+                    List<UANodeInformation> childReferences = await BrowseVariableNodesResursivelyAsync(session, ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
+
+                    nodeInfo.References = new string[childReferences.Count];
+                    for (int i = 0; i < childReferences.Count; i++)
+                    {
+                        nodeInfo.References[i] = childReferences[i].ExpandedNodeId.ToString();
+                    }
+
+                    results.AddRange(childReferences);
+                }
+                catch (Exception)
+                {
+                    // skip this node
+                    continue;
+                }
+
+                processedReferences.Add(nodeReference.NodeId.ToString());
+                results.Add(nodeInfo);
+            }
+
+            return results;
+        }
+
+        public async Task GDSServerPush(string endpointURL, string adminUsername, string adminPassword)
+        {
+            ServerPushConfigurationClient serverPushClient = new(_app.UAApplicationInstance.ApplicationConfiguration);
+
+            serverPushClient.AdminCredentials = new UserIdentity(adminUsername, adminPassword);
+
+            await serverPushClient.Connect(endpointURL).ConfigureAwait(false);
+
+            byte[] unusedNonce = new byte[0];
+            byte[] certificateRequest = serverPushClient.CreateSigningRequest(
+                NodeId.Null,
+                serverPushClient.ApplicationCertificateType,
+            string.Empty,
+            false,
+            unusedNonce);
+
+            X509Certificate2 certificate = ProcessSigningRequest(
+                serverPushClient.Session.ServerUris.ToArray()[0],
+                null,
+                certificateRequest);
+
+            byte[][] issuerCertificates = new byte[1][];
+            issuerCertificates[0] = _app.IssuerCert.Export(X509ContentType.Cert);
+
+            serverPushClient.UpdateCertificate(
+                NodeId.Null,
+                serverPushClient.ApplicationCertificateType,
+                certificate.Export(X509ContentType.Pfx),
+                string.Empty,
+                new byte[0],
+                issuerCertificates);
+
+            // store in our own trust list
+            await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
+
+            // update trust list on server
+            TrustListDataType trustList = GetTrustLists();
+            serverPushClient.UpdateTrustList(trustList);
+
+            serverPushClient.ApplyChanges();
+
+            serverPushClient.Disconnect();
+        }
+
+        private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
+        {
+            try
+            {
+                var pkcs10CertificationRequest = new Org.BouncyCastle.Pkcs.Pkcs10CertificationRequest(certificateRequest);
+
+                if (!pkcs10CertificationRequest.Verify())
+                {
+                    throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, "CSR signature invalid.");
+                }
+
+                var info = pkcs10CertificationRequest.GetCertificationRequestInfo();
+                var altNameExtension = GetAltNameExtensionFromCSRInfo(info);
+                if (altNameExtension != null)
+                {
+                    if (altNameExtension.Uris.Count > 0)
+                    {
+                        if (!altNameExtension.Uris.Contains(applicationUri))
+                        {
+                            var applicationUriMissing = new StringBuilder();
+                            applicationUriMissing.AppendLine("Expected AltNameExtension (ApplicationUri):");
+                            applicationUriMissing.AppendLine(applicationUri);
+                            applicationUriMissing.AppendLine("CSR AltNameExtensions found:");
+                            foreach (string uri in altNameExtension.Uris)
+                            {
+                                applicationUriMissing.AppendLine(uri);
+                            }
+                            throw new ServiceResultException(Ua.StatusCodes.BadCertificateUriInvalid,
+                                applicationUriMissing.ToString());
+                        }
+                    }
+
+                    if (altNameExtension.IPAddresses.Count > 0 || altNameExtension.DomainNames.Count > 0)
+                    {
+                        var domainNameList = new List<string>();
+                        domainNameList.AddRange(altNameExtension.DomainNames);
+                        domainNameList.AddRange(altNameExtension.IPAddresses);
+                        domainNames = domainNameList.ToArray();
+                    }
+                }
+
+                return CertificateBuilder.Create(new X500DistinguishedName(info.Subject.GetEncoded()))
+                    .AddExtension(new X509SubjectAltNameExtension(applicationUri, domainNames))
+                    .SetNotBefore(DateTime.Today.AddDays(-1))
+                    .SetLifeTime(12)
+                    .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
+                    .SetIssuer(_app.IssuerCert)
+                    .SetRSAPublicKey(info.SubjectPublicKeyInfo.GetEncoded())
+                    .CreateForRSA();
+            }
+            catch (Exception ex)
+            {
+                if (ex is ServiceResultException)
+                {
+                    throw;
+                }
+                throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, ex.Message);
+            }
+        }
+
+        private X509SubjectAltNameExtension GetAltNameExtensionFromCSRInfo(Org.BouncyCastle.Asn1.Pkcs.CertificationRequestInfo info)
+        {
+            try
+            {
+                for (int i = 0; i < info.Attributes.Count; i++)
+                {
+                    var sequence = Org.BouncyCastle.Asn1.Asn1Sequence.GetInstance(info.Attributes[i].ToAsn1Object());
+                    var oid = Org.BouncyCastle.Asn1.DerObjectIdentifier.GetInstance(sequence[0].ToAsn1Object());
+
+                    if (oid.Equals(Org.BouncyCastle.Asn1.Pkcs.PkcsObjectIdentifiers.Pkcs9AtExtensionRequest))
+                    {
+                        var extensionInstance = Org.BouncyCastle.Asn1.DerSet.GetInstance(sequence[1]);
+                        var extensionSequence = Org.BouncyCastle.Asn1.Asn1Sequence.GetInstance(extensionInstance[0]);
+                        var extensions = Org.BouncyCastle.Asn1.X509.X509Extensions.GetInstance(extensionSequence);
+                        Org.BouncyCastle.Asn1.X509.X509Extension extension = extensions.GetExtension(Org.BouncyCastle.Asn1.X509.X509Extensions.SubjectAlternativeName);
+                        var asnEncodedAltNameExtension = new System.Security.Cryptography.AsnEncodedData(Org.BouncyCastle.Asn1.X509.X509Extensions.SubjectAlternativeName.ToString(), extension.Value.GetOctets());
+                        var altNameExtension = new X509SubjectAltNameExtension(asnEncodedAltNameExtension, extension.IsCritical);
+                        return altNameExtension;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                throw new ServiceResultException(Ua.StatusCodes.BadInvalidArgument, "CSR altNameExtension invalid.");
+            }
+            return null;
+        }
+
+        private TrustListDataType GetTrustLists()
+        {
+            ByteStringCollection trusted = new ByteStringCollection();
+            ByteStringCollection trustedCrls = new ByteStringCollection();
+            ByteStringCollection issuers = new ByteStringCollection();
+            ByteStringCollection issuersCrls = new ByteStringCollection();
+
+            CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
+            foreach (X509Certificate2 cert in ownTrustList.GetCertificates().GetAwaiter().GetResult())
+            {
+                trusted.Add(cert.Export(X509ContentType.Cert));
+            }
+
+            issuers.Add(_app.IssuerCert.Export(X509ContentType.Cert));
+
+            TrustListDataType trustList = new TrustListDataType()
+            {
+                SpecifiedLists = (uint)(TrustListMasks.All),
+                TrustedCertificates = trusted,
+                TrustedCrls = trustedCrls,
+                IssuerCertificates = issuers,
+                IssuerCrls = issuersCrls
+            };
+
+            return trustList;
+        }
+
+        public async Task WoTConUpload(string endpoint, string username, string password, byte[] bytes, string assetName)
         {
             Session session = null;
             NodeId fileId = null;
             object fileHandle = null;
             try
             {
-                session = ConnectSessionAsync(endpoint, null, null).GetAwaiter().GetResult();
+                session = await ConnectSessionAsync(endpoint, username, password).ConfigureAwait(false);
                 if (session == null)
                 {
                     // couldn't create the session
@@ -1064,6 +1319,249 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 _logger.LogError(ex, "Executing OPC UA command failed!");
                 throw;
+            }
+        }
+
+        private SimpleAttributeOperandCollection ConstructSelectClauses(Session session)
+        {
+            // browse the type model in the server address space to find the fields available for the event type.
+            SimpleAttributeOperandCollection selectClauses = new SimpleAttributeOperandCollection();
+
+            // must always request the NodeId for the condition instances.
+            // this can be done by specifying an operand with an empty browse path.
+            SimpleAttributeOperand operand = new SimpleAttributeOperand();
+
+            operand.TypeDefinitionId = ObjectTypeIds.BaseEventType;
+            operand.AttributeId = Attributes.NodeId;
+            operand.BrowsePath = new QualifiedNameCollection();
+
+            selectClauses.Add(operand);
+
+            // add the fields for the selected EventTypes.
+            CollectFields(session, ObjectTypeIds.BaseEventType, selectClauses);
+
+            return selectClauses;
+        }
+
+        private ContentFilter ConstructWhereClause(IList<NodeId> eventTypes, EventSeverity severity)
+        {
+            ContentFilter whereClause = new ContentFilter();
+
+            // the code below constructs a filter that looks like this:
+            // (Severity >= X OR LastSeverity >= X) AND (SuppressedOrShelved == False) AND (OfType(A) OR OfType(B))
+
+            // add the severity.
+            ContentFilterElement element1 = null;
+            if (severity > EventSeverity.Min)
+            {
+                // select the Severity property of the event.
+                SimpleAttributeOperand operand1 = new SimpleAttributeOperand();
+                operand1.TypeDefinitionId = ObjectTypeIds.BaseEventType;
+                operand1.BrowsePath.Add(BrowseNames.Severity);
+                operand1.AttributeId = Attributes.Value;
+
+                // specify the value to compare the Severity property with.
+                LiteralOperand operand2 = new LiteralOperand();
+                operand2.Value = new Variant((ushort)severity);
+
+                // specify that the Severity property must be GreaterThanOrEqual the value specified.
+                element1 = whereClause.Push(FilterOperator.GreaterThanOrEqual, operand1, operand2);
+            }
+
+            // add the event types.
+            ContentFilterElement element2 = null;
+            if (eventTypes != null && eventTypes.Count > 0)
+            {
+                // save the last element.
+                for (int i = 0; i < eventTypes.Count; i++)
+                {
+                    // we uses the 'OfType' operator to limit events to thoses with specified event type. 
+                    LiteralOperand operand1 = new LiteralOperand();
+                    operand1.Value = new Variant(eventTypes[i]);
+                    ContentFilterElement element3 = whereClause.Push(FilterOperator.OfType, operand1);
+
+                    // need to chain multiple types together with an OR clause.
+                    if (element2 != null)
+                    {
+                        element2 = whereClause.Push(FilterOperator.Or, element2, element3);
+                    }
+                    else
+                    {
+                        element2 = element3;
+                    }
+                }
+
+                // need to link the set of event types with the previous filters.
+                if (element1 != null)
+                {
+                    whereClause.Push(FilterOperator.And, element1, element2);
+                }
+            }
+
+            return whereClause;
+        }
+
+        private void CollectFields(Session session, NodeId eventTypeId, SimpleAttributeOperandCollection eventFields)
+        {
+            // get the supertypes.
+            ReferenceDescriptionCollection supertypes = BrowseSuperTypes(session, eventTypeId, false);
+
+            if (supertypes == null)
+            {
+                return;
+            }
+
+            // process the types starting from the top of the tree.
+            Dictionary<NodeId, QualifiedNameCollection> foundNodes = new Dictionary<NodeId, QualifiedNameCollection>();
+            QualifiedNameCollection parentPath = new QualifiedNameCollection();
+
+            for (int i = supertypes.Count - 1; i >= 0; i--)
+            {
+                CollectFields(session, (NodeId)supertypes[i].NodeId, parentPath, eventFields, foundNodes);
+            }
+
+            // collect the fields for the selected type.
+            CollectFields(session, eventTypeId, parentPath, eventFields, foundNodes);
+        }
+
+        private void CollectFields(
+            Session session,
+            NodeId nodeId,
+            QualifiedNameCollection parentPath,
+            SimpleAttributeOperandCollection eventFields,
+            Dictionary<NodeId, QualifiedNameCollection> foundNodes)
+        {
+            // find all of the children of the field.
+            BrowseDescription nodeToBrowse = new BrowseDescription();
+
+            nodeToBrowse.NodeId = nodeId;
+            nodeToBrowse.BrowseDirection = BrowseDirection.Forward;
+            nodeToBrowse.ReferenceTypeId = ReferenceTypeIds.Aggregates;
+            nodeToBrowse.IncludeSubtypes = true;
+            nodeToBrowse.NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable);
+            nodeToBrowse.ResultMask = (uint)BrowseResultMask.All;
+
+            ReferenceDescriptionCollection children = Browse(session, nodeToBrowse, false);
+
+            if (children == null)
+            {
+                return;
+            }
+
+            // process the children.
+            for (int i = 0; i < children.Count; i++)
+            {
+                ReferenceDescription child = children[i];
+
+                if (child.NodeId.IsAbsolute)
+                {
+                    continue;
+                }
+
+                // construct browse path.
+                QualifiedNameCollection browsePath = new QualifiedNameCollection(parentPath);
+                browsePath.Add(child.BrowseName);
+
+                // check if the browse path is already in the list.
+                if (!ContainsPath(eventFields, browsePath))
+                {
+                    SimpleAttributeOperand field = new SimpleAttributeOperand();
+
+                    field.TypeDefinitionId = ObjectTypeIds.BaseEventType;
+                    field.BrowsePath = browsePath;
+                    field.AttributeId = (child.NodeClass == NodeClass.Variable) ? Attributes.Value : Attributes.NodeId;
+
+                    eventFields.Add(field);
+                }
+
+                // recusively find all of the children.
+                NodeId targetId = (NodeId)child.NodeId;
+
+                // need to guard against loops.
+                if (!foundNodes.ContainsKey(targetId))
+                {
+                    foundNodes.Add(targetId, browsePath);
+                    CollectFields(session, (NodeId)child.NodeId, browsePath, eventFields, foundNodes);
+                }
+            }
+        }
+
+        private bool ContainsPath(SimpleAttributeOperandCollection selectClause, QualifiedNameCollection browsePath)
+        {
+            for (int i = 0; i < selectClause.Count; i++)
+            {
+                SimpleAttributeOperand field = selectClause[i];
+
+                if (field.BrowsePath.Count != browsePath.Count)
+                {
+                    continue;
+                }
+
+                bool match = true;
+
+                for (int j = 0; j < field.BrowsePath.Count; j++)
+                {
+                    if (field.BrowsePath[j] != browsePath[j])
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+
+                if (match)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static ReferenceDescriptionCollection BrowseSuperTypes(Session session, NodeId typeId, bool throwOnError)
+        {
+            ReferenceDescriptionCollection supertypes = new ReferenceDescriptionCollection();
+
+            try
+            {
+                // find all of the children of the field.
+                BrowseDescription nodeToBrowse = new BrowseDescription();
+
+                nodeToBrowse.NodeId = typeId;
+                nodeToBrowse.BrowseDirection = BrowseDirection.Inverse;
+                nodeToBrowse.ReferenceTypeId = ReferenceTypeIds.HasSubtype;
+                nodeToBrowse.IncludeSubtypes = false; // more efficient to use IncludeSubtypes=False when possible.
+                nodeToBrowse.NodeClassMask = 0; // the HasSubtype reference already restricts the targets to Types.
+                nodeToBrowse.ResultMask = (uint)BrowseResultMask.All;
+
+                ReferenceDescriptionCollection references = Browse(session, nodeToBrowse, throwOnError);
+
+                while (references != null && references.Count > 0)
+                {
+                    // should never be more than one supertype.
+                    supertypes.Add(references[0]);
+
+                    // only follow references within this server.
+                    if (references[0].NodeId.IsAbsolute)
+                    {
+                        break;
+                    }
+
+                    // get the references for the next level up.
+                    nodeToBrowse.NodeId = (NodeId)references[0].NodeId;
+                    references = Browse(session, nodeToBrowse, throwOnError);
+                }
+
+                // return complete list.
+                return supertypes;
+            }
+            catch (Exception exception)
+            {
+                if (throwOnError)
+                {
+                    throw new ServiceResultException(exception, StatusCodes.BadUnexpectedError);
+                }
+
+                return null;
             }
         }
     }

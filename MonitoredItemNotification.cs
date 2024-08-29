@@ -15,6 +15,18 @@ namespace Opc.Ua.Cloud.Publisher
 
         public Dictionary<string, bool> SkipFirst { get; set; } = new Dictionary<string, bool>();
 
+        private NodeId[] KnownEventTypes = new NodeId[]
+{
+            ObjectTypeIds.BaseEventType,
+            ObjectTypeIds.ConditionType,
+            ObjectTypeIds.DialogConditionType,
+            ObjectTypeIds.AlarmConditionType,
+            ObjectTypeIds.ExclusiveLimitAlarmType,
+            ObjectTypeIds.NonExclusiveLimitAlarmType,
+            ObjectTypeIds.AuditEventType,
+            ObjectTypeIds.AuditUpdateMethodEventType
+        };
+
         public MonitoredItemNotification(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.CreateLogger("MonitoredItemNotification");
@@ -30,7 +42,7 @@ namespace Opc.Ua.Cloud.Publisher
                     return;
                 }
 
-                NodeId eventTypeId = EventUtils.FindEventType(monitoredItem, notification);
+                NodeId eventTypeId = FindEventType(monitoredItem, notification);
                 if (NodeId.IsNull(eventTypeId))
                 {
                     return;
@@ -46,7 +58,7 @@ namespace Opc.Ua.Cloud.Publisher
                     return;
                 }
 
-                ConditionState condition = EventUtils.ConstructEvent(
+                ConditionState condition = ConstructEvent(
                     (Session)monitoredItem.Subscription.Session,
                     monitoredItem,
                     notification,
@@ -181,6 +193,128 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 _logger.LogError(ex, "Error processing monitored item notification");
             }
+        }
+
+        private NodeId FindEventType(MonitoredItem monitoredItem, EventFieldList notification)
+        {
+            EventFilter filter = monitoredItem.Status.Filter as EventFilter;
+
+            if (filter != null)
+            {
+                for (int i = 0; i < filter.SelectClauses.Count; i++)
+                {
+                    SimpleAttributeOperand clause = filter.SelectClauses[i];
+
+                    if (clause.BrowsePath.Count == 1 && clause.BrowsePath[0] == BrowseNames.EventType)
+                    {
+                        return notification.EventFields[i].Value as NodeId;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private BaseEventState ConstructEvent(
+            Session session,
+            MonitoredItem monitoredItem,
+            EventFieldList notification,
+            Dictionary<NodeId, NodeId> eventTypeMappings)
+        {
+            // find the event type.
+            NodeId eventTypeId = FindEventType(monitoredItem, notification);
+
+            if (eventTypeId == null)
+            {
+                return null;
+            }
+
+            // look up the known event type.
+            NodeId knownTypeId = null;
+
+            if (!eventTypeMappings.TryGetValue(eventTypeId, out knownTypeId))
+            {
+                // check for a known type
+                for (int j = 0; j < KnownEventTypes.Length; j++)
+                {
+                    if (KnownEventTypes[j] == eventTypeId)
+                    {
+                        knownTypeId = eventTypeId;
+                        eventTypeMappings.Add(eventTypeId, eventTypeId);
+                        break;
+                    }
+                }
+
+                // browse for the supertypes of the event type.
+                if (knownTypeId == null)
+                {
+                    ReferenceDescriptionCollection supertypes = UAClient.BrowseSuperTypes(session, eventTypeId, false);
+
+                    // can't do anything with unknown types.
+                    if (supertypes == null)
+                    {
+                        return null;
+                    }
+
+                    // find the first supertype that matches a known event type.
+                    for (int i = 0; i < supertypes.Count; i++)
+                    {
+                        for (int j = 0; j < KnownEventTypes.Length; j++)
+                        {
+                            if (KnownEventTypes[j] == supertypes[i].NodeId)
+                            {
+                                knownTypeId = KnownEventTypes[j];
+                                eventTypeMappings.Add(eventTypeId, knownTypeId);
+                                break;
+                            }
+                        }
+
+                        if (knownTypeId != null)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (knownTypeId == null)
+            {
+                return null;
+            }
+
+            // all of the known event types have a UInt32 as identifier.
+            uint? id = knownTypeId.Identifier as uint?;
+
+            if (id == null)
+            {
+                return null;
+            }
+
+            // construct the event based on the known event type.
+            BaseEventState e = null;
+
+            switch (id.Value)
+            {
+                case ObjectTypes.ConditionType: { e = new ConditionState(null); break; }
+                case ObjectTypes.DialogConditionType: { e = new DialogConditionState(null); break; }
+                case ObjectTypes.AlarmConditionType: { e = new AlarmConditionState(null); break; }
+                case ObjectTypes.ExclusiveLimitAlarmType: { e = new ExclusiveLimitAlarmState(null); break; }
+                case ObjectTypes.NonExclusiveLimitAlarmType: { e = new NonExclusiveLimitAlarmState(null); break; }
+                case ObjectTypes.AuditEventType: { e = new AuditEventState(null); break; }
+                case ObjectTypes.AuditUpdateMethodEventType: { e = new AuditUpdateMethodEventState(null); break; }
+                default: { e = new BaseEventState(null); break; }
+            }
+
+            // get the filter which defines the contents of the notification.
+            EventFilter filter = monitoredItem.Status.Filter as EventFilter;
+
+            // initialize the event with the values in the notification.
+            e.Update(session.SystemContext, filter.SelectClauses, notification);
+
+            // save the orginal notification.
+            e.Handle = notification;
+
+            return e;
         }
 
         public void DataChangedNotificationHandler(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)

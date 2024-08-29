@@ -11,6 +11,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using System;
     using System.IO;
     using System.Text;
+    using System.Threading.Tasks;
 
     public class TranslatorController : Controller
     {
@@ -76,7 +77,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult Load(IFormFile file, string endpointUrl)
+        public async Task<IActionResult> Load(IFormFile file, string endpointUrl, string username, string password)
         {
             try
             {
@@ -105,7 +106,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     name = jsonObject["name"].ToString();
                 }
 
-                _client.WoTConUpload(endpointUrl, bytes, name);
+                await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
 
                 return View("Index", "UA Edge Translator configured successfully!");
             }

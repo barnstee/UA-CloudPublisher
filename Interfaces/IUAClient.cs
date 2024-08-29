@@ -1,6 +1,7 @@
 ﻿
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
+    using Opc.Ua.Client;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
@@ -17,6 +18,10 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes();
 
-        void WoTConUpload(string endpoint, byte[] bytes, string assetName);
+        Task GDSServerPush(string endpointURL, string adminUsername, string adminPassword);
+
+        Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(Session session, NodeId nodeId);
+
+        Task WoTConUpload(string endpoint, string username, string password, byte[] bytes, string assetName);
     }
 }
