@@ -4,7 +4,6 @@
 @using Opc.Ua
 @using Opc.Ua.Client;
 
-@inject OpcSessionHelper _helper
 @inject IUAClient _client
 
 <div class="text-light">
@@ -39,20 +38,20 @@
 
 @code {
 
-        [Parameter]
-        public string EndpointUrl { get; set; } = string.Empty;
+    [Parameter]
+    public string EndpointUrl { get; set; } = string.Empty;
 
-        [Parameter]
-        public string Username { get; set; } = string.Empty;
+    [Parameter]
+    public string Username { get; set; } = string.Empty;
 
-        [Parameter]
-        public string Password { get; set; } = string.Empty;
+    [Parameter]
+    public string Password { get; set; } = string.Empty;
 
-        [Parameter]
-        public string StatusMessage { get; set; } = string.Empty;
+    [Parameter]
+    public string StatusMessage { get; set; } = string.Empty;
 
-        [Parameter]
-        public string SessionId { get; set; } = string.Empty;
+    [Parameter]
+    public string SessionId { get; set; } = string.Empty;
 
     private class UANode
     {
@@ -86,9 +85,9 @@
         }
     }
 
-    private async void SelectedNodeChanged(UANode node)
+    private void SelectedNodeChanged(UANode node)
     {
-        await VariableReadAsync(node).ConfigureAwait(false);
+        VariableRead(node);
     }
 
     private bool HasChildNodes(UANode node)
@@ -120,9 +119,7 @@
 
         try
         {
-            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
-
-            ReferenceDescriptionCollection references = UAClient.Browse(session, nodeToBrowse, true);
+            ReferenceDescriptionCollection references = await _client.Browse(EndpointUrl, Username, Password, nodeToBrowse, true).ConfigureAwait(false);
 
             Dictionary<string, UANode> processedReferences = new();
             foreach (ReferenceDescription nodeReference in references)
@@ -146,49 +143,30 @@
         {
             StatusMessage = ex.Message;
 
-            _helper.Disconnect(SessionId);
-
             return new List<UANode>();
         }
     }
 
-    private async Task VariableReadAsync(UANode node)
+    private void VariableRead(UANode node)
     {
         try
         {
-            // set default values
             NodeId = node.NodeId;
             NodeDisplayName = node.Text;
-            NodeValue = string.Empty;
             NodeNotPublishable = true;
 
-            DataValueCollection values = null;
-            DiagnosticInfoCollection diagnosticInfos = null;
-            ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
+            string nodeId = NodeId;
+            NodeValue = _client.ReadNode(EndpointUrl, Username, Password, ref nodeId);
 
-            ReadValueId valueId = new() {
-                NodeId = new NodeId(node.NodeId),
-                AttributeId = Attributes.Value,
-                IndexRange = null,
-                DataEncoding = null
-            };
-            nodesToRead.Add(valueId);
-
-            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
-            ResponseHeader responseHeader = session.Read(null, 0, TimestampsToReturn.Both, nodesToRead, out values, out diagnosticInfos);
-            if (values.Count > 0 && values[0].Value != null)
+            if (!string.IsNullOrEmpty(NodeValue))
             {
-                NodeId = new ExpandedNodeId(valueId.NodeId, session.NamespaceUris.ToArray()[valueId.NodeId.NamespaceIndex]).ToString();
-                NodeDisplayName = node.Text;
-                NodeValue = values[0].WrappedValue.ToString(); ;
+                NodeId = nodeId;
                 NodeNotPublishable = false;
             }
         }
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
-
-            _helper.Disconnect(SessionId);
         }
     }
 
@@ -196,15 +174,13 @@
     {
         try
         {
-            Session session = await _helper.GetSessionAsync(SessionId, EndpointUrl, Username, Password).ConfigureAwait(false);
-
             NodePublishingModel node = new NodePublishingModel
                 {
                     ExpandedNodeId = new ExpandedNodeId(NodeId),
                     EndpointUrl = EndpointUrl,
                     SkipFirst = false,
-                    Username = null,
-                    Password = null,
+                    Username = Username,
+                    Password = Password,
                     OpcAuthenticationMode = UserAuthModeEnum.Anonymous
                 };
 
@@ -220,8 +196,6 @@
         catch (Exception ex)
         {
             StatusMessage = ex.Message;
-
-            _helper.Disconnect(SessionId);
         }
     }
 }

@@ -5,7 +5,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
-    using Opc.Ua.Cloud.Publisher;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
@@ -18,16 +17,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     {
         private readonly IUAApplication _app;
         private readonly IUAClient _client;
-        private readonly OpcSessionHelper _helper;
         private readonly ILogger _logger;
 
         private SessionModel _session;
 
-        public BrowserController(OpcSessionHelper helper, IUAApplication app, IUAClient client, ILoggerFactory loggerFactory)
+        public BrowserController(IUAApplication app, IUAClient client, ILoggerFactory loggerFactory)
         {
             _app = app;
             _client = client;
-            _helper = helper;
             _logger = loggerFactory.CreateLogger("BrowserController");
             _session = new();
         }
@@ -35,7 +32,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public IActionResult DownloadUACert()
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             try
@@ -52,13 +48,10 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpGet]
         public ActionResult Index()
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
-            OpcSessionCacheData entry = null;
-            if (_helper.OpcSessionCache.TryGetValue(_session.SessionId, out entry))
+            if (!string.IsNullOrEmpty(_session.EndpointUrl))
             {
-                _session.EndpointUrl = entry.EndpointURL;
                 return View("Browse", _session);
             }
 
@@ -68,7 +61,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public ActionResult UserPassword(string endpointUrl)
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = endpointUrl;
 
             HttpContext.Session.SetString("EndpointUrl", endpointUrl);
@@ -77,51 +69,20 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> ConnectAsync(string username, string password)
+        public ActionResult ConnectAsync(string username, string password)
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
-
             _session.UserName = username;
             _session.Password = password;
-
-            Client.Session session = null;
-            try
-            {
-                session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _session.StatusMessage = ex.Message;
-                return View("Index", _session);
-            }
-
-            if (session == null)
-            {
-                _session.StatusMessage = "Unable to create session!";
-                return View("Index", _session);
-            }
-            else
-            {
-                _session.StatusMessage = "Connected to: " + _session.EndpointUrl;
-                return View("Browse", _session);
-            }
+            _session.StatusMessage = "Connected to: " + _session.EndpointUrl;
+            
+            return View("Browse", _session);
         }
 
         [HttpPost]
         public ActionResult Disconnect()
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
-
-            try
-            {
-                _helper.Disconnect(_session.SessionId);
-            }
-            catch (Exception)
-            {
-                // do nothing
-            }
 
             return View("Index", _session);
         }
@@ -129,18 +90,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> GeneratePN()
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             try
             {
-                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
-
-                List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(session, null).ConfigureAwait(false);
+                List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(_session.EndpointUrl, _session.UserName, _session.Password, null).ConfigureAwait(false);
 
                 PublishNodesInterfaceModel model = new()
                 {
-                    EndpointUrl = session.Endpoint.EndpointUrl,
+                    EndpointUrl = _session.EndpointUrl,
                     OpcNodes = new List<VariableModel>()
                 };
 
@@ -175,14 +133,11 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> GenerateCSV()
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             try
             {
-                Client.Session session = await _helper.GetSessionAsync(_session.SessionId, _session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
-
-                List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(session, null).ConfigureAwait(false);
+                List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(_session.EndpointUrl, _session.UserName, _session.Password, null).ConfigureAwait(false);
 
                 string content = "Endpoint,ApplicationUri,ExpandedNodeId,DisplayName,Type,VariableCurrentValue,VariableType,Parent,References\r\n";
                 foreach (UANodeInformation nodeInfo in results)
@@ -221,20 +176,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public async Task<ActionResult> PushCert()
         {
-            _session.SessionId = HttpContext.Session.Id;
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             try
             {
-                OpcSessionCacheData entry;
-                if (_helper.OpcSessionCache.TryGetValue(_session.SessionId, out entry))
-                {
-                    if (entry.OPCSession != null)
-                    {
-                        await _client.GDSServerPush(_session.EndpointUrl, entry.Username, entry.Password).ConfigureAwait(false);
-                    }
-                }
-
+                 await _client.GDSServerPush(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+                
                 _session.StatusMessage = "New certificate and trust list pushed successfully to server!";
             }
             catch (Exception ex)

@@ -444,6 +444,44 @@ namespace Opc.Ua.Cloud.Publisher
             _logger.LogInformation($"RECONNECTED session {session.SessionId}!");
         }
 
+        public string ReadNode(string endpointUrl, string username, string password, ref string nodeId)
+        {
+            // find or create the session we need to monitor the node
+            Session session = ConnectSessionAsync(
+                endpointUrl,
+                username,
+                password
+            ).GetAwaiter().GetResult();
+
+            if (session == null)
+            {
+                // couldn't create the session
+                throw new Exception($"Could not create session for endpoint {endpointUrl}!");
+            }
+
+            DataValueCollection values = null;
+            DiagnosticInfoCollection diagnosticInfos = null;
+            ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
+
+            ReadValueId valueId = new()
+            {
+                NodeId = new NodeId(nodeId),
+                AttributeId = Attributes.Value,
+                IndexRange = null,
+                DataEncoding = null
+            };
+            nodesToRead.Add(valueId);
+
+            session.Read(null, 0, TimestampsToReturn.Both, nodesToRead, out values, out diagnosticInfos);
+            if (values.Count > 0 && values[0].Value != null)
+            {
+                nodeId = new ExpandedNodeId(valueId.NodeId, session.NamespaceUris.ToArray()[valueId.NodeId.NamespaceIndex]).ToString();
+                return values[0].WrappedValue.ToString();
+            }
+
+            return string.Empty;
+        }
+
         public async Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default)
         {
             // find or create the session we need to monitor the node
@@ -827,10 +865,29 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public static ReferenceDescriptionCollection Browse(Session session, BrowseDescription nodeToBrowse, bool throwOnError)
+        public async Task<ReferenceDescriptionCollection> Browse(string endpointUrl, string username, string password, BrowseDescription nodeToBrowse, bool throwOnError)
+        {
+            // find or create the session
+            Session session = await ConnectSessionAsync(
+                endpointUrl,
+                username,
+                password
+            ).ConfigureAwait(false);
+
+            if (session == null)
+            {
+                // couldn't create the session
+                throw new Exception($"Could not create session for endpoint {endpointUrl}!");
+            }
+
+            return Browse(session, nodeToBrowse, throwOnError);
+        }
+   
+
+        private static ReferenceDescriptionCollection Browse(Session session, BrowseDescription nodeToBrowse, bool throwOnError)
         {
             try
-            {
+            { 
                 ReferenceDescriptionCollection references = new ReferenceDescriptionCollection();
 
                 // construct browse request.
@@ -903,7 +960,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public async Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(Session session, NodeId nodeId)
+        public async Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId nodeId)
         {
             List<UANodeInformation> results = new();
 
@@ -922,7 +979,7 @@ namespace Opc.Ua.Cloud.Publisher
                 ResultMask = (uint)BrowseResultMask.All
             };
 
-            ReferenceDescriptionCollection references = Browse(session, nodeToBrowse, true);
+            ReferenceDescriptionCollection references = await Browse(endpointUrl, username, password, nodeToBrowse, true).ConfigureAwait(false);
 
             List<string> processedReferences = new();
             foreach (ReferenceDescription nodeReference in references)
@@ -935,6 +992,19 @@ namespace Opc.Ua.Cloud.Publisher
 
                 try
                 {
+                    // find or create the session
+                    Session session = await ConnectSessionAsync(
+                        endpointUrl,
+                        username,
+                        password
+                    ).ConfigureAwait(false);
+
+                    if (session == null)
+                    {
+                        // couldn't create the session
+                        throw new Exception($"Could not create session for endpoint {endpointUrl}!");
+                    }
+
                     nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
                     nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
 
@@ -973,7 +1043,7 @@ namespace Opc.Ua.Cloud.Publisher
                         }
                     }
 
-                    List<UANodeInformation> childReferences = await BrowseVariableNodesResursivelyAsync(session, ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
+                    List<UANodeInformation> childReferences = await BrowseVariableNodesResursivelyAsync(endpointUrl, username, password, ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
 
                     nodeInfo.References = new string[childReferences.Count];
                     for (int i = 0; i < childReferences.Count; i++)
@@ -1210,7 +1280,7 @@ namespace Opc.Ua.Cloud.Publisher
                     ResultMask = (uint)BrowseResultMask.All
                 };
 
-                ReferenceDescriptionCollection references = Browse(session, nodeToBrowse, true);
+                ReferenceDescriptionCollection references = await Browse(endpoint, username, password, nodeToBrowse, true).ConfigureAwait(false);
 
                 fileId = (NodeId)references[0].NodeId;
                 fileHandle = ExecuteCommand(session, MethodIds.FileType_Open, fileId, (byte)6, null, out status);

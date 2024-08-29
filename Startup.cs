@@ -68,7 +68,6 @@ namespace Opc.Ua.Cloud.Publisher
 
             services.AddSingleton<IPublishedNodesFileHandler, PublishedNodesFileHandler>();
             services.AddSingleton<ICommandProcessor, CommandProcessor>();
-            services.AddSingleton<OpcSessionHelper>();
 
             // add our message processing engine
             services.AddSingleton<IMessageProcessor, MessageProcessor>();
