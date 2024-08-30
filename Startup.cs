@@ -120,7 +120,7 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 endpoints.MapControllerRoute(
                     name: "default",
-                    pattern: "{controller=Home}/{action=Index}/{id?}");
+                    pattern: "{controller=Diag}/{action=Index}/{id?}");
                 endpoints.MapHub<StatusHub>("/statushub");
                 endpoints.MapBlazorHub();
             });

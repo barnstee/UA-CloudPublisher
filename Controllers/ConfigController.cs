@@ -38,6 +38,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             return View("Index", Settings.Instance);
         }
 
+        [HttpGet]
+        public ActionResult Privacy()
+        {
+            return View("Privacy");
+        }
+
         [HttpPost]
         public async Task<ActionResult> LocalCertOpen(IFormFile file)
         {

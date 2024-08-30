@@ -5,7 +5,6 @@ namespace Opc.Ua.Cloud.Publisher
     using Azure.Storage.Files.DataLake;
     using Azure.Storage.Files.DataLake.Models;
     using Microsoft.Extensions.Logging;
-    using Opc.Ua.Cloud.Publisher.Controllers;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.IO;
@@ -30,7 +29,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             _logger.LogInformation(info.Message);
 
-            HomeController.AuthenticationCode = info.UserCode;
+            Settings.Instance.AuthenticationCode = info.UserCode;
 
             return Task.CompletedTask;
         }
@@ -174,7 +173,7 @@ namespace Opc.Ua.Cloud.Publisher
                     if (fspath.Name == dirName)
                     {
                         found = true;
-                        HomeController.AuthenticationCode = authNotification;
+                        Settings.Instance.AuthenticationCode = authNotification;
                         Diagnostics.Singleton.Info.ConnectedToCloudStorage = true;
                     }
                 }
@@ -182,7 +181,7 @@ namespace Opc.Ua.Cloud.Publisher
                 if (!found)
                 {
                     _fileSystemClient.CreateDirectory(connectionStringParts[4] + "/Files/" + _blobContainerName);
-                    HomeController.AuthenticationCode = authNotification;
+                    Settings.Instance.AuthenticationCode = authNotification;
                     Diagnostics.Singleton.Info.ConnectedToCloudStorage = true;
                 }
             }

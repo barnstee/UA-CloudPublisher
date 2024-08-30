@@ -15,7 +15,7 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark text-light bg-secondary border-bottom box-shadow mb-3">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                <a class="navbar-brand" asp-area="" asp-controller="Diag" asp-action="Index">Home</a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -24,19 +24,19 @@
                     <a href="https://opcfoundation.org/"><img src="~/OPCUA.png" width="250"/></a>
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
+                            <a class="nav-link text-light" asp-area="" asp-controller="Config" asp-action="Index">Configuration</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link text-light" asp-area="" asp-controller="Browser" asp-action="Index">OPC UA Server Connect</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-light" asp-area="" asp-controller="Published" asp-action="Index">Published Nodes</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-controller="Diag" asp-action="Index">Diagnostics</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-controller="Config" asp-action="Index">Configuration</a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link text-light" asp-area="" asp-controller="Translator" asp-action="Index">UA Edge Translator</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-light" asp-area="" asp-controller="CertManager" asp-action="Index">Certificate Management</a>
                         </li>
                     </ul>
                 </div>
@@ -51,7 +51,7 @@
 
     <footer class="border-top footer text-light bg-secondary">
         <div class="container">
-            &copy; 2022-2024 - Erich Barnstedt - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2022-2024 - Erich Barnstedt - <a asp-area="" asp-controller="Config" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

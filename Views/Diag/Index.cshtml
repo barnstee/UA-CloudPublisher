@@ -1,15 +1,24 @@
 ﻿@using Opc.Ua.Cloud.Publisher.Models
 
 @{
-    ViewData["Title"] = "Diagnostics";
+    ViewData["Title"] = "UA Cloud Publisher";
 }
 
 <h1>@ViewData["Title"]</h1>
 
 <p>
+    Performance:
+</p>
+<p>
     <div class="chart-container" width="600" height="400">
         <canvas id="myChart"></canvas>
     </div>
+</p>
+<br />
+<hr style="border-top: 1px solid blue" />
+<br />
+<p>
+    Diagnostics:
 </p>
 <p>
     <div id="table" width="600">Please wait while we collect diagnostics data...</div>

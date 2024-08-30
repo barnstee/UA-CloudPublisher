@@ -1,0 +1,33 @@
+﻿@using Opc.Ua.Cloud.Publisher.Models
+
+@model IEnumerable<SelectListItem>
+
+@{
+    ViewData["Title"] = "Certificate Management";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="container-fluid browser_connect_container">
+    <p>
+       Certificates currently in the trust list:
+    </p>
+    <p>
+        @Html.ListBox("trust list certificates", Model, new { disabled = true })
+    </p>
+    <br />
+    <hr style="border-top: 1px solid blue" />
+    <br />
+    <form method="post" enctype="multipart/form-data" asp-controller="CertManager" asp-action="Load">
+        <p>
+            Manually load a certificate into the trust list:<br />
+        </p>
+        <p>
+            <input class="btn btn-primary" type="file" name="file">
+        </p>
+        <p>
+            <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Load">
+        </p>
+    </form>
+</div>
+

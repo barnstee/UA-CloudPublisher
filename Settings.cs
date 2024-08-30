@@ -91,6 +91,8 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
+        public string AuthenticationCode { get; set; } = "Not applicable";
+
         public string UACertThumbprint { get; set; } = string.Empty;
 
         public DateTime UACertExpiry { get; set; } = DateTime.MinValue;

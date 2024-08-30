@@ -8,6 +8,15 @@
 
 <h1>@ViewData["Title"]</h1>
 
+<p>
+    Click <a href="https://microsoft.com/devicelogin" target="_blank">here</a> to use the code below for <b>Microsoft OneLake</b> authentication:<br />
+    @Html.TextBox("AuthCode", @Model.AuthenticationCode, new { style = "width:100%;background-color:grey;color:white;", @readonly = "true" })<br />
+    <br />
+    Note: UA Cloud Publisher will show up as Microsoft Azure Cross-platform Command Line Interface. When prompted "Are you trying to sign in to Microsoft Azure CLI?", select continue.<br />
+</p>
+<br />
+<hr style="border-top: 1px solid blue" />
+<br />
 <form method="post" enctype="multipart/form-data" asp-controller="Config" asp-action="LocalCertOpen">
     <br />
     By default, the OPC UA client cert is also used as the MQTT client cert, but a custom MQTT cert can also be provided here:
