@@ -50,10 +50,6 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 ## Screenshots
 
-### Main Page
-
-![Main Page](screenshots/mainpage.png)
-
 ### Browser
 
 ![Browser](screenshots/browser.png)
