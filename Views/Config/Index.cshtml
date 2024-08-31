@@ -149,6 +149,10 @@
         @Html.CheckBox("UseReverseConnect", @Model.UseReverseConnect)<br />
     </p>
     <p>
+        Push new OPC UA certificates to server before publishing data from it (GDS Server Push feature)<br />
+        @Html.CheckBox("PushCertsBeforePublishing", @Model.PushCertsBeforePublishing)<br />
+    </p>
+    <p>
         Internal Queue Capacity<br />
         @Html.TextBox("InternalQueueCapacity", @Model.InternalQueueCapacity, new { style = "width:100%;background-color:grey;color:white;" })<br />
     </p>

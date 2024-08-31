@@ -149,6 +149,8 @@ namespace Opc.Ua.Cloud.Publisher
 
         public bool UseReverseConnect { get; set; } = false;
 
+        public bool PushCertsBeforePublishing { get; set; } = false;
+
         public uint InternalQueueCapacity { get; set; } = 1000; // records
 
         public uint DefaultSendIntervalSeconds { get; set; } = 1;

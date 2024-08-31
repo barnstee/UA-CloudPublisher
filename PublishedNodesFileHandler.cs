@@ -36,6 +36,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 _logger.LogInformation($"Loaded {_configurationFileEntries.Count} config file entry/entries.");
 
                 // figure out how many nodes there are in total
+                // and capture all unique OPC UA server endpoints
+                Dictionary<string, PublishNodesInterfaceModel> uniqueEndpoints = new();
                 int totalNodeCount = 0;
                 foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
                 {
@@ -48,9 +50,41 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         totalNodeCount += configFileEntry.OpcNodes.Count;
                     }
+
+                    if (!uniqueEndpoints.ContainsKey(configFileEntry.EndpointUrl))
+                    {
+                        uniqueEndpoints.Add(configFileEntry.EndpointUrl, configFileEntry);
+                        totalNodeCount++;
+                    }
                 }
 
                 int currentpublishedNodeCount = 0;
+                
+                if (Settings.Instance.PushCertsBeforePublishing)
+                {
+                    foreach (PublishNodesInterfaceModel server in uniqueEndpoints.Values)
+                    {
+                        try
+                        {
+                            _uaClient.GDSServerPush(server.EndpointUrl, server.UserName, server.Password);
+                        }
+                        catch (Exception ex)
+                        {
+                            // skip this server and log an error
+                            _logger.LogError("Cannot push new certificates to server " + server.EndpointUrl + "due to " + ex.Message);
+                        }
+                            
+                        currentpublishedNodeCount++;
+                        _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
+                    }
+                }
+                else
+                {
+                    // make sure our progress bar is correct
+                    currentpublishedNodeCount += uniqueEndpoints.Count;
+                    _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
+                }
+
                 foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
                 {
                     if (configFileEntry.OpcAuthenticationMode == UserAuthModeEnum.UsernamePassword)
