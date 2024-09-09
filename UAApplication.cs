@@ -136,7 +136,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
-            
+
             await CreateIssuerCert().ConfigureAwait(false);
 
             _logger.LogInformation("Creating reverse connection endpoint on local port 50000.");
@@ -151,7 +151,7 @@ namespace Opc.Ua.Cloud.Publisher
             if (certFile == null)
             {
                 _logger.LogError("Could not load issuer cert file, creating a new one. This means all conected OPC UA servers need to be issued a new cert!");
-            
+
                 string subjectName = "CN=" + Settings.Instance.PublisherName + ", O=OPC Foundation";
                 IssuerCert = await CertificateFactory.CreateCertificate(subjectName)
                   .SetNotBefore(DateTime.Today.AddDays(-1))

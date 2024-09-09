@@ -882,12 +882,11 @@ namespace Opc.Ua.Cloud.Publisher
 
             return Browse(session, nodeToBrowse, throwOnError);
         }
-   
 
         private static ReferenceDescriptionCollection Browse(Session session, BrowseDescription nodeToBrowse, bool throwOnError)
         {
             try
-            { 
+            {
                 ReferenceDescriptionCollection references = new ReferenceDescriptionCollection();
 
                 // construct browse request.
@@ -1445,7 +1444,7 @@ namespace Opc.Ua.Cloud.Publisher
                 // save the last element.
                 for (int i = 0; i < eventTypes.Count; i++)
                 {
-                    // we uses the 'OfType' operator to limit events to thoses with specified event type. 
+                    // we uses the 'OfType' operator to limit events to thoses with specified event type.
                     LiteralOperand operand1 = new LiteralOperand();
                     operand1.Value = new Variant(eventTypes[i]);
                     ContentFilterElement element3 = whereClause.Push(FilterOperator.OfType, operand1);
