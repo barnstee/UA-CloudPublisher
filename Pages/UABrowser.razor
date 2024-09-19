@@ -69,12 +69,28 @@
     private string NodeValue { get; set; } = string.Empty;
     private bool NodeNotPublishable { get; set; } = true;
 
-    protected override void OnInitialized()
+    protected async override void OnInitialized()
     {
-        UANodes.Add(new UANode() {
+        StatusMessage = "Connecting to " + EndpointUrl + "...";
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+
+        UANode root = new()
+        {
             Text = "Root",
             NodeId = ObjectIds.ObjectsFolder.ToString()
-        });
+        };
+
+        root.Children = await GetChildrenAsync(root).ConfigureAwait(false);
+        if (root.Children == null)
+        {
+            StatusMessage = "Could not connect to server " + EndpointUrl + "!";
+        }
+        else
+        {
+            UANodes.Add(root);
+            StatusMessage = "Connected to " + EndpointUrl + ".";
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        }
     }
 
     private async Task OnNodeExpand(UANode expendedNode)
@@ -143,7 +159,7 @@
         {
             StatusMessage = ex.Message;
 
-            return new List<UANode>();
+            return null;
         }
     }
 

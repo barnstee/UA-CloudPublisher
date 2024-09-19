@@ -61,6 +61,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public ActionResult UserPassword(string endpointUrl)
         {
+            if (string.IsNullOrEmpty(endpointUrl) || !endpointUrl.StartsWith("opc.tcp://"))
+            {
+                _session.StatusMessage = "Please provide a valid OPC UA endpoint URL in the format opc.tcp://ipaddress:port";
+                return View("Index", _session);
+            }
+
             _session.EndpointUrl = endpointUrl;
 
             HttpContext.Session.SetString("EndpointUrl", endpointUrl);
@@ -74,8 +80,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
             _session.UserName = username;
             _session.Password = password;
-            _session.StatusMessage = "Connected to: " + _session.EndpointUrl;
-            
+
             return View("Browse", _session);
         }
 
@@ -172,7 +177,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 return View("Browse", _session);
             }
         }
-        
+
         [HttpPost]
         public async Task<ActionResult> PushCert()
         {
@@ -181,7 +186,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             try
             {
                  await _client.GDSServerPush(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
-                
+
                 _session.StatusMessage = "New certificate and trust list pushed successfully to server!";
             }
             catch (Exception ex)
