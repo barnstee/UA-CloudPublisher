@@ -29,5 +29,14 @@
             <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Load">
         </p>
     </form>
+    <br />
+    <hr style="border-top: 1px solid blue" />
+    <br />
+    <p>
+        @using (Html.BeginForm("DownloadTrustlist", "CertManager"))
+        {
+            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Download Trust List" />
+        }
+    </p>
 </div>
 

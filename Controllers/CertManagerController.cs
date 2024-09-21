@@ -9,6 +9,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.IO.Compression;
     using System.Security.Cryptography.X509Certificates;
     using System.Threading;
     using System.Threading.Tasks;
@@ -68,6 +69,30 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
 
                 return LoadTrustlist();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return View("Index", new SelectList(new List<string>() { ex.Message }));
+            }
+        }
+
+        [HttpPost]
+        public ActionResult DownloadTrustlist()
+        {
+            try
+            {
+                string zipfile = "trustlist.zip";
+
+                if (System.IO.File.Exists(zipfile))
+                {
+                    System.IO.File.Delete(zipfile);
+                }
+
+                string pathToTrustList = Path.Combine(Directory.GetCurrentDirectory(), "pki", "trusted", "certs");
+                ZipFile.CreateFromDirectory(pathToTrustList, zipfile);
+
+                return File(System.IO.File.ReadAllBytes(zipfile), "APPLICATION/octet-stream", zipfile);
             }
             catch (Exception ex)
             {
