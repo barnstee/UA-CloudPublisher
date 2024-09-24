@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   ua-cloudpublisher:
@@ -23,7 +23,7 @@ services:
         "--fn=5",
         "--fr=1",
         "--ft=uint",
-        "--gn=5"
+        "--gn=5",
       ]
     ports:
       - "50000:50000"
