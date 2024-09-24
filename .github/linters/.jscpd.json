@@ -1,0 +1,6 @@
+{
+  "threshold": 12,
+  "reporters": ["consoleFull"],
+  "ignore": ["**/wwwroot/lib/**"],
+  "absolute": true
+}
