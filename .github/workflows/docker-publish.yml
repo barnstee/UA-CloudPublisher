@@ -6,13 +6,13 @@ name: Docker
 # separate terms of service, privacy policy, and support
 # documentation.
 
-on:  # yamllint disable-line rule:truthy
+on: # yamllint disable-line rule:truthy
   schedule:
-    - cron: '23 9 * * *'
+    - cron: "23 9 * * *"
   push:
     branches: [main, develop]
     # Publish semver tags as releases.
-    tags: ['v*.*.*']
+    tags: ["v*.*.*"]
   pull_request:
     branches: [main, develop]
   merge_group:
@@ -23,10 +23,8 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
-
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
