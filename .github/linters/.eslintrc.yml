@@ -7,8 +7,8 @@ env:
   jest: true
   node: true
 extends:
-  - 'plugin:json/recommended'
-  - 'eslint:recommended'
+  - "plugin:json/recommended"
+  - "eslint:recommended"
 parserOptions:
   ecmaFeatures:
     jsx: true

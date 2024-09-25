@@ -6,8 +6,7 @@
 # You can disable line with:              #
 # # yamllint disable-line                 #
 ###########################################
-ignore:
-  /node_modules/
+ignore: /node_modules/
 rules:
   braces:
     level: warning
