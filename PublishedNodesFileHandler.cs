@@ -41,7 +41,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 int totalNodeCount = 0;
                 foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
                 {
-                    if (configFileEntry.OpcEvents != null) 
+                    if (configFileEntry.OpcEvents != null)
                     {
                         totalNodeCount += configFileEntry.OpcEvents.Count;
                     }
@@ -59,7 +59,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 }
 
                 int currentpublishedNodeCount = 0;
-                
+
                 if (Settings.Instance.PushCertsBeforePublishing)
                 {
                     foreach (PublishNodesInterfaceModel server in uniqueEndpoints.Values)
@@ -73,7 +73,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                             // skip this server and log an error
                             _logger.LogError("Cannot push new certificates to server " + server.EndpointUrl + "due to " + ex.Message);
                         }
-                            
+
                         currentpublishedNodeCount++;
                         _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
                     }

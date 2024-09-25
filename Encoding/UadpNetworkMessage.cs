@@ -134,7 +134,7 @@ namespace Opc.Ua.PubSub.Encoding
         /// </summary>
         public UADPNetworkMessageDiscoveryType UADPDiscoveryType
         {
-            get { return m_discoveryType;}
+            get { return m_discoveryType; }
         }
 
         /// <summary>
@@ -467,7 +467,7 @@ namespace Opc.Ua.PubSub.Encoding
         /// <param name="binaryEncoder"></param>
         private void EncodeDataSetNetworkMessageType(BinaryEncoder binaryEncoder)
         {
-        if (binaryEncoder == null)
+            if (binaryEncoder == null)
             {
                 throw new ArgumentException(nameof(binaryEncoder));
             }
@@ -488,7 +488,7 @@ namespace Opc.Ua.PubSub.Encoding
         private void EncodeDataSetMetaData(BinaryEncoder binaryEncoder)
         {
             binaryEncoder.WriteUInt16("DataSetWriterId", DataSetWriterId);
-            
+
             if (m_metadata == null)
             {
                 Utils.Trace("The UADP DiscoveryResponse DataSetMetaData message cannot be encoded: The MetaData property is missing. Value null will be used.");
@@ -807,7 +807,7 @@ namespace Opc.Ua.PubSub.Encoding
                     m_uaDataSetMessages.Clear();
                     m_uaDataSetMessages.AddRange(dataSetMessages);
                 }
-                
+
             }
             catch (Exception ex)
             {

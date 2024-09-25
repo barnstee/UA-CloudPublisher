@@ -185,7 +185,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
             try
             {
-                 await _client.GDSServerPush(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+                await _client.GDSServerPush(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
 
                 _session.StatusMessage = "New certificate and trust list pushed successfully to server!";
             }

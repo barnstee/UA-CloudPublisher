@@ -5,7 +5,7 @@ namespace Opc.Ua.Cloud.Publisher.Models
 
     public class VariableModel
     {
-       [JsonProperty(Required = Required.Always)]
+        [JsonProperty(Required = Required.Always)]
         public string Id { get; set; }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

@@ -61,7 +61,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 }
 
                 // create Kafka client
-                var config = new ProducerConfig {
+                var config = new ProducerConfig
+                {
                     BootstrapServers = Settings.Instance.BrokerUrl + ":" + Settings.Instance.BrokerPort,
                     MessageTimeoutMs = 10000,
                     SecurityProtocol = SecurityProtocol.SaslSsl,
@@ -120,7 +121,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
         public void Publish(byte[] payload)
         {
-            Message<Null, string> message = new() {
+            Message<Null, string> message = new()
+            {
                 Headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } },
                 Value = Encoding.UTF8.GetString(payload)
             };

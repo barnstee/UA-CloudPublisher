@@ -73,7 +73,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             Clear();
 
-            if ( Settings.Instance.DiagnosticsLoggingInterval == 0)
+            if (Settings.Instance.DiagnosticsLoggingInterval == 0)
             {
                 // diagnostics are disabled
                 return;

@@ -89,12 +89,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 }
 
                 // read our settings
-                string brokerUrl = altBroker? Settings.Instance.AltBrokerUrl : Settings.Instance.BrokerUrl;
-                uint brokerPort = altBroker? Settings.Instance.AltBrokerPort : Settings.Instance.BrokerPort;
+                string brokerUrl = altBroker ? Settings.Instance.AltBrokerUrl : Settings.Instance.BrokerUrl;
+                uint brokerPort = altBroker ? Settings.Instance.AltBrokerPort : Settings.Instance.BrokerPort;
                 string publisherName = Settings.Instance.PublisherName;
-                string username = altBroker? Settings.Instance.AltBrokerUsername : Settings.Instance.BrokerUsername;
-                string password = altBroker? Settings.Instance.AltBrokerPassword : Settings.Instance.BrokerPassword;
-                string receiveTopic = altBroker? Settings.Instance.BrokerDataReceivedTopic : Settings.Instance.BrokerCommandTopic;
+                string username = altBroker ? Settings.Instance.AltBrokerUsername : Settings.Instance.BrokerUsername;
+                string password = altBroker ? Settings.Instance.AltBrokerPassword : Settings.Instance.BrokerPassword;
+                string receiveTopic = altBroker ? Settings.Instance.BrokerDataReceivedTopic : Settings.Instance.BrokerCommandTopic;
 
                 if (string.IsNullOrEmpty(brokerUrl))
                 {
@@ -133,7 +133,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 if (brokerPort == 443)
                 {
                     clientOptions = new MqttClientOptionsBuilder()
-                        .WithWebSocketServer( o => o.WithUri(brokerUrl))
+                        .WithWebSocketServer(o => o.WithUri(brokerUrl))
                         .WithClientId(publisherName)
                         .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
                         .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)

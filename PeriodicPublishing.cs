@@ -8,7 +8,7 @@ namespace Opc.Ua.Cloud.Publisher
     using System;
     using System.Threading;
 
-    public class PeriodicPublishing: IDisposable
+    public class PeriodicPublishing : IDisposable
     {
 
         private readonly ILogger _logger;
