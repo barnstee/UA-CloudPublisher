@@ -85,7 +85,8 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             // create UA app
-            UAApplicationInstance = new ApplicationInstance {
+            UAApplicationInstance = new ApplicationInstance
+            {
                 ApplicationName = Settings.Instance.PublisherName,
                 ApplicationType = ApplicationType.Client,
                 ConfigSectionName = "UACloudPublisher"

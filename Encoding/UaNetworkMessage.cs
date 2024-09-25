@@ -106,7 +106,7 @@ namespace Opc.Ua.PubSub
                     }
                     else
                     {
-                    return m_dataSetWriterId;
+                        return m_dataSetWriterId;
                     }
                 }
                 else

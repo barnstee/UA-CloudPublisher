@@ -13,7 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId nodeId);
 
-        string ReadNode(string endpointUrl, string username, string password, ref string nodeId); 
+        string ReadNode(string endpointUrl, string username, string password, ref string nodeId);
 
         Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);
 
@@ -24,7 +24,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
         IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes();
 
         Task GDSServerPush(string endpointURL, string adminUsername, string adminPassword);
- 
+
         Task WoTConUpload(string endpoint, string username, string password, byte[] bytes, string assetName);
     }
 }

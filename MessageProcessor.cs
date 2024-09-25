@@ -289,7 +289,7 @@ namespace Opc.Ua.Cloud.Publisher
         private void SendMetadataOnTimer(object state)
         {
             // stop the timer while we're sending
-            _metadataTimer.Change(Timeout.Infinite,Timeout.Infinite);
+            _metadataTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
             if (_metadataMessages.Count > 0)
             {
