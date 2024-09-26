@@ -5,11 +5,8 @@ Simulator device 1 for MQTT message publishing.
 import random
 import time
 
+import config  # Import the configuration settings
 import paho.mqtt.client as paho
-
-# Broker settings
-BROKER = "localhost"  # MQTT broker URL
-PORT = 1883
 
 
 def on_publish(client, userdata, result):  # pylint: disable=unused-argument
@@ -21,7 +18,7 @@ def main():
     """Main function to publish MQTT messages."""
     client = paho.Client(client_id="admin")
     client.on_publish = on_publish
-    client.connect(host=BROKER, port=PORT)
+    client.connect(host=config.BROKER, port=config.PORT)
 
     for i in range(20):
         delay = random.randint(1, 5)
