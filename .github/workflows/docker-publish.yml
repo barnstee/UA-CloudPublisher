@@ -14,7 +14,7 @@ on: # yamllint disable-line rule:truthy
     # Publish semver tags as releases.
     tags: ["v*.*.*"]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, upstream]
   merge_group:
 
 env:
