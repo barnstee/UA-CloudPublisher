@@ -12,24 +12,30 @@ In addition, we provide local Python MQTT clients to test publishing and subscri
 
 ## UA Cloud Publisher
 
-- Frontend: <http://localhost>
-- Connect to Simulated OPC Server: opc.tcp://plc-sim:50000/
+- Frontend: `http://localhost`
+- Connect to Simulated OPC Server: `opc.tcp://plc-sim:50000/`
 - Configuration (in UI):
-  - Broker URL: hivemq4
-  - Broker Port: 1883
-  - Message Topic: data
-  - uncheck SAS
-  - uncheck TLS
+  - Broker URL: `hivemq4`
+  - Broker Port: `1883`
+  - Message Topic: `data`
+  - uncheck `SAS`
+  - uncheck `TLS`
 
 ## HiveMQ
 
-- Control center: <http://localhost:8888>
-- Credentials: admin / hivemq
+- Control center: `http://localhost:8888`
+- Credentials: `admin` / `hivemq`
 
 ## Testing MQTT Broker with Python Clients
 
+    # one publisher
     python.exe .\pub_client_1.py
+
+    # one subscriber
     python.exe .\sub_client_1.py
+
+    # two subscribers
+    python.exe .\sub_client_1_2.py
 
 ## Tips
 

@@ -2,14 +2,8 @@
 MQTT Subscriber 1 for receiving messages.
 """
 
+import config  # Import the configuration settings
 import paho.mqtt.client as mqtt
-
-# Broker settings
-BROKER = "localhost"  # MQTT broker URL
-PORT = 1883
-
-# Time for Subscriber to live
-TIMELIVE = 60
 
 
 def on_connect(client, userdata, flags, rc):  # pylint: disable=unused-argument
@@ -26,7 +20,7 @@ def on_message(client, userdata, msg):  # pylint: disable=unused-argument
 def main():
     """Main function to set up the MQTT client and start the loop."""
     sub_client = mqtt.Client()
-    sub_client.connect(host=BROKER, port=PORT, keepalive=TIMELIVE)
+    sub_client.connect(host=config.BROKER, port=config.PORT, keepalive=config.TIMELIVE)
     sub_client.on_connect = on_connect
     sub_client.on_message = on_message
     sub_client.loop_forever()
