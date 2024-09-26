@@ -3,9 +3,9 @@ name: Lint
 
 on: # yamllint disable-line rule:truthy
   push:
-    branches: [main, develop]
+    branches: [main, develop, upstream]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, upstream]
   merge_group:
 
 permissions:
