@@ -1,6 +1,6 @@
 ﻿@using Opc.Ua.Cloud.Publisher.Models
 
-@model IEnumerable<SelectListItem>
+@model CertManagerModel
 
 @{
     ViewData["Title"] = "Certificate Management";
@@ -13,7 +13,7 @@
        Certificates currently in the trust list:
     </p>
     <p>
-        @Html.ListBox("trust list certificates", Model, new { disabled = true })
+        @Html.ListBox("trust list certificates", Model.Certs, new { disabled = true })
     </p>
     <br />
     <hr style="border-top: 1px solid blue" />
@@ -38,5 +38,21 @@
             <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Download Trust List" />
         }
     </p>
+    <br />
+    <hr style="border-top: 1px solid blue" />
+    <br />
+    <form method="post" enctype="multipart/form-data" asp-controller="CertManager" asp-action="EncryptString">
+        <p>
+            Encrypt a string (to encrypt the password for the user specified in the publishednodes.json file):<br />
+            @Html.TextBox("plainTextString", "", new { style = "width:100%;background-color:grey;color:white;" })<br />
+        </p>
+        <p>
+            <input class="btn btn-primary" type="submit" value="Encrypt">
+        </p>
+        <p>
+            Encrypted String (Base64-encoded):<br />
+            @Html.Label("N/A", @Model.Encrypt, null)<br />
+        </p>
+    </form>
 </div>
 

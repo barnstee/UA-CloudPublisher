@@ -31,12 +31,11 @@
       "useSSL": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "STORAGE_TYPE": "",
-        "STORAGE_CONTAINER_NAME": "uacloudpublisher",
-        "STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=[yourstorageaccountname];AccountKey=[key];EndpointSuffix=core.windows.net",
         "AZURE_OPENAI_API_ENDPOINT": "https://[yourinstancename].openai.azure.com/",
         "AZURE_OPENAI_API_KEY": "",
-        "AZURE_OPENAI_API_DEPLOYMENT_NAME": ""
+        "AZURE_OPENAI_API_DEPLOYMENT_NAME": "",
+        "OPCUA_USERNAME": "",
+        "OPCUA_PASSWORD": ""
       }
     }
   }

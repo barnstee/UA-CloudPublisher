@@ -35,8 +35,6 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - Publishing on data changes or on regular intervals
 - Supports `publishednodes.json` input file format
 - Support for storing configuration files locally
-- Support for storing configuration files in the Azure cloud
-- Support for storing configuration files in Microsoft OneLake
 - Support for Store & Forward during internet connection outages
 - Support for username and password authentication
 - Support for Intel/AMD `x64` and `arm64` architectures (Raspberry Pi4, etc.) with pre-built container images ready for use
@@ -80,15 +78,11 @@ And then point your browser to <http://yourIPAddress>.
 
 Note: We have also provided a [test environment](./TestEnvironment/readme.md) to get you started.
 
-### Persisting Settings
+### Persisting Logs, Settings, Published Nodes and OPC UA Certificates
 
-UA Cloud Publisher settings and published nodes configuration can be persisted in the Cloud across Docker container restarts by running:
+UA Cloud Publisher logs, settings, published nodes and OPC UA certificates can be persisted locally across Docker container restarts by running:
 
-`docker run -itd -e STORAGE_TYPE="Azure" -e STORAGE_CONNECTION_STRING="yourCloudStorageConnectionString" -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
-
-UA Cloud Publisher settings and published nodes configuration can be persisted locally across Docker container restarts by running:
-
-`docker run -itd -v c:/publisher/logs:/app/logs -v c:/publisher/settings:/app/settings -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
+`docker run -itd -v c:/publisher/logs:/app/logs -v c:/publisher/settings:/app/settings -v c:/publisher/pki:/app/pki -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 For Linux hosts, remove the `c:` instances from the command above.
 
@@ -100,10 +94,11 @@ UA Cloud Publisher contains a second broker client that can be used either to **
 
 ## Optional Environment Variables
 
-- `LOG_FILE_PATH` - path to the log file to use. Default is /app/logs/UACloudPublisher.log (in the Docker container).
-- `STORAGE_TYPE` - type of storage to use for settings and configuration files. Current options are `Azure` and `OneLake`. Default is local file storage (under `/app/settings/` in the Docker container).
-- `STORAGE_CONNECTION_STRING` - when using `STORAGE_TYPE`=`Azure` or `OneLake`, specifies the connection string to the cloud storage. For `OneLake`, this is called `URL` and can be retrieved from your Lakehouse `Files` folder properties in Microsoft Fabric.
-- `STORAGE_CONTAINER_NAME` - when using STORAGE_TYPE="Azure" or "OneLake", specifies the storage container name. Default is "uacloudpublisher".
+* AZURE_OPENAI_API_ENDPOINT - the endpoint URL of the Azure OpenAI instance to use in the form https://[yourinstancename].openai.azure.com/
+* AZURE_OPENAI_API_KEY - the key to use
+* AZURE_OPENAI_API_DEPLOYMENT_NAME - the deployment to use
+* OPCUA_USERNAME - OPC UA server username to use when none is specified in publishednodes.json file
+* OPCUA_PASSWORD - OPC UA server password to use when none is specified in publishednodes.json file
 
 ## PublishedNodes.json File Format
 
@@ -305,7 +300,6 @@ Response:
     {
       "PublisherStartTime": "2022-02-22T22:22:22.222Z",
       "ConnectedToBroker": false,
-      "ConnectedToCloudStorage": false,
       "NumberOfOpcSessionsConnected": 0,
       "NumberOfOpcSubscriptionsConnected": 0,
       "NumberOfOpcMonitoredItemsMonitored": 0,

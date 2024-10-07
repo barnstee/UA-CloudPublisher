@@ -37,14 +37,9 @@ namespace Opc.Ua.Cloud.Publisher
             services.AddRazorPages();
             services.AddServerSideBlazor();
 
-            string logFilePath = Configuration["LOG_FILE_PATH"];
-            if (string.IsNullOrEmpty(logFilePath))
-            {
-                logFilePath = "./logs/UACloudPublisher.log";
-            }
             services.AddLogging(logging =>
             {
-                logging.AddFile(logFilePath);
+                logging.AddFile("./logs/UACloudPublisher.log");
             });
 
             // add our singletons
@@ -75,14 +70,6 @@ namespace Opc.Ua.Cloud.Publisher
             services.AddSingleton<IMessageSource, MonitoredItemNotification>();
             services.AddSingleton<IMessageEncoder, PubSubTelemetryEncoder>();
             services.AddSingleton<IMessagePublisher, StoreForwardPublisher>();
-
-            // setup file storage
-            switch (Configuration["STORAGE_TYPE"])
-            {
-                case "Azure": services.AddSingleton<IFileStorage, AzureFileStorage>(); break;
-                case "OneLake": services.AddSingleton<IFileStorage, OneLakeFileStorage>(); break;
-                default: services.AddSingleton<IFileStorage, LocalFileStorage>(); break;
-            }
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -92,8 +79,7 @@ namespace Opc.Ua.Cloud.Publisher
                               IUAApplication uaApp,
                               IMessageProcessor engine,
                               Settings.BrokerResolver brokerResolver,
-                              IPublishedNodesFileHandler publishedNodesFileHandler,
-                              IFileStorage storage)
+                              IPublishedNodesFileHandler publishedNodesFileHandler)
         {
             ILogger logger = loggerFactory.CreateLogger("Statup");
 
@@ -164,23 +150,20 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     try
                     {
-                        string persistencyFilePath = storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
-                        byte[] persistencyFile = storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
+                        byte[] persistencyFile = File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"));
                         if (persistencyFile == null)
                         {
                             // no file persisted yet
-                            logger.LogInformation("Persistency file not found.");
+                            throw new Exception("Persistency file not found.");
                         }
                         else
                         {
-                            logger.LogInformation($"Parsing persistency file...");
-                            publishedNodesFileHandler.ParseFile(persistencyFile);
-                            logger.LogInformation("Persistency file parsed successfully.");
+                            _ = Task.Run(() => publishedNodesFileHandler.ParseFile(persistencyFile));
                         }
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Persistency file not loaded!");
+                        logger.LogError(ex.Message);
                     }
                 }
             });

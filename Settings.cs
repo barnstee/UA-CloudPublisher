@@ -31,7 +31,7 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         if (_instance == null)
                         {
-                            _instance = LoadAsync().GetAwaiter().GetResult();
+                            _instance = Load();
                         }
                     }
                 }
@@ -47,16 +47,14 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        private static async Task<Settings> LoadAsync()
+        private static Settings Load()
         {
             ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
             ILogger logger = loggerFactory.CreateLogger("Settings");
-            IFileStorage storage = (IFileStorage)Program.AppHost.Services.GetService(typeof(IFileStorage));
 
             try
             {
-                string settingsFilePath = await storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "settings.json").ConfigureAwait(false);
-                byte[] settingsFile = await storage.LoadFileAsync(settingsFilePath).ConfigureAwait(false);
+                byte[] settingsFile = File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json"));
                 if (settingsFile == null)
                 {
                     // no file persisted yet
@@ -79,23 +77,32 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public async void Save()
+        public void Save()
         {
             ILoggerFactory loggerFactory = (ILoggerFactory)Program.AppHost.Services.GetService(typeof(ILoggerFactory));
             ILogger logger = loggerFactory.CreateLogger("Settings");
-            IFileStorage storage = (IFileStorage)Program.AppHost.Services.GetService(typeof(IFileStorage));
 
-            if (await storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(this, Formatting.Indented))).ConfigureAwait(false) == null)
+            try
+            {
+                File.WriteAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(this, Formatting.Indented)));
+            }
+            catch (Exception)
             {
                 logger.LogError("Could not store settings file. Settings won't be persisted!");
             }
         }
 
-        public string AuthenticationCode { get; set; } = "Not applicable";
+        public string UAClientCertThumbprint { get; set; } = string.Empty;
 
-        public string UACertThumbprint { get; set; } = string.Empty;
+        public DateTime UAClientCertExpiry { get; set; } = DateTime.MinValue;
 
-        public DateTime UACertExpiry { get; set; } = DateTime.MinValue;
+        public string UAIssuerCertThumbprint { get; set; } = string.Empty;
+
+        public DateTime UAIssuerCertExpiry { get; set; } = DateTime.MinValue;
+
+        public string MQTTClientCertThumbprint { get; set; } = "N/A";
+
+        public DateTime MQTTClientCertExpiry { get; set; } = DateTime.MinValue;
 
         public string PublisherName { get; set; } = "UACloudPublisher";
 

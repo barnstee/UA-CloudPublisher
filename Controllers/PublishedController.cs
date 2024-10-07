@@ -12,24 +12,22 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
+    using System.Threading.Tasks;
 
     public class PublishedController : Controller
     {
         private readonly ILogger _logger;
         private readonly IPublishedNodesFileHandler _publishedNodesFileHandler;
         private readonly IUAClient _uaclient;
-        private readonly IFileStorage _storage;
 
         public PublishedController(
             ILoggerFactory loggerFactory,
             IPublishedNodesFileHandler publishedNodesFileHandler,
-            IUAClient client,
-            IFileStorage storage)
+            IUAClient client)
         {
             _logger = loggerFactory.CreateLogger("PublishedController");
             _publishedNodesFileHandler = publishedNodesFileHandler;
             _uaclient = client;
-            _storage = storage;
         }
 
         public IActionResult Index()
@@ -89,25 +87,22 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             try
             {
-                string persistencyFilePath = _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings"), "persistency.json").GetAwaiter().GetResult();
-                byte[] persistencyFile = _storage.LoadFileAsync(persistencyFilePath).GetAwaiter().GetResult();
+                byte[] persistencyFile = System.IO.File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"));
                 if (persistencyFile == null)
                 {
                     // no file persisted yet
-                    _logger.LogInformation("Persistency file not found.");
+                    throw new Exception("Persistency file not found.");
                 }
                 else
                 {
-                    _logger.LogInformation($"Parsing persistency file...");
-                    _publishedNodesFileHandler.ParseFile(persistencyFile);
-                    _logger.LogInformation("Persistency file parsed successfully.");
+                    _ = Task.Run(() => _publishedNodesFileHandler.ParseFile(persistencyFile));
                 }
 
                 return View("Index", GeneratePublishedNodesArray());
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Persistency file not loaded!");
+                _logger.LogError(ex.Message);
                 return View("Index", new string[] { "Error: " + ex.Message });
             }
         }

@@ -8,6 +8,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Configuration;
     using System;
     using System.IO;
+    using System.Linq;
     using System.Security.Cryptography.X509Certificates;
     using System.Threading;
     using System.Threading.Tasks;
@@ -15,7 +16,6 @@ namespace Opc.Ua.Cloud.Publisher
     public class UAApplication : IUAApplication
     {
         private readonly ILogger _logger;
-        private readonly IFileStorage _storage;
 
         public X509Certificate2 IssuerCert { get; set; }
 
@@ -23,66 +23,14 @@ namespace Opc.Ua.Cloud.Publisher
 
         public ReverseConnectManager ReverseConnectManager { get; set; } = new();
 
-        public UAApplication(ILoggerFactory loggerFactory, IFileStorage storage)
+        public UAApplication(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.CreateLogger("UAApplication");
-            _storage = storage;
         }
 
         public async Task CreateAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation($"Creating OPC UA app named {Settings.Instance.PublisherName}");
-
-            try
-            {
-                // load app cert from storage
-                string certFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), Settings.Instance.PublisherName).ConfigureAwait(false);
-                byte[] certFile = await _storage.LoadFileAsync(certFilePath).ConfigureAwait(false);
-                if (certFile == null)
-                {
-                    _logger.LogError("Could not load cert file, creating a new one. This means the new cert needs to be trusted by all OPC UA servers we connect to!");
-                }
-                else
-                {
-                    if (!Path.IsPathRooted(certFilePath))
-                    {
-                        certFilePath = Path.DirectorySeparatorChar.ToString() + certFilePath;
-                    }
-
-                    if (!Directory.Exists(Path.GetDirectoryName(certFilePath)))
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(certFilePath));
-                    }
-
-                    File.WriteAllBytes(certFilePath, certFile);
-                }
-
-                // load app private key from storage
-                string keyFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "private"), Settings.Instance.PublisherName).ConfigureAwait(false);
-                byte[] keyFile = await _storage.LoadFileAsync(keyFilePath).ConfigureAwait(false);
-                if (keyFile == null)
-                {
-                    _logger.LogError("Could not load key file, creating a new one. This means the new cert generated from the key needs to be trusted by all OPC UA servers we connect to!");
-                }
-                else
-                {
-                    if (!Path.IsPathRooted(keyFilePath))
-                    {
-                        keyFilePath = Path.DirectorySeparatorChar.ToString() + keyFilePath;
-                    }
-
-                    if (!Directory.Exists(Path.GetDirectoryName(keyFilePath)))
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(keyFilePath));
-                    }
-
-                    File.WriteAllBytes(keyFilePath, keyFile);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Cloud not load cert or private key files, creating a new ones. This means the new cert needs to be trusted by all OPC UA servers we connect to!");
-            }
 
             // create UA app
             UAApplicationInstance = new ApplicationInstance
@@ -114,26 +62,8 @@ namespace Opc.Ua.Cloud.Publisher
             else
             {
                 // store UA cert thumbprint
-                Settings.Instance.UACertThumbprint = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.Thumbprint;
-                Settings.Instance.UACertExpiry = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.NotAfter;
-
-                // store app certs
-                foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "certs"), "*.der"))
-                {
-                    await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
-                }
-
-                // store private keys
-                foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "own", "private"), "*.pfx"))
-                {
-                    await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
-                }
-
-                // store trusted certs
-                foreach (string filePath in Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), "pki", "trusted", "certs"), "*.der"))
-                {
-                    await _storage.StoreFileAsync(filePath, await File.ReadAllBytesAsync(filePath).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
-                }
+                Settings.Instance.UAClientCertThumbprint = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.Thumbprint;
+                Settings.Instance.UAClientCertExpiry = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.NotAfter;
             }
 
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
@@ -147,9 +77,14 @@ namespace Opc.Ua.Cloud.Publisher
 
         private async Task CreateIssuerCert()
         {
-            string certFilePath = await _storage.FindFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "private"), Settings.Instance.PublisherName).ConfigureAwait(false);
-            byte[] certFile = await _storage.LoadFileAsync(certFilePath).ConfigureAwait(false);
-            if (certFile == null)
+            string pathToIssuerStore = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "private");
+            if (!Directory.Exists(pathToIssuerStore))
+            {
+                Directory.CreateDirectory(pathToIssuerStore);
+            }
+
+            string[] issuerCerts = Directory.GetFiles(pathToIssuerStore);
+            if ((issuerCerts == null) || (issuerCerts.Count() == 0))
             {
                 _logger.LogError("Could not load issuer cert file, creating a new one. This means all conected OPC UA servers need to be issued a new cert!");
 
@@ -166,8 +101,11 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                IssuerCert = new X509Certificate2(certFile);
+                IssuerCert = new X509Certificate2(File.ReadAllBytes(issuerCerts[0]));
             }
+
+            Settings.Instance.UAIssuerCertThumbprint = IssuerCert.Thumbprint;
+            Settings.Instance.UAIssuerCertExpiry = IssuerCert.NotAfter;
         }
 
         private void OpcStackLoggingHandler(object sender, TraceEventArgs e)

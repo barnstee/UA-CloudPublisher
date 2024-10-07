@@ -29,7 +29,6 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly IUAApplication _app;
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly IFileStorage _storage;
 
         private IMessageSource _trigger;
 
@@ -53,14 +52,12 @@ namespace Opc.Ua.Cloud.Publisher
         public UAClient(
             IUAApplication app,
             ILoggerFactory loggerFactory,
-            IMessageSource trigger,
-            IFileStorage storage)
+            IMessageSource trigger)
         {
             _logger = loggerFactory.CreateLogger("UAClient");
             _loggerFactory = loggerFactory;
             _app = app;
             _trigger = trigger;
-            _storage = storage;
         }
 
         public void Dispose()
@@ -282,7 +279,7 @@ namespace Opc.Ua.Cloud.Publisher
             // update our persistency
             if (updatePersistencyFile)
             {
-                PersistPublishedNodesAsync().GetAwaiter().GetResult();
+                PersistPublishedNodes();
             }
         }
 
@@ -629,7 +626,7 @@ namespace Opc.Ua.Cloud.Publisher
                 Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored++;
 
                 // update our persistency
-                PersistPublishedNodesAsync().GetAwaiter().GetResult();
+                PersistPublishedNodes();
 
                 return "Successfully published node " + nodeToPublish.ExpandedNodeId.ToString();
             }
@@ -716,7 +713,7 @@ namespace Opc.Ua.Cloud.Publisher
                         }
 
                         // update our persistency
-                        PersistPublishedNodesAsync().GetAwaiter().GetResult();
+                        PersistPublishedNodes();
 
                         return;
                     }
@@ -848,7 +845,7 @@ namespace Opc.Ua.Cloud.Publisher
             return publisherConfigurationFileEntries;
         }
 
-        private async Task PersistPublishedNodesAsync(CancellationToken cancellationToken = default)
+        private void PersistPublishedNodes(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -856,10 +853,7 @@ namespace Opc.Ua.Cloud.Publisher
                 IEnumerable<PublishNodesInterfaceModel> publisherNodeConfiguration = GetPublishedNodes();
 
                 // update the persistency file
-                if (await _storage.StoreFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)), cancellationToken).ConfigureAwait(false) == null)
-                {
-                    _logger.LogError("Could not store persistency file. Published nodes won't be persisted!");
-                }
+                File.WriteAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)));
             }
             catch (Exception ex)
             {
@@ -1070,6 +1064,17 @@ namespace Opc.Ua.Cloud.Publisher
         public async Task GDSServerPush(string endpointURL, string adminUsername, string adminPassword)
         {
             ServerPushConfigurationClient serverPushClient = new(_app.UAApplicationInstance.ApplicationConfiguration);
+
+            // use environment variables if nothing else was specified
+            if (string.IsNullOrEmpty(adminUsername))
+            {
+                adminUsername = Environment.GetEnvironmentVariable("OPCUA_USERNAME");
+            }
+
+            if (string.IsNullOrEmpty(adminPassword))
+            {
+                adminPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
+            }
 
             serverPushClient.AdminCredentials = new UserIdentity(adminUsername, adminPassword);
 

@@ -6,11 +6,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Microsoft.AspNetCore.Mvc.Rendering;
     using Microsoft.Extensions.Logging;
     using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.IO.Compression;
+    using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -27,10 +30,10 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
         public IActionResult Index()
         {
-            return LoadTrustlist();
+            return View("Index", new CertManagerModel() { Certs = new SelectList(LoadTrustlist()) });
         }
 
-        private IActionResult LoadTrustlist()
+        private List<string> LoadTrustlist()
         {
             List<string> trustList = new();
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
@@ -39,7 +42,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 trustList.Add(cert.Subject + " [" + cert.Thumbprint + "] ");
             }
 
-            return View("Index", new SelectList(trustList));
+            return trustList;
         }
 
         [HttpPost]
@@ -68,12 +71,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 // store in our own trust list
                 await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
 
-                return LoadTrustlist();
+                return View("Index", new CertManagerModel() { Certs = new SelectList(LoadTrustlist()) });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                return View("Index", new SelectList(new List<string>() { ex.Message }));
+                return View("Index", new CertManagerModel() { Certs = new SelectList(new List<string>() { ex.Message }) });
             }
         }
 
@@ -97,7 +100,29 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                return View("Index", new SelectList(new List<string>() { ex.Message }));
+                return View("Index", new CertManagerModel() { Certs = new SelectList(new List<string>() { ex.Message }) });
+            }
+        }
+        [HttpPost]
+        public ActionResult EncryptString(string plainTextString)
+        {
+            try
+            {
+                X509Certificate2 cert = _app.IssuerCert;
+                using RSA rsa = cert.GetRSAPublicKey();
+                if (!string.IsNullOrEmpty(plainTextString) && (rsa != null))
+                {
+                    return View("Index", new CertManagerModel() { Encrypt = Convert.ToBase64String(rsa.Encrypt(Encoding.UTF8.GetBytes(plainTextString), RSAEncryptionPadding.Pkcs1)), Certs = new SelectList(LoadTrustlist()) });
+                }
+                else
+                {
+                    throw new Exception("Encryption failed");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                return View("Index", new CertManagerModel() { Certs = new SelectList(new List<string>() { ex.Message }) });
             }
         }
     }

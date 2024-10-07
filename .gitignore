@@ -354,3 +354,4 @@ MigrationBackup/
 /pki
 /store
 /trustlist.zip
+/customclientcert
