@@ -52,9 +52,9 @@
     <PackageReference Include="Confluent.Kafka" Version="2.5.3" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
     <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.374.118" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.374.118" />
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Gds.Client.Common" Version="1.5.374.118" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.374.124" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.374.124" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Gds.Client.Common" Version="1.5.374.124" />
     <PackageReference Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageReference Include="System.Collections.Concurrent" Version="4.3.0" />
   </ItemGroup>
