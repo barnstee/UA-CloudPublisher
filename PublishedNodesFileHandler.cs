@@ -12,6 +12,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using System.Security.Cryptography;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
+    using System.Threading;
 
     public class PublishedNodesFileHandler : IPublishedNodesFileHandler
     {
@@ -93,6 +94,9 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         try
                         {
                             _uaClient.GDSServerPush(server.EndpointUrl, server.UserName, DecryptString(server.Password));
+
+                            // after the cert push, give the server 5s time to become available again before trying to publish from it
+                            Thread.Sleep(5000);
                         }
                         catch (Exception ex)
                         {
