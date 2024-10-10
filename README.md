@@ -94,11 +94,11 @@ UA Cloud Publisher contains a second broker client that can be used either to **
 
 ## Optional Environment Variables
 
-* AZURE_OPENAI_API_ENDPOINT - the endpoint URL of the Azure OpenAI instance to use in the form https://[yourinstancename].openai.azure.com/
-* AZURE_OPENAI_API_KEY - the key to use
-* AZURE_OPENAI_API_DEPLOYMENT_NAME - the deployment to use
-* OPCUA_USERNAME - OPC UA server username to use when none is specified in publishednodes.json file
-* OPCUA_PASSWORD - OPC UA server password to use when none is specified in publishednodes.json file
+- AZURE_OPENAI_API_ENDPOINT - the endpoint URL of the Azure OpenAI instance to use in the form https://[yourinstancename].openai.azure.com/
+- AZURE_OPENAI_API_KEY - the key to use
+- AZURE_OPENAI_API_DEPLOYMENT_NAME - the deployment to use
+- OPCUA_USERNAME - OPC UA server username to use when none is specified in publishednodes.json file
+- OPCUA_PASSWORD - OPC UA server password to use when none is specified in publishednodes.json file
 
 ## PublishedNodes.json File Format
 

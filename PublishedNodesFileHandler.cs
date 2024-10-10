@@ -64,7 +64,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 _logger.LogInformation($"Loaded {_configurationFileEntries.Count} config file entry/entries.");
 
                 // figure out how many nodes there are in total and capture all unique OPC UA server endpoints
-				Dictionary<string, PublishNodesInterfaceModel> uniqueEndpoints = new();
+                Dictionary<string, PublishNodesInterfaceModel> uniqueEndpoints = new();
                 int totalNodeCount = 0;
                 foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
                 {
@@ -144,11 +144,11 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                             try
                             {
-                            _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                                _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                             }
                             catch (Exception ex)
                             {
-								// skip this event and log an error
+                                // skip this event and log an error
                                 _logger.LogError("Cannot publish event " + publishingInfo.ExpandedNodeId + " on server " + publishingInfo.EndpointUrl + "due to " + ex.Message);
                             }
 
@@ -177,11 +177,11 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                             try
                             {
-                            _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                                _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
                             }
                             catch (Exception ex)
                             {
-								// skip this variable and log an error
+                                // skip this variable and log an error
                                 _logger.LogError("Cannot publish variable " + publishingInfo.ExpandedNodeId + " on server " + publishingInfo.EndpointUrl + "due to " + ex.Message);
                             }
 
