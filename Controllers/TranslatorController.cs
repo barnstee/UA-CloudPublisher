@@ -13,6 +13,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class TranslatorController : Controller
@@ -100,6 +101,21 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     string payload = Encoding.UTF8.GetString(bytes);
                     JObject jsonObject = JObject.Parse(payload);
                     name = jsonObject["name"].ToString();
+                }
+
+                if (Settings.Instance.PushCertsBeforePublishing)
+                {
+                    try
+                    {
+                        await _client.GDSServerPush(endpointUrl, username, password).ConfigureAwait(false);
+
+                        // after the cert push, give the server 5s time to become available again before trying to pudh the WoT file to it
+                        Thread.Sleep(5000);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Cannot push new certificates to server " + endpointUrl + "due to " + ex.Message);
+                    }
                 }
 
                 await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);

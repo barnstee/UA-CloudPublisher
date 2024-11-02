@@ -93,14 +93,13 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         try
                         {
-                            _uaClient.GDSServerPush(server.EndpointUrl, server.UserName, DecryptString(server.Password));
+                            _uaClient.GDSServerPush(server.EndpointUrl, server.UserName, DecryptString(server.Password)).GetAwaiter().GetResult();
 
                             // after the cert push, give the server 5s time to become available again before trying to publish from it
                             Thread.Sleep(5000);
                         }
                         catch (Exception ex)
                         {
-                            // skip this server and log an error
                             _logger.LogError("Cannot push new certificates to server " + server.EndpointUrl + "due to " + ex.Message);
                         }
 
