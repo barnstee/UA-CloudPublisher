@@ -56,7 +56,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         new AssistantChatMessage(System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "pac4200.jsonld"))),
                         new UserChatMessage("Generate a Web of Things Thing Description for a " + chatprompt)
                     },
-                    new ChatCompletionOptions() {
+                    new ChatCompletionOptions()
+                    {
                         Temperature = (float)0.2,
                         MaxOutputTokenCount = 23420,
                         FrequencyPenalty = 0,
