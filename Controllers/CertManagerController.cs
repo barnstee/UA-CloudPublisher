@@ -65,7 +65,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 {
                     byte[] bytes = new byte[file.Length];
                     content.ReadExactly(bytes, 0, (int)file.Length);
-                    certificate = new X509Certificate2(bytes);
+
+                    if (file.FileName.ToLower().EndsWith(".pfx"))
+                    {
+                        certificate = X509CertificateLoader.LoadPkcs12(bytes, string.Empty);
+                    }
+                    else
+                    {
+                        certificate = X509CertificateLoader.LoadCertificate(bytes);
+                    }
                 }
 
                 // store in our own trust list

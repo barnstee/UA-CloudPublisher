@@ -101,7 +101,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                IssuerCert = new X509Certificate2(File.ReadAllBytes(issuerCerts[0]));
+                IssuerCert = X509CertificateLoader.LoadPkcs12FromFile(issuerCerts[0], string.Empty);
             }
 
             Settings.Instance.UAIssuerCertThumbprint = IssuerCert.Thumbprint;

@@ -3,7 +3,6 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 {
     using Microsoft.Extensions.Logging;
     using MQTTnet;
-    using MQTTnet.Adapter;
     using MQTTnet.Exceptions;
     using MQTTnet.Packets;
     using MQTTnet.Protocol;
@@ -57,7 +56,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 if (Settings.Instance.UseCustomCertAuth)
                 {
                     string filePath = Path.Combine(Directory.GetCurrentDirectory(), "customclientcert");
-                    appCert = new X509Certificate2(filePath);
+                    if (filePath.ToLower().EndsWith(".pfx"))
+                    {
+                        appCert = X509CertificateLoader.LoadPkcs12FromFile(filePath, string.Empty);
+                    }
+                    else
+                    {
+                        appCert = X509CertificateLoader.LoadCertificateFromFile(filePath);
+                    }
                 }
                 else
                 {
