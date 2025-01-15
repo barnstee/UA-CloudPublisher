@@ -1,6 +1,6 @@
 # UA Cloud Publisher
 
-A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT. It runs in a container image on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
+A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT and Kafka. It runs in a container image on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
 
 ## Features
 
