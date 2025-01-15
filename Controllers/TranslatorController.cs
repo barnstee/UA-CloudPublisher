@@ -98,7 +98,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 byte[] bytes = new byte[file.Length];
                 using (Stream content = file.OpenReadStream())
                 {
-                    content.Read(bytes, 0, (int)file.Length);
+                    content.ReadExactly(bytes, 0, (int)file.Length);
                     string payload = Encoding.UTF8.GetString(bytes);
                     JObject jsonObject = JObject.Parse(payload);
                     name = jsonObject["name"].ToString();

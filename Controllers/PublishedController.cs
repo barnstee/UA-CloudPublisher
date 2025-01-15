@@ -53,7 +53,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 using (Stream content = file.OpenReadStream())
                 {
                     byte[] bytes = new byte[file.Length];
-                    content.Read(bytes, 0, (int)file.Length);
+                    content.ReadExactly(bytes, 0, (int)file.Length);
 
                     _publishedNodesFileHandler.ParseFile(bytes);
                 }

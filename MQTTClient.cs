@@ -4,7 +4,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using Microsoft.Extensions.Logging;
     using MQTTnet;
     using MQTTnet.Adapter;
-    using MQTTnet.Client;
+    using MQTTnet.Exceptions;
     using MQTTnet.Packets;
     using MQTTnet.Protocol;
     using Newtonsoft.Json;
@@ -12,6 +12,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
+    using System.Buffers;
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
@@ -117,7 +118,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 }
 
                 // create MQTT client
-                _client = new MqttFactory().CreateMqttClient();
+                _client = new MqttClientFactory().CreateMqttClient();
                 _client.ApplicationMessageReceivedAsync += msg => HandleMessageAsync(msg);
 
                 MqttClientOptionsBuilder clientOptions = new MqttClientOptionsBuilder()
@@ -212,14 +213,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                     _logger.LogInformation("Connected to MQTT broker.");
                 }
-                catch (MqttConnectingFailedException ex)
+                catch (MqttCommunicationException ex)
                 {
-                    _logger.LogCritical($"Failed to connect with reason {ex.ResultCode} and message: {ex.Message}");
-                    if (ex.Result?.UserProperties != null)
+                    _logger.LogCritical($"Failed to connect with reason {ex.HResult} and message: {ex.Message}");
+                    if ((ex.Data != null) && (ex.Data.Count > 0))
                     {
-                        foreach (var prop in ex.Result.UserProperties)
+                        foreach (var prop in ex.Data)
                         {
-                            _logger.LogCritical($"{prop.Name}: {prop.Value}");
+                            _logger.LogCritical($"{prop.ToString()}");
                         }
                     }
                 }
@@ -290,7 +291,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 // check if this should be a data message (and we are the alternative broker) or a command
                 if (_isAltBroker)
                 {
-                    new UAPubSubBinaryMessageDecoder(_uAApplication, new LoggerFactory()).ProcessMessage(args.ApplicationMessage.PayloadSegment.ToArray(), DateTime.UtcNow, args.ApplicationMessage.ContentType);
+                    new UAPubSubBinaryMessageDecoder(_uAApplication, new LoggerFactory()).ProcessMessage(args.ApplicationMessage.Payload.ToArray(), DateTime.UtcNow, args.ApplicationMessage.ContentType);
                 }
                 else
                 {
