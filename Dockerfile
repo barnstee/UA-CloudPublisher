@@ -9,6 +9,7 @@ EXPOSE 50000
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY ["UA-CloudPublisher.csproj", "."]
+ENV DOTNET_EnableWriteXorExecute=0
 RUN dotnet restore "./UA-CloudPublisher.csproj"
 COPY . .
 WORKDIR "/src/."
