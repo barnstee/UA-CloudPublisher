@@ -72,7 +72,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 Docker containers are automatically built and published. Simply run the UA Cloud Publisher on a Docker-enabled computer via:
 
-`docker run -itd -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
+`docker run -itd -p 80:8080 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 And then point your browser to <http://yourIPAddress>.
 
@@ -82,7 +82,7 @@ Note: We have also provided a [test environment](./TestEnvironment/readme.md) to
 
 UA Cloud Publisher logs, settings, published nodes and OPC UA certificates can be persisted locally across Docker container restarts by running:
 
-`docker run -itd -v c:/publisher/logs:/app/logs -v c:/publisher/settings:/app/settings -v c:/publisher/pki:/app/pki -p 80:80 ghcr.io/barnstee/ua-cloudpublisher:main`
+`docker run -itd -v c:/publisher/logs:/app/logs -v c:/publisher/settings:/app/settings -v c:/publisher/pki:/app/pki -p 80:8080 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 For Linux hosts, remove the `c:` instances from the command above.
 
