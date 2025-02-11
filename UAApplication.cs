@@ -54,7 +54,7 @@ namespace Opc.Ua.Cloud.Publisher
             _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Instance.UAStackTraceMask:X}");
 
             // check the application certificate
-            bool certOK = await UAApplicationInstance.CheckApplicationInstanceCertificate(false, 0).ConfigureAwait(false);
+            bool certOK = await UAApplicationInstance.CheckApplicationInstanceCertificates(false, 0).ConfigureAwait(false);
             if (!certOK)
             {
                 throw new Exception("Application instance certificate invalid!");

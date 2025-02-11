@@ -86,7 +86,7 @@ namespace Opc.Ua.Cloud.Publisher
                     else
                     {
                         // use a discovery client to connect to the server and discover all its endpoints, then pick the one with the highest security
-                        selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, true);
+                        selectedEndpoint = CoreClientUtils.SelectEndpoint(_app.UAApplicationInstance.ApplicationConfiguration,endpointUrl, true);
 
                         // add to cache
                         _endpointDescriptionCache[endpointUrl] = selectedEndpoint;
@@ -152,7 +152,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                selectedEndpoint = CoreClientUtils.SelectEndpoint(endpointUrl, true);
+                selectedEndpoint = CoreClientUtils.SelectEndpoint(_app.UAApplicationInstance.ApplicationConfiguration, endpointUrl, true);
             }
 
             ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create(_app.UAApplicationInstance.ApplicationConfiguration));
