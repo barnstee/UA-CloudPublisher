@@ -21,29 +21,29 @@
 <hr style="border-top: 1px solid blue" />
 <br />
 <form action="/Config/Apply" method="post">
-<p>
+    <p>
         OPC UA Client Certificate Thumbprint<br />
-        @Html.Label("UAClientCertThumbprint", @Model.UAClientCertThumbprint, null)<br />
+        @Html.TextBox("UAClientCertThumbprint", @Model.UAClientCertThumbprint, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
     </p>
     <p>
         OPC UA Client Certificate Expiry<br />
-        @Html.Label("UAClientCertExpiry", @Model.UAClientCertExpiry.ToString(), null)<br />
-</p>
+        @Html.TextBox("UAClientCertExpiry", @Model.UAClientCertExpiry, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
+    </p>
     <p>
         OPC UA Issuer Certificate Thumbprint<br />
-        @Html.Label("UAIssuerCertThumbprint", @Model.UAIssuerCertThumbprint, null)<br />
+        @Html.TextBox("UAIssuerCertThumbprint", @Model.UAIssuerCertThumbprint, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
     </p>
     <p>
         OPC UA Issuer Certificate Expiry<br />
-        @Html.Label("UAIssuerCertExpiry", @Model.UAIssuerCertExpiry.ToString(), null)<br />
+        @Html.TextBox("UAIssuerCertExpiry", @Model.UAIssuerCertExpiry, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
     </p>
     <p>
         MQTT Client Certificate Thumbprint<br />
-        @Html.Label("MQTTClientCertThumbprint", @Model.MQTTClientCertThumbprint, null)<br />
+        @Html.TextBox("MQTTClientCertThumbprint", @Model.MQTTClientCertThumbprint, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
     </p>
     <p>
         MQTT Client Certificate Expiry<br />
-        @Html.Label("MQTTClientCertExpiry", @Model.MQTTClientCertExpiry.ToString(), null)<br />
+        @Html.TextBox("MQTTClientCertExpiry", @Model.MQTTClientCertExpiry, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
     </p>
     <p>
         <input class="btn btn-primary" type="submit" name="Apply" value="Apply Changes" />

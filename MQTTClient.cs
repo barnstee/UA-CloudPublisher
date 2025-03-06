@@ -131,7 +131,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         .WithTcpServer(brokerUrl, (int?)brokerPort)
                         .WithClientId(publisherName)
                         .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
-                        .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
+                        .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                         .WithTimeout(TimeSpan.FromSeconds(10))
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                         .WithCleanSession(true) // clear existing subscriptions
@@ -143,7 +143,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         .WithWebSocketServer(o => o.WithUri(brokerUrl))
                         .WithClientId(publisherName)
                         .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
-                        .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V311)
+                        .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                         .WithTimeout(TimeSpan.FromSeconds(10))
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
                         .WithCleanSession(true) // clear existing subscriptions
@@ -177,11 +177,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     // wait a 5 seconds, then simply reconnect again, if needed
                     Task.Delay(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
 
-                    MqttClientConnectResult connectResult = _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).GetAwaiter().GetResult();
-                    if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
+                    if (!_client.IsConnected)
                     {
-                        string status = GetStatus(connectResult.UserProperties)?.ToString("x4");
-                        throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
+                        MqttClientConnectResult connectResult = _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).GetAwaiter().GetResult();
+                        if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
+                        {
+                            string status = GetStatus(connectResult.UserProperties)?.ToString("x4");
+                            throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
+                        }
                     }
 
                     return Task.CompletedTask;
@@ -273,7 +276,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
         // parses status from packet properties
         private int? GetStatus(List<MqttUserProperty> properties)
         {
-            var status = properties.FirstOrDefault(up => up.Name == "status");
+            if (properties == null)
+            {
+                return null;
+            }
+
+            MqttUserProperty status = properties.FirstOrDefault(up => up.Name == "status");
             if (status == null)
             {
                 return null;
