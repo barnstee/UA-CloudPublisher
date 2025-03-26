@@ -16,8 +16,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
         private readonly IMessageProcessor _messageProcessor;
         private readonly Settings.BrokerResolver _brokerResolver;
+        private readonly IMessagePublisher _messagePublisher;
 
-        public ConfigController(Settings.BrokerResolver brokerResolver, IMessageProcessor messageProcessor)
+        public ConfigController(Settings.BrokerResolver brokerResolver, IMessageProcessor messageProcessor, IMessagePublisher messagePublisher)
         {
             _brokerResolver = brokerResolver;
 
@@ -31,6 +32,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
 
             _messageProcessor = messageProcessor;
+            _messagePublisher = messagePublisher;
         }
 
         public IActionResult Index()
@@ -118,6 +120,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     _alternativeBrokerClient = _brokerResolver("MQTT");
                     _alternativeBrokerClient.Connect(true);
                 }
+
+                _messagePublisher.ApplyNewClient(_brokerClient);
 
                 // clear metadata message cache
                 _messageProcessor.ClearMetadataMessageCache();

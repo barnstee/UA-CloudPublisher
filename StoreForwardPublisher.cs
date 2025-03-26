@@ -31,6 +31,11 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
+        public void ApplyNewClient(IBrokerClient client)
+        {
+            _client = client;
+        }
+
         public bool SendMetadata(byte[] message)
         {
             bool success = false;

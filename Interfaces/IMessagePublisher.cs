@@ -6,5 +6,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
         bool SendMessage(byte[] message);
 
         bool SendMetadata(byte[] metadata);
+
+        void ApplyNewClient(IBrokerClient client);
     }
 }
