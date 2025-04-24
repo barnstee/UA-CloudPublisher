@@ -50,12 +50,12 @@ namespace Opc.Ua.Cloud.Dashboard
                             object[] messageArray = JsonConvert.DeserializeObject<object[]>(message);
                             foreach (object singleMessage in messageArray)
                             {
-                                DecodeMessage(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(singleMessage)), receivedTime, new JsonNetworkMessage());
+                                DecodeMessage(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(singleMessage)), receivedTime, new Opc.Ua.PubSub.Encoding.JsonNetworkMessage());
                             }
                         }
                         else
                         {
-                            DecodeMessage(payload, receivedTime, new JsonNetworkMessage());
+                            DecodeMessage(payload, receivedTime, new Opc.Ua.PubSub.Encoding.JsonNetworkMessage());
                         }
                     }
                     else
@@ -144,9 +144,9 @@ namespace Opc.Ua.Cloud.Dashboard
             if (encodedMessage.IsMetaDataMessage)
             {
                 // setup dataset reader
-                if (encodedMessage is JsonNetworkMessage)
+                if (encodedMessage is Opc.Ua.PubSub.Encoding.JsonNetworkMessage)
                 {
-                    JsonNetworkMessage jsonMessage = (JsonNetworkMessage)encodedMessage;
+                    Opc.Ua.PubSub.Encoding.JsonNetworkMessage jsonMessage = (Opc.Ua.PubSub.Encoding.JsonNetworkMessage)encodedMessage;
 
                     AddJsonDataSetReader(jsonMessage.PublisherId, jsonMessage.DataSetWriterId, encodedMessage.DataSetMetaData);
                 }
@@ -165,9 +165,9 @@ namespace Opc.Ua.Cloud.Dashboard
                 _dataSetReaders["default_json:0"].DataSetMetaData.Fields.Clear();
 
                 string publisherID = string.Empty;
-                if (encodedMessage is JsonNetworkMessage)
+                if (encodedMessage is Opc.Ua.PubSub.Encoding.JsonNetworkMessage)
                 {
-                    publisherID = ((JsonNetworkMessage)encodedMessage).PublisherId?.ToString();
+                    publisherID = ((Opc.Ua.PubSub.Encoding.JsonNetworkMessage)encodedMessage).PublisherId?.ToString();
                 }
                 else
                 {
