@@ -24,7 +24,6 @@ namespace Opc.Ua.Cloud.Publisher
         private const uint WoTAssetConnectionManagement = 31;
         private const uint WoTAssetConnectionManagement_CreateAsset = 32;
         private const uint WoTAssetConnectionManagement_DeleteAsset = 35;
-        private const uint WoTAssetFileType_CloseAndUpdate = 111;
 
         private readonly IUAApplication _app;
         private readonly ILogger _logger;
@@ -134,7 +133,14 @@ namespace Opc.Ua.Cloud.Publisher
             Session existingSession = FindSession(endpointUrl);
             if (existingSession != null)
             {
-                return existingSession;
+                if (existingSession.Connected)
+                {
+                    return existingSession;
+                }
+                else
+                {
+                    existingSession.Close();
+                }
             }
 
             EndpointDescription selectedEndpoint = null;
@@ -1247,7 +1253,6 @@ namespace Opc.Ua.Cloud.Publisher
 
                 NodeId createNodeId = new(WoTAssetConnectionManagement_CreateAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
                 NodeId deleteNodeId = new(WoTAssetConnectionManagement_DeleteAsset, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
-                NodeId closeNodeId = new(WoTAssetFileType_CloseAndUpdate, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
                 NodeId parentNodeId = new(WoTAssetConnectionManagement, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
 
                 Variant assetId = new(string.Empty);
@@ -1306,7 +1311,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                 }
 
-                Variant result = ExecuteCommand(session, closeNodeId, fileId, fileHandle, null, out status);
+                Variant result = ExecuteCommand(session, MethodIds.FileType_Close, fileId, fileHandle, null, out status);
                 if (StatusCode.IsNotGood(status))
                 {
                     throw new Exception(status.ToString() + ": " + result.ToString());
