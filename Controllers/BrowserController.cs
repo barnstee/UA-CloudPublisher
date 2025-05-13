@@ -89,7 +89,10 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
-            _client.Disconnect(_session.EndpointUrl);
+            if (!string.IsNullOrEmpty(_session.EndpointUrl))
+            {
+                _client.Disconnect(_session.EndpointUrl);
+            }
 
             HttpContext.Session.SetString("EndpointUrl", string.Empty);
 
