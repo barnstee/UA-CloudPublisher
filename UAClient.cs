@@ -127,6 +127,19 @@ namespace Opc.Ua.Cloud.Publisher
             return null;
         }
 
+        public void Disconnect(string endpointUrl)
+        {
+            Session existingSession = FindSession(endpointUrl);
+            if (existingSession != null)
+            {
+                existingSession.Close();
+                _sessions.Remove(existingSession);
+                _complexTypeList.Remove(existingSession);
+                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
+                existingSession = null;
+            }
+        }
+
         private async Task<Session> ConnectSessionAsync(string endpointUrl, string username, string password)
         {
             // check if the required session is already available
@@ -277,6 +290,7 @@ namespace Opc.Ua.Cloud.Publisher
                     _sessions.Remove(session);
                     _complexTypeList.Remove(session);
                     Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
+                    session = null;
 
                     _logger.LogInformation("Session to endpoint {endpoint} closed successfully.", endpoint);
                 }
