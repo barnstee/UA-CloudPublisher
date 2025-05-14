@@ -1083,57 +1083,63 @@ namespace Opc.Ua.Cloud.Publisher
 
         public async Task GDSServerPush(string endpointURL, string adminUsername, string adminPassword)
         {
-            ServerPushConfigurationClient serverPushClient = new(_app.UAApplicationInstance.ApplicationConfiguration);
-
-            // use environment variables if nothing else was specified
-            if (string.IsNullOrEmpty(adminUsername))
+            try
             {
-                adminUsername = Environment.GetEnvironmentVariable("OPCUA_USERNAME");
-            }
+                ServerPushConfigurationClient serverPushClient = new(_app.UAApplicationInstance.ApplicationConfiguration);
 
-            if (string.IsNullOrEmpty(adminPassword))
+                // use environment variables if nothing else was specified
+                if (string.IsNullOrEmpty(adminUsername))
+                {
+                    adminUsername = Environment.GetEnvironmentVariable("OPCUA_USERNAME");
+                }
+
+                if (string.IsNullOrEmpty(adminPassword))
+                {
+                    adminPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
+                }
+
+                serverPushClient.AdminCredentials = new UserIdentity(adminUsername, adminPassword);
+
+                await serverPushClient.Connect(endpointURL).ConfigureAwait(false);
+
+                byte[] unusedNonce = new byte[0];
+                byte[] certificateRequest = serverPushClient.CreateSigningRequest(
+                    NodeId.Null,
+                    serverPushClient.ApplicationCertificateType,
+                    string.Empty,
+                    false,
+                    unusedNonce);
+
+                X509Certificate2 certificate = ProcessSigningRequest(
+                    serverPushClient.Session.ServerUris.ToArray()[0],
+                    null,
+                    certificateRequest);
+
+                byte[][] issuerCertificates = [_app.IssuerCert.Export(X509ContentType.Cert)];
+                serverPushClient.UpdateCertificate(
+                    NodeId.Null,
+                    serverPushClient.ApplicationCertificateType,
+                    certificate.Export(X509ContentType.Cert),
+                    string.Empty,
+                    Array.Empty<byte>(),
+                    issuerCertificates);
+
+                // store in our own trust list
+                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
+
+                // update trust list on server
+                TrustListDataType trustList = GetTrustLists();
+                serverPushClient.UpdateTrustList(trustList);
+
+                serverPushClient.ApplyChanges();
+
+                serverPushClient.Disconnect();
+            }
+            catch (Exception ex)
             {
-                adminPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
+                _logger.LogError(ex, "GDS server push failed with: " + ex.Message);
+                throw;
             }
-
-            serverPushClient.AdminCredentials = new UserIdentity(adminUsername, adminPassword);
-
-            await serverPushClient.Connect(endpointURL).ConfigureAwait(false);
-
-            byte[] unusedNonce = new byte[0];
-            byte[] certificateRequest = serverPushClient.CreateSigningRequest(
-                NodeId.Null,
-                serverPushClient.ApplicationCertificateType,
-                string.Empty,
-                false,
-                unusedNonce);
-
-            X509Certificate2 certificate = ProcessSigningRequest(
-                serverPushClient.Session.ServerUris.ToArray()[0],
-                null,
-                certificateRequest);
-
-            byte[][] issuerCertificates = new byte[1][];
-            issuerCertificates[0] = _app.IssuerCert.Export(X509ContentType.Cert);
-
-            serverPushClient.UpdateCertificate(
-                NodeId.Null,
-                serverPushClient.ApplicationCertificateType,
-                certificate.Export(X509ContentType.Pfx),
-                string.Empty,
-                new byte[0],
-                issuerCertificates);
-
-            // store in our own trust list
-            await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
-
-            // update trust list on server
-            TrustListDataType trustList = GetTrustLists();
-            serverPushClient.UpdateTrustList(trustList);
-
-            serverPushClient.ApplyChanges();
-
-            serverPushClient.Disconnect();
         }
 
         private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
