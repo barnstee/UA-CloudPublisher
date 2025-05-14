@@ -1104,9 +1104,9 @@ namespace Opc.Ua.Cloud.Publisher
             byte[] certificateRequest = serverPushClient.CreateSigningRequest(
                 NodeId.Null,
                 serverPushClient.ApplicationCertificateType,
-            string.Empty,
-            false,
-            unusedNonce);
+                string.Empty,
+                false,
+                unusedNonce);
 
             X509Certificate2 certificate = ProcessSigningRequest(
                 serverPushClient.Session.ServerUris.ToArray()[0],
