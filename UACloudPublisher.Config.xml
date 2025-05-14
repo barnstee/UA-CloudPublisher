@@ -9,11 +9,42 @@
   <ProductUri>https://github.com/azure/iot-edge-opc-publisher</ProductUri>
   <ApplicationType>Client_1</ApplicationType>
   <SecurityConfiguration>
-    <ApplicationCertificate>
-      <StoreType>Directory</StoreType>
-      <StorePath>./pki/own</StorePath>
-      <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPCFoundation</SubjectName>
-    </ApplicationCertificate>
+    <ApplicationCertificates>
+      <CertificateIdentifier>
+        <StoreType>Directory</StoreType>
+        <StorePath>./pki/own</StorePath>
+        <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPC Foundation, DC=localhost</SubjectName>
+        <CertificateTypeString>RsaSha256</CertificateTypeString>
+      </CertificateIdentifier>
+      <CertificateIdentifier>
+        <!-- <TypeId>NistP256</TypeId> -->
+        <StoreType>Directory</StoreType>
+        <StorePath>./pki/own</StorePath>
+        <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPC Foundation, DC=localhost</SubjectName>
+        <CertificateTypeString>NistP256</CertificateTypeString>
+      </CertificateIdentifier>
+      <CertificateIdentifier>
+        <!-- <TypeId>NistP384</TypeId> -->
+        <StoreType>Directory</StoreType>
+        <StorePath>./pki/own</StorePath>
+        <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPC Foundation, DC=localhost</SubjectName>
+        <CertificateTypeString>NistP384</CertificateTypeString>
+      </CertificateIdentifier>
+      <CertificateIdentifier>
+        <!-- <TypeId>BrainpoolP256r1</TypeId> -->
+        <StoreType>Directory</StoreType>
+        <StorePath>./pki/own</StorePath>
+        <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPC Foundation, DC=localhost</SubjectName>
+        <CertificateTypeString>BrainpoolP256r1</CertificateTypeString>
+      </CertificateIdentifier>
+      <CertificateIdentifier>
+        <!-- <TypeId>BrainpoolP384r1</TypeId> -->
+        <StoreType>Directory</StoreType>
+        <StorePath>./pki/own</StorePath>
+        <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPC Foundation, DC=localhost</SubjectName>
+        <CertificateTypeString>BrainpoolP384r1</CertificateTypeString>
+      </CertificateIdentifier>
+    </ApplicationCertificates>
     <TrustedIssuerCertificates>
       <StoreType>Directory</StoreType>
       <StorePath>./pki/issuer</StorePath>
@@ -31,6 +62,11 @@
     <RejectSHA1SignedCertificates>false</RejectSHA1SignedCertificates>
     <MinimumCertificateKeySize>1024</MinimumCertificateKeySize>
     <SendCertificateChain>false</SendCertificateChain>
+    <!-- Where the User issers list is stored-->
+    <UserIssuerCertificates>
+      <StoreType>Directory</StoreType>
+      <StorePath>./pki/userIssuer</StorePath>
+    </UserIssuerCertificates>
     <UserIssuerCertificates>
       <StoreType>Directory</StoreType>
       <StorePath>./pki/issuerUser</StorePath>

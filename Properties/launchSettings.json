@@ -34,8 +34,8 @@
         "AZURE_OPENAI_API_ENDPOINT": "https://[yourinstancename].openai.azure.com/",
         "AZURE_OPENAI_API_KEY": "",
         "AZURE_OPENAI_API_DEPLOYMENT_NAME": "",
-        "OPCUA_USERNAME": "",
-        "OPCUA_PASSWORD": ""
+        "OPCUA_USERNAME": "myUsername",
+        "OPCUA_PASSWORD": "myPassword"
       }
     }
   }
