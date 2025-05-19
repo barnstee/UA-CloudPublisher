@@ -12,6 +12,7 @@ namespace Opc.Ua.Cloud.Publisher
     using System.Threading.Tasks;
     using Opc.Ua.Cloud.Publisher.Configuration;
     using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Radzen;
 
     public class Startup
     {
@@ -36,6 +37,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             services.AddRazorPages();
             services.AddServerSideBlazor();
+            services.AddRadzenComponents();
 
             services.AddLogging(logging =>
             {

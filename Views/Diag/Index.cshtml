@@ -1,4 +1,5 @@
 ﻿@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Pages
 
 @{
     ViewData["Title"] = "UA Cloud Publisher";
@@ -8,6 +9,12 @@
 
 <p>
     Performance:
+</p>
+<p>
+    <component>@(await Html.RenderComponentAsync<Chart>(
+        RenderMode.Server,
+        new {
+        }).ConfigureAwait(false))</component>
 </p>
 <p>
     <div class="chart-container" width="600" height="400">

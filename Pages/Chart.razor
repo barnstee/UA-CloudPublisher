@@ -1,0 +1,80 @@
+﻿<RadzenTheme Theme="material" @rendermode="InteractiveAuto" />
+<RadzenComponents @rendermode="InteractiveAuto" />
+
+<RadzenChart ColorScheme="ColorScheme.Pastel" Style="height:500px" @ref="chart0">
+    <ChildContent>
+        <RadzenCategoryAxis>
+            <RadzenAxisTitle />
+        </RadzenCategoryAxis>
+        <RadzenLineSeries Stroke="red" Title="Avg Msg Latency (ms)" Smooth="true" CategoryProperty="stamp" Data="@_chartData1" ValueProperty="value">
+            <RadzenMarkers Visible="false" MarkerType="MarkerType.Auto" />
+        </RadzenLineSeries>
+        <RadzenLineSeries Stroke="pink" Title="Broker Msg/s" Smooth="true" CategoryProperty="stamp" Data="@_chartData2" ValueProperty="value">
+            <RadzenMarkers Visible="false" MarkerType="MarkerType.Auto" />
+        </RadzenLineSeries>
+        <RadzenLineSeries Stroke="yellow" Title="Notifications/s" Smooth="true" CategoryProperty="stamp" Data="@_chartData3" ValueProperty="value">
+            <RadzenMarkers Visible="false" MarkerType="MarkerType.Auto" />
+        </RadzenLineSeries>
+        <RadzenValueAxis Min="0">
+            <RadzenAxisTitle />
+        </RadzenValueAxis>
+    </ChildContent>
+</RadzenChart>
+
+@code {
+
+    public class ChartDataItem
+    {
+        public string stamp { get; set; }
+        public double value { get; set; }
+    }
+
+    RadzenChart chart0;
+
+    private List<ChartDataItem> _chartData1 = new();
+    private List<ChartDataItem> _chartData2 = new();
+    private List<ChartDataItem> _chartData3 = new();
+
+    private long _lastNumMessagesSent = 0;
+
+    protected override void OnInitialized()
+    {
+        System.Timers.Timer timer = new System.Timers.Timer();
+        timer.Interval = 3000;
+        timer.Elapsed += OnTimedEvent;
+        timer.AutoReset = true;
+        timer.Enabled = true;
+    }
+
+    void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+    {
+        InvokeAsync(async() =>
+        {
+            float messagesPerSecond = ((float)(Diagnostics.Singleton.Info.SentMessages - _lastNumMessagesSent)) / Settings.Instance.DiagnosticsLoggingInterval;
+            string now = DateTime.Now.ToLongTimeString();
+
+            _chartData1.Add(new ChartDataItem() { stamp = now, value = Diagnostics.Singleton.Info.AverageMessageLatency });
+            _chartData2.Add(new ChartDataItem() { stamp = now, value = messagesPerSecond });
+            _chartData3.Add(new ChartDataItem() { stamp = now, value = messagesPerSecond * Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage });
+
+            if (_chartData1.Count > 15)
+            {
+                _chartData1.RemoveAt(0);
+            }
+
+            if (_chartData2.Count > 15)
+            {
+                _chartData2.RemoveAt(0);
+            }
+
+            if (_chartData3.Count > 15)
+            {
+                _chartData3.RemoveAt(0);
+            }
+
+            _lastNumMessagesSent = Diagnostics.Singleton.Info.SentMessages;
+
+            await chart0.Reload().ConfigureAwait(false);
+        });
+    }
+}
