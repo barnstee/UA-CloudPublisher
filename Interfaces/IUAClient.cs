@@ -26,7 +26,9 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
         Task GDSServerPush(string endpointURL, string adminUsername, string adminPassword);
 
         Task WoTConUpload(string endpoint, string username, string password, byte[] bytes, string assetName);
-        
+
+        Task UANodesetUpload(string endpoint, string username, string password, byte[] bytes);
+
         void Disconnect(string endpointUrl);
     }
 }

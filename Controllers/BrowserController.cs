@@ -63,7 +63,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             if (string.IsNullOrEmpty(endpointUrl) || !endpointUrl.StartsWith("opc.tcp://"))
             {
-                _session.StatusMessage = "Please provide a valid OPC UA endpoint URL in the format opc.tcp://ipaddress:port";
+                _session.StatusMessage = "Please provide a valid OPC UA endpoint URL in the address format opc.tcp://ipaddress:port";
                 return View("Index", _session);
             }
 

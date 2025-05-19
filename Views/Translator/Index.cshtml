@@ -13,7 +13,8 @@
        You can use the <b>Azure OpenAI</b> service to generate and download a Web of Things (WoT) Thing Description for the asset you want to configure automatically.<br />
        <a href ="https://eclipse.github.io/editdor/">Here</a> is a good online editor for WoT files.<br />
        After validating its contents, choose the file below.<br />
-       Finally, send it to UA Edge Translator via OPC UA to configure the asset.
+       Finally, send it to UA Edge Translator via OPC UA to configure the asset.<br />
+       Although UA Edge Translator can load OPC UA nodeset files directly from the UA Cloud Library, you can also manually send OPC UA nodeset files to UA Edge Translator below. They can be used to map WoT properties to specific OPC UA types.<br />
     </p>
     <br />
     <hr style="border-top: 1px solid blue" />
@@ -34,7 +35,7 @@
     <br />
     <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
         <p>
-            2. Load the manually validated asset description file:<br />
+            2. Load the manually validated asset description file (.jsonld extension) or an OPC UA nodeset file (.xml extension):<br />
         </p>
         <p>
             <input class="btn btn-primary" type="file" name="file">
@@ -43,7 +44,7 @@
         <hr style="border-top: 1px solid blue" />
         <br />
         <p>
-            3. Send the loaded asset description file to UA Edge Translator. UA Translator address format: opc.tcp://ipaddress:port <br />
+            3. Send the loaded asset description or nodeset file to UA Edge Translator (address format: opc.tcp://ipaddress:port): <br />
         </p>
         <p>
             Address:<br />

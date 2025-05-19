@@ -119,7 +119,18 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     }
                 }
 
-                await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
+                if (file.FileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _client.UANodesetUpload(endpointUrl, username, password, bytes).ConfigureAwait(false);
+                }
+                else if (file.FileName.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
+                }
+                else
+                {
+                    throw new ArgumentException("Invalid file type specified!");
+                }
 
                 return View("Index", "UA Edge Translator configured successfully!");
             }

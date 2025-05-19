@@ -1362,6 +1362,84 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
+        public async Task UANodesetUpload(string endpoint, string username, string password, byte[] bytes)
+        {
+            Session session = null;
+            NodeId fileId = null;
+            object fileHandle = null;
+            try
+            {
+                session = await ConnectSessionAsync(endpoint, username, password).ConfigureAwait(false);
+                if (session == null)
+                {
+                    // couldn't create the session
+                    throw new Exception($"Could not create session for endpoint {endpoint}!");
+                }
+
+                NodeId parentNodeId = new(WoTAssetConnectionManagement, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
+
+
+                StatusCode status = new StatusCode(0);
+
+                BrowseDescription nodeToBrowse = new()
+                {
+                    NodeId = new NodeId("Nodeset Upload"),
+                    BrowseDirection = BrowseDirection.Forward,
+                    NodeClassMask = (uint)NodeClass.Object,
+                    ResultMask = (uint)BrowseResultMask.All
+                };
+
+                ReferenceDescriptionCollection references = await Browse(endpoint, username, password, nodeToBrowse, true).ConfigureAwait(false);
+
+                fileId = (NodeId)references[0].NodeId;
+                fileHandle = ExecuteCommand(session, MethodIds.FileType_Open, fileId, (byte)6, null, out status);
+                if (StatusCode.IsNotGood(status))
+                {
+                    throw new Exception(status.ToString());
+                }
+
+                for (int i = 0; i < bytes.Length; i += 3000)
+                {
+                    byte[] chunk = bytes.AsSpan(i, Math.Min(3000, bytes.Length - i)).ToArray();
+
+                    ExecuteCommand(session, MethodIds.FileType_Write, fileId, fileHandle, chunk, out status);
+                    if (StatusCode.IsNotGood(status))
+                    {
+                        throw new Exception(status.ToString());
+                    }
+                }
+
+                Variant result = ExecuteCommand(session, MethodIds.FileType_Close, fileId, fileHandle, null, out status);
+                if (StatusCode.IsNotGood(status))
+                {
+                    throw new Exception(status.ToString() + ": " + result.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+
+                if ((session != null) && (fileId != null) && (fileHandle != null))
+                {
+                    ExecuteCommand(session, MethodIds.FileType_Close, fileId, fileHandle, null, out StatusCode status);
+                }
+
+                throw;
+            }
+            finally
+            {
+                if (session != null)
+                {
+                    if (session.Connected)
+                    {
+                        session.Close();
+                    }
+
+                    session.Dispose();
+                }
+            }
+        }
+
         private Variant ExecuteCommand(Session session, NodeId nodeId, NodeId parentNodeId, object argument1, object argument2, out StatusCode status)
         {
             try
