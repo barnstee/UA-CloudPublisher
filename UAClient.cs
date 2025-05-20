@@ -130,7 +130,7 @@ namespace Opc.Ua.Cloud.Publisher
         public void Disconnect(string endpointUrl)
         {
             Session existingSession = FindSession(endpointUrl);
-            if (existingSession != null)
+            if ((existingSession != null) && (existingSession.SubscriptionCount == 0))
             {
                 existingSession.Close();
                 _sessions.Remove(existingSession);
@@ -278,8 +278,8 @@ namespace Opc.Ua.Cloud.Publisher
                         {
                             subscription.RemoveItem(subscription.MonitoredItems.First());
                             subscription.ApplyChanges();
+                            Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
                         }
-                        Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored -= (int)subscription.MonitoredItemCount;
 
                         session.RemoveSubscription(subscription);
                         Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
@@ -582,6 +582,7 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         opcSubscription.RemoveItem(monitoredItem);
                         opcSubscription.ApplyChanges();
+                        Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
                     }
                 }
 
@@ -616,6 +617,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 opcSubscription.AddItem(newMonitoredItem);
                 opcSubscription.ApplyChanges();
+                Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored++;
 
                 // create a heartbeat timer, if required
                 if (nodeToPublish.HeartbeatInterval > 0)
@@ -642,8 +644,6 @@ namespace Opc.Ua.Cloud.Publisher
                 _logger.LogDebug("PublishNode: Now monitoring OPC UA node {expandedNodeId} on endpoint {endpointUrl}",
                    nodeToPublish.ExpandedNodeId,
                    session.ConfiguredEndpoint.EndpointUrl);
-
-                Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored++;
 
                 // update our persistency
                 PersistPublishedNodes();
@@ -722,7 +722,6 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         subscription.RemoveItem(monitoredItem);
                         subscription.ApplyChanges();
-
                         Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
 
                         // cleanup empty subscriptions and sessions

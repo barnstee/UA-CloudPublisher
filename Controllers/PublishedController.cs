@@ -119,7 +119,11 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     {
                         string[] parts = key.Split(' ');
                         node.EndpointUrl = parts[1];
-                        node.ExpandedNodeId = ExpandedNodeId.Parse(parts[3]);
+
+                        // get the nodeId from the key
+                        string nodeId = key.Substring(key.IndexOf("Variable: ") + 10);
+
+                        node.ExpandedNodeId = ExpandedNodeId.Parse(nodeId);
                         break;
                     }
                 }
