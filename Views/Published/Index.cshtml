@@ -82,24 +82,6 @@
                     .configureLogging(signalR.LogLevel.Information)
                     .build();
 
-                // add dataset function
-                connection.on("addDatasetToChart", function(name)
-                {
-                    // do nothing
-                });
-
-                // add data function
-                connection.on("addDataToChart", function(timestamp, values)
-                {
-                   // do nothing
-                });
-
-                // add table function
-                connection.on("addTable", function(html)
-                {
-                    // do nothing
-                });
-
                 // update progress function
                 connection.on("updateProgress", function(percentage)
                 {

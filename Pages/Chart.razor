@@ -1,4 +1,5 @@
-﻿<RadzenTheme Theme="material" @rendermode="InteractiveAuto" />
+﻿@using System.Diagnostics
+<RadzenTheme Theme="material" @rendermode="InteractiveAuto" />
 <RadzenComponents @rendermode="InteractiveAuto" />
 
 <RadzenChart ColorScheme="ColorScheme.Pastel" Style="height:500px" @ref="chart0">
@@ -6,13 +7,13 @@
         <RadzenCategoryAxis>
             <RadzenAxisTitle />
         </RadzenCategoryAxis>
-        <RadzenLineSeries Stroke="red" Title="Avg Msg Latency (ms)" Smooth="true" CategoryProperty="stamp" Data="@_chartData1" ValueProperty="value">
+        <RadzenLineSeries Stroke="red" Title="Send Latency (ms)" Smooth="true" CategoryProperty="stamp" Data="@_chartData1" ValueProperty="value">
             <RadzenMarkers Visible="false" MarkerType="MarkerType.Auto" />
         </RadzenLineSeries>
-        <RadzenLineSeries Stroke="pink" Title="Broker Msg/s" Smooth="true" CategoryProperty="stamp" Data="@_chartData2" ValueProperty="value">
+        <RadzenLineSeries Stroke="blue" Title="Messages/s" Smooth="true" CategoryProperty="stamp" Data="@_chartData2" ValueProperty="value">
             <RadzenMarkers Visible="false" MarkerType="MarkerType.Auto" />
         </RadzenLineSeries>
-        <RadzenLineSeries Stroke="yellow" Title="Notifications/s" Smooth="true" CategoryProperty="stamp" Data="@_chartData3" ValueProperty="value">
+        <RadzenLineSeries Stroke="yellow" Title="Tags/s" Smooth="true" CategoryProperty="stamp" Data="@_chartData3" ValueProperty="value">
             <RadzenMarkers Visible="false" MarkerType="MarkerType.Auto" />
         </RadzenLineSeries>
         <RadzenValueAxis Min="0">
@@ -20,6 +21,35 @@
         </RadzenValueAxis>
     </ChildContent>
 </RadzenChart>
+
+<table width='800px' cellpadding='3' cellspacing='3'>
+    <tr><th><b>Name</b></th><th><b>Latest Value</b></th></tr>
+    <tr><td style='width:400px'>Publisher Start Time</td><td style='width:200px'>@Diagnostics.Singleton.Info.PublisherStartTime</td></tr>
+    <tr><td style='width:400px'>Connected to broker(s)</td><td style='width:200px'>@Diagnostics.Singleton.Info.ConnectedToBroker</td></tr>
+    <tr><td style='width:400px'>OPC UA sessions</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected</td></tr>
+    <tr><td style='width:400px'>OPC UA subscriptions</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected</td></tr>
+    <tr><td style='width:400px'>OPC UA monitored items</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored</td></tr>
+    <tr><td style='width:400px'>OPC UA monitored items queue capacity</td><td style='width:200px'>@Settings.Instance.InternalQueueCapacity</td></tr>
+    <tr><td style='width:400px'>OPC UA monitored items queue current items</td><td style='width:200px'>@Diagnostics.Singleton.Info.MonitoredItemsQueueCount</td></tr>
+    <tr><td style='width:400px'>OPC UA monitored items enqueued</td><td style='width:200px'>@Diagnostics.Singleton.Info.EnqueueCount</td></tr>
+    <tr><td style='width:400px'>OPC UA monitored items enqueue failure</td><td style='width:200px'>@Diagnostics.Singleton.Info.EnqueueFailureCount</td></tr>
+    <tr><td style='width:400px'>Messages sent to broker</td><td style='width:200px'>@Diagnostics.Singleton.Info.SentMessages</td></tr>
+    <tr><td style='width:400px'>Last successful broker message sent at</td><td style='width:200px'>@Diagnostics.Singleton.Info.SentLastTime</td></tr>
+    <tr><td style='width:400px'>Total bytes sent to broker</td><td style='width:200px'>@Diagnostics.Singleton.Info.SentBytes</td></tr>
+    <tr><td style='width:400px'>Average broker message size (bytes)</td><td style='width:200px'>@(Diagnostics.Singleton.Info.SentBytes /(Diagnostics.Singleton.Info.SentMessages == 0 ? 1 : Diagnostics.Singleton.Info.SentMessages))</td></tr>
+    <tr><td style='width:400px'>Average broker message latency (ms)</td><td style='width:200px'>@Diagnostics.Singleton.Info.AverageMessageLatency</td></tr>
+    <tr><td style='width:400px'>Average broker messages/second sent</td><td style='width:200px'>@_messagesPerSecond</td></tr>
+    <tr><td style='width:400px'>Average number of OPC UA monitored items batched in broker message</td><td style='width:200px'>@Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage</td></tr>
+    <tr><td style='width:400px'>Average number of OPC UA monitored items/second sent</td><td style='width:200px'>@(_messagesPerSecond* Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage)</td></tr>
+    <tr><td style='width:400px'>Broker message send failures</td><td style='width:200px'>@Diagnostics.Singleton.Info.FailedMessages</td></tr>
+    <tr><td style='width:400px'>Broker messages too large to send to broker</td><td style='width:200px'>@Diagnostics.Singleton.Info.TooLargeCount</td></tr>
+    <tr><td style='width:400px'>Missed broker message send intervals</td><td style='width:200px'>@Diagnostics.Singleton.Info.MissedSendIntervalCount</td></tr>
+    <tr><td style='width:400px'>Number of OPC UA monitored items encoded</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfEvents</td></tr>
+    <tr><td style='width:400px'>Current working set in MB</td><td style='width:200px'>@(Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024))</td></tr>
+    <tr><td style='width:400px'>Broker send interval setting (s)</td><td style='width:200px'>@Settings.Instance.DefaultSendIntervalSeconds</td></tr>
+    <tr><td style='width:400px'>Broker message size setting (bytes)</td><td style='width:200px'>@Settings.Instance.BrokerMessageSize</td></tr>
+    <tr><td style='width:400px'>.</td><td style='width:200px'>.</td></tr>
+</table>
 
 @code {
 
@@ -37,6 +67,8 @@
 
     private long _lastNumMessagesSent = 0;
 
+    private float _messagesPerSecond = 0f;
+
     protected override void OnInitialized()
     {
         System.Timers.Timer timer = new System.Timers.Timer();
@@ -50,12 +82,12 @@
     {
         InvokeAsync(async() =>
         {
-            float messagesPerSecond = ((float)(Diagnostics.Singleton.Info.SentMessages - _lastNumMessagesSent)) / Settings.Instance.DiagnosticsLoggingInterval;
+            _messagesPerSecond = ((float)(Diagnostics.Singleton.Info.SentMessages - _lastNumMessagesSent)) / Settings.Instance.DiagnosticsLoggingInterval;
             string now = DateTime.Now.ToLongTimeString();
 
             _chartData1.Add(new ChartDataItem() { stamp = now, value = Diagnostics.Singleton.Info.AverageMessageLatency });
-            _chartData2.Add(new ChartDataItem() { stamp = now, value = messagesPerSecond });
-            _chartData3.Add(new ChartDataItem() { stamp = now, value = messagesPerSecond * Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage });
+            _chartData2.Add(new ChartDataItem() { stamp = now, value = _messagesPerSecond });
+            _chartData3.Add(new ChartDataItem() { stamp = now, value = _messagesPerSecond * Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage });
 
             if (_chartData1.Count > 15)
             {
@@ -75,6 +107,8 @@
             _lastNumMessagesSent = Diagnostics.Singleton.Info.SentMessages;
 
             await chart0.Reload().ConfigureAwait(false);
+
+            StateHasChanged();
         });
     }
 }

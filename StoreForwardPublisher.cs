@@ -136,6 +136,11 @@ namespace Opc.Ua.Cloud.Publisher
                             Diagnostics.Singleton.Info.FailedMessages--;
                             Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
 
+                            if (Diagnostics.Singleton.Info.FailedMessages < 0)
+                            {
+                                Diagnostics.Singleton.Info.FailedMessages = 0;
+                            }
+
                             _logger.LogInformation($"There are {filePaths.Length - 1} stored messages left to send.");
                         }
                         catch (Exception ex)
