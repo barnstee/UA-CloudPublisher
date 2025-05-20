@@ -1,0 +1,33 @@
+﻿@using Opc.Ua.Cloud.Publisher.Interfaces
+@using Radzen.Blazor
+
+<RadzenTheme Theme="material" @rendermode="InteractiveAuto" />
+<RadzenComponents @rendermode="InteractiveAuto" />
+
+@inject IPublishedNodesFileHandler _publishedNodesFileHandler
+
+<RadzenProgressBar @bind-Value="_progressValue" Mode="ProgressBarMode.Determinate" Visible="@_progressVisible" />
+
+@code {
+
+    private double _progressValue = 0;
+
+    private bool _progressVisible = false;
+
+    protected override void OnInitialized()
+    {
+        System.Timers.Timer timer = new System.Timers.Timer();
+        timer.Interval = 200;
+        timer.Elapsed += OnTimedEvent;
+        timer.AutoReset = true;
+        timer.Enabled = true;
+    }
+
+    void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+    {
+        _progressValue = _publishedNodesFileHandler.Progress;
+        _progressVisible = (_progressValue > 0 && _progressValue < 100);
+
+        InvokeAsync(() => StateHasChanged()).ConfigureAwait(false);
+    }
+}

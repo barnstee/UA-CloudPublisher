@@ -33,8 +33,6 @@ namespace Opc.Ua.Cloud.Publisher
 
             services.AddControllersWithViews();
 
-            services.AddSignalR();
-
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddRadzenComponents();
@@ -110,7 +108,6 @@ namespace Opc.Ua.Cloud.Publisher
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Diag}/{action=Index}/{id?}");
-                endpoints.MapHub<StatusHub>("/statushub");
                 endpoints.MapBlazorHub();
             });
 

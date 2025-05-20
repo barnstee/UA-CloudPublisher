@@ -1,7 +1,6 @@
 
 namespace Opc.Ua.Cloud.Publisher.Configuration
 {
-    using Microsoft.AspNetCore.SignalR;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua;
@@ -19,7 +18,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
         private readonly ILogger _logger;
         private readonly IUAClient _uaClient;
         private readonly IUAApplication _uaApplication;
-        private readonly StatusHubClient _hubClient;
+
+        public int Progress { get; set; } = 0;
 
         public PublishedNodesFileHandler(
             ILoggerFactory loggerFactory,
@@ -29,7 +29,6 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             _logger = loggerFactory.CreateLogger("PublishedNodesFileHandler");
             _uaClient = client;
             _uaApplication = uaApplication;
-            _hubClient = new StatusHubClient((IHubContext<StatusHub>)Program.AppHost.Services.GetService(typeof(IHubContext<StatusHub>)));
         }
 
         private string DecryptString(string encryptedString)
@@ -104,14 +103,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         }
 
                         currentpublishedNodeCount++;
-                        _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
+                        Progress = currentpublishedNodeCount * 100 / totalNodeCount;
                     }
                 }
                 else
                 {
                     // make sure our progress bar is correct
                     currentpublishedNodeCount += uniqueEndpoints.Count;
-                    _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
+                    Progress = currentpublishedNodeCount * 100 / totalNodeCount;
                 }
 
                 foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
@@ -152,7 +151,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                             }
 
                             currentpublishedNodeCount++;
-                            _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
+                            Progress = currentpublishedNodeCount * 100 / totalNodeCount;
                         }
                     }
 
@@ -185,7 +184,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                             }
 
                             currentpublishedNodeCount++;
-                            _hubClient.UpdateClientProgressAsync(currentpublishedNodeCount * 100 / totalNodeCount).GetAwaiter().GetResult();
+                            Progress = currentpublishedNodeCount * 100 / totalNodeCount;
                         }
                     }
                 }
