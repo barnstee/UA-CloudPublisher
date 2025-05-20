@@ -99,9 +99,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 using (Stream content = file.OpenReadStream())
                 {
                     content.ReadExactly(bytes, 0, (int)file.Length);
-                    string payload = Encoding.UTF8.GetString(bytes);
-                    JObject jsonObject = JObject.Parse(payload);
-                    name = jsonObject["name"].ToString();
+
+                    if (file.FileName.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
+                    {
+                        JObject jsonObject = JObject.Parse(Encoding.UTF8.GetString(bytes));
+                        name = jsonObject["name"].ToString();
+                    }
                 }
 
                 if (Settings.Instance.PushCertsBeforePublishing)

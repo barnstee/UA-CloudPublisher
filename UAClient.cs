@@ -1365,7 +1365,7 @@ namespace Opc.Ua.Cloud.Publisher
         public async Task UANodesetUpload(string endpoint, string username, string password, byte[] bytes)
         {
             Session session = null;
-            NodeId fileId = null;
+            NodeId methodNodeId = null;
             object fileHandle = null;
             try
             {
@@ -1376,23 +1376,10 @@ namespace Opc.Ua.Cloud.Publisher
                     throw new Exception($"Could not create session for endpoint {endpoint}!");
                 }
 
-                NodeId parentNodeId = new(WoTAssetConnectionManagement, (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
-
+                methodNodeId = new("NodesetFileUpload", (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
 
                 StatusCode status = new StatusCode(0);
-
-                BrowseDescription nodeToBrowse = new()
-                {
-                    NodeId = new NodeId("Nodeset Upload"),
-                    BrowseDirection = BrowseDirection.Forward,
-                    NodeClassMask = (uint)NodeClass.Object,
-                    ResultMask = (uint)BrowseResultMask.All
-                };
-
-                ReferenceDescriptionCollection references = await Browse(endpoint, username, password, nodeToBrowse, true).ConfigureAwait(false);
-
-                fileId = (NodeId)references[0].NodeId;
-                fileHandle = ExecuteCommand(session, MethodIds.FileType_Open, fileId, (byte)6, null, out status);
+                fileHandle = ExecuteCommand(session, MethodIds.FileType_Open, methodNodeId, (byte)6, null, out status);
                 if (StatusCode.IsNotGood(status))
                 {
                     throw new Exception(status.ToString());
@@ -1402,14 +1389,14 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     byte[] chunk = bytes.AsSpan(i, Math.Min(3000, bytes.Length - i)).ToArray();
 
-                    ExecuteCommand(session, MethodIds.FileType_Write, fileId, fileHandle, chunk, out status);
+                    ExecuteCommand(session, MethodIds.FileType_Write, methodNodeId, fileHandle, chunk, out status);
                     if (StatusCode.IsNotGood(status))
                     {
                         throw new Exception(status.ToString());
                     }
                 }
 
-                Variant result = ExecuteCommand(session, MethodIds.FileType_Close, fileId, fileHandle, null, out status);
+                Variant result = ExecuteCommand(session, MethodIds.FileType_Close, methodNodeId, fileHandle, null, out status);
                 if (StatusCode.IsNotGood(status))
                 {
                     throw new Exception(status.ToString() + ": " + result.ToString());
@@ -1419,9 +1406,9 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 _logger.LogError(ex.Message);
 
-                if ((session != null) && (fileId != null) && (fileHandle != null))
+                if ((session != null) && (methodNodeId != null) && (fileHandle != null))
                 {
-                    ExecuteCommand(session, MethodIds.FileType_Close, fileId, fileHandle, null, out StatusCode status);
+                    ExecuteCommand(session, MethodIds.FileType_Close, methodNodeId, fileHandle, null, out StatusCode status);
                 }
 
                 throw;
