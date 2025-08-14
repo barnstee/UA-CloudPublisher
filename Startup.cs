@@ -34,8 +34,12 @@ namespace Opc.Ua.Cloud.Publisher
             services.AddControllersWithViews();
 
             services.AddRazorPages();
+
             services.AddServerSideBlazor();
+
             services.AddRadzenComponents();
+
+            services.AddHttpClient();
 
             services.AddLogging(logging =>
             {
