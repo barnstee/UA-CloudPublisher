@@ -37,7 +37,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             List<string> trustList = new();
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in ownTrustList.GetCertificates().GetAwaiter().GetResult())
+            foreach (X509Certificate2 cert in ownTrustList.GetCertificatesAsync().GetAwaiter().GetResult())
             {
                 trustList.Add(cert.Subject + " [" + cert.Thumbprint + "] ");
             }

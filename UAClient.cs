@@ -132,7 +132,7 @@ namespace Opc.Ua.Cloud.Publisher
             Session existingSession = FindSession(endpointUrl);
             if ((existingSession != null) && (existingSession.SubscriptionCount == 0))
             {
-                existingSession.Close();
+                existingSession.CloseAsync();
                 _sessions.Remove(existingSession);
                 _complexTypeList.Remove(existingSession);
                 Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
@@ -152,7 +152,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
                 else
                 {
-                    existingSession.Close();
+                    await existingSession.CloseAsync();
                 }
             }
 
@@ -161,7 +161,7 @@ namespace Opc.Ua.Cloud.Publisher
             if (Settings.Instance.UseReverseConnect)
             {
                 _logger.LogInformation("Waiting for reverse connection from {0}", endpointUrl);
-                connection = await _app.ReverseConnectManager.WaitForConnection(new Uri(endpointUrl), null, new CancellationTokenSource(30_000).Token).ConfigureAwait(false);
+                connection = await _app.ReverseConnectManager.WaitForConnectionAsync(new Uri(endpointUrl), null, new CancellationTokenSource(30_000).Token).ConfigureAwait(false);
                 if (connection == null)
                 {
                     throw new ServiceResultException(StatusCodes.BadTimeout, "Waiting for a reverse connection timed out after 30 seconds.");
@@ -246,7 +246,7 @@ namespace Opc.Ua.Cloud.Publisher
                     _complexTypeList.Add(newSession, new ComplexTypeSystem(newSession));
                 }
 
-                await _complexTypeList[newSession].Load().ConfigureAwait(false);
+                await _complexTypeList[newSession].LoadAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -277,7 +277,7 @@ namespace Opc.Ua.Cloud.Publisher
                         while (subscription.MonitoredItemCount > 0)
                         {
                             subscription.RemoveItem(subscription.MonitoredItems.First());
-                            subscription.ApplyChanges();
+                            subscription.ApplyChangesAsync();
                             Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
                         }
 
@@ -286,7 +286,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
 
                     string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
-                    session.Close();
+                    session.CloseAsync();
                     _sessions.Remove(session);
                     _complexTypeList.Remove(session);
                     Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
@@ -581,7 +581,7 @@ namespace Opc.Ua.Cloud.Publisher
                     if (monitoredItem.ResolvedNodeId == resolvedNodeId)
                     {
                         opcSubscription.RemoveItem(monitoredItem);
-                        opcSubscription.ApplyChanges();
+                        await opcSubscription.ApplyChangesAsync();
                         Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
                     }
                 }
@@ -616,7 +616,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 opcSubscription.AddItem(newMonitoredItem);
-                opcSubscription.ApplyChanges();
+                await opcSubscription.ApplyChangesAsync();
                 Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored++;
 
                 // create a heartbeat timer, if required
@@ -721,13 +721,13 @@ namespace Opc.Ua.Cloud.Publisher
                     if (monitoredItem.ResolvedNodeId == resolvedNodeId)
                     {
                         subscription.RemoveItem(monitoredItem);
-                        subscription.ApplyChanges();
+                        subscription.ApplyChangesAsync();
                         Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
 
                         // cleanup empty subscriptions and sessions
                         if (subscription.MonitoredItemCount == 0)
                         {
-                            session.RemoveSubscription(subscription);
+                            session.RemoveSubscriptionAsync(subscription);
                             Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
                         }
 
@@ -1099,7 +1099,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 serverPushClient.AdminCredentials = new UserIdentity(adminUsername, adminPassword);
 
-                await serverPushClient.Connect(endpointURL).ConfigureAwait(false);
+                await serverPushClient.ConnectAsync(endpointURL).ConfigureAwait(false);
 
                 byte[] unusedNonce = new byte[0];
                 byte[] certificateRequest = serverPushClient.CreateSigningRequest(
@@ -1115,7 +1115,7 @@ namespace Opc.Ua.Cloud.Publisher
                     certificateRequest);
 
                 byte[][] issuerCertificates = [_app.IssuerCert.Export(X509ContentType.Cert)];
-                serverPushClient.UpdateCertificate(
+                await serverPushClient.UpdateCertificateAsync(
                     NodeId.Null,
                     serverPushClient.ApplicationCertificateType,
                     certificate.Export(X509ContentType.Cert),
@@ -1128,11 +1128,11 @@ namespace Opc.Ua.Cloud.Publisher
 
                 // update trust list on server
                 TrustListDataType trustList = GetTrustLists();
-                serverPushClient.UpdateTrustList(trustList);
+                await serverPushClient.UpdateTrustListAsync(trustList);
 
-                serverPushClient.ApplyChanges();
+                await serverPushClient.ApplyChangesAsync();
 
-                serverPushClient.Disconnect();
+                await serverPushClient.DisconnectAsync();
             }
             catch (Exception ex)
             {
@@ -1237,7 +1237,7 @@ namespace Opc.Ua.Cloud.Publisher
             ByteStringCollection issuersCrls = new ByteStringCollection();
 
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in ownTrustList.GetCertificates().GetAwaiter().GetResult())
+            foreach (X509Certificate2 cert in ownTrustList.GetCertificatesAsync().GetAwaiter().GetResult())
             {
                 trusted.Add(cert.Export(X509ContentType.Cert));
             }
@@ -1353,7 +1353,7 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     if (session.Connected)
                     {
-                        session.Close();
+                        await session.CloseAsync();
                     }
 
                     session.Dispose();
@@ -1418,7 +1418,7 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     if (session.Connected)
                     {
-                        session.Close();
+                        await session.CloseAsync();
                     }
 
                     session.Dispose();
