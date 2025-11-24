@@ -101,9 +101,9 @@
         }
     }
 
-    private void SelectedNodeChanged(UANode node)
+    private async Task SelectedNodeChanged(UANode node)
     {
-        VariableRead(node);
+        await VariableRead(node).ConfigureAwait(false);
     }
 
     private bool HasChildNodes(UANode node)
@@ -163,7 +163,7 @@
         }
     }
 
-    private void VariableRead(UANode node)
+    private async Task VariableRead(UANode node)
     {
         try
         {
@@ -171,12 +171,9 @@
             NodeDisplayName = node.Text;
             NodeNotPublishable = true;
 
-            string nodeId = NodeId;
-            NodeValue = _client.ReadNode(EndpointUrl, Username, Password, ref nodeId);
-
+            NodeValue = await _client.ReadNode(EndpointUrl, Username, Password, NodeId).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(NodeValue))
             {
-                NodeId = nodeId;
                 NodeNotPublishable = false;
             }
         }

@@ -330,7 +330,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     // route this to the right handler
                     if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
                     {
-                        response.Status = Encoding.UTF8.GetString(_commandProcessor.PublishNodes(requestPayload));
+                        response.Status = Encoding.UTF8.GetString(await _commandProcessor.PublishNodes(requestPayload).ConfigureAwait(false));
                         response.Success = true;
                     }
                     else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))

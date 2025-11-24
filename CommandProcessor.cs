@@ -10,6 +10,7 @@ namespace Opc.Ua.Cloud.Publisher
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
+    using System.Threading.Tasks;
 
     public class CommandProcessor : ICommandProcessor
     {
@@ -22,7 +23,7 @@ namespace Opc.Ua.Cloud.Publisher
             _uaClient = client;
         }
 
-        public byte[] PublishNodes(string payload)
+        public async Task<byte[]> PublishNodes(string payload)
         {
             UserAuthModeEnum desiredAuthenticationMode = UserAuthModeEnum.Anonymous;
             List<string> statusResponse = new List<string>();
@@ -54,7 +55,7 @@ namespace Opc.Ua.Cloud.Publisher
                     node.Filter = new List<FilterModel>();
                     node.Filter.AddRange(opcEvent.Filter);
 
-                    _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
+                    await _uaClient.PublishNodeAsync(node).ConfigureAwait(false);
 
                     string statusMessage = $"Event {node.ExpandedNodeId} on endpoint {node.EndpointUrl} published successfully.";
                     statusResponse.Add(statusMessage);
@@ -80,7 +81,7 @@ namespace Opc.Ua.Cloud.Publisher
                         OpcAuthenticationMode = desiredAuthenticationMode
                     };
 
-                    _uaClient.PublishNodeAsync(node).GetAwaiter().GetResult();
+                    await _uaClient.PublishNodeAsync(node).ConfigureAwait(false);
 
                     string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} published successfully.";
                     statusResponse.Add(statusMessage);

@@ -4,10 +4,10 @@ namespace Opc.Ua.Cloud.Publisher
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
     using Opc.Ua.Client;
-    using System;
-    using System.Collections.Generic;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
+    using System;
+    using System.Collections.Generic;
 
     public class MonitoredItemNotification : IMessageSource
     {
@@ -112,7 +112,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // Type
-                INode type = monitoredItem.Subscription.Session.NodeCache.Find(condition.TypeDefinitionId);
+                INode type = monitoredItem.Subscription.Session.NodeCache.FindAsync(condition.TypeDefinitionId).GetAwaiter().GetResult();
                 if (type != null)
                 {
                     EventValueModel eventValue = new EventValueModel()
@@ -248,7 +248,7 @@ namespace Opc.Ua.Cloud.Publisher
                 // browse for the supertypes of the event type.
                 if (knownTypeId == null)
                 {
-                    ReferenceDescriptionCollection supertypes = UAClient.BrowseSuperTypes(session, eventTypeId, false);
+                    ReferenceDescriptionCollection supertypes = UAClient.BrowseSuperTypes(session, eventTypeId, false).GetAwaiter().GetResult();
 
                     // can't do anything with unknown types.
                     if (supertypes == null)
@@ -344,7 +344,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 string dataType = string.Empty;
-                VariableNode variable = (VariableNode)monitoredItem.Subscription.Session.NodeCache.Find(monitoredItem.StartNodeId);
+                VariableNode variable = (VariableNode)monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).GetAwaiter().GetResult();
                 if (variable != null)
                 {
                     dataType = NodeId.ToExpandedNodeId(variable.DataType, monitoredItem.Subscription.Session.NamespaceUris).ToString();

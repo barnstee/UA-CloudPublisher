@@ -13,11 +13,11 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId nodeId);
 
-        string ReadNode(string endpointUrl, string username, string password, ref string nodeId);
+        Task<string> ReadNode(string endpointUrl, string username, string password, string nodeId);
 
         Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);
 
-        void UnpublishNode(NodePublishingModel nodeToUnpublish);
+        Task UnpublishNode(NodePublishingModel nodeToUnpublish);
 
         void UnpublishAllNodes(bool updatePersistencyFile = true);
 
@@ -29,6 +29,6 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         Task UANodesetUpload(string endpoint, string username, string password, byte[] bytes);
 
-        void Disconnect(string endpointUrl);
+        Task Disconnect(string endpointUrl);
     }
 }

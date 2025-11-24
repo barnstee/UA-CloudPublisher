@@ -28,16 +28,16 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             _logger = loggerFactory.CreateLogger("CertManagerController");
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            return View("Index", new CertManagerModel() { Certs = new SelectList(LoadTrustlist()) });
+            return View("Index", new CertManagerModel() { Certs = new SelectList(await LoadTrustlist().ConfigureAwait(false)) });
         }
 
-        private List<string> LoadTrustlist()
+        private async Task<List<string>> LoadTrustlist()
         {
             List<string> trustList = new();
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in ownTrustList.GetCertificates().GetAwaiter().GetResult())
+            foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync().ConfigureAwait(false))
             {
                 trustList.Add(cert.Subject + " [" + cert.Thumbprint + "] ");
             }
@@ -79,7 +79,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 // store in our own trust list
                 await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
 
-                return View("Index", new CertManagerModel() { Certs = new SelectList(LoadTrustlist()) });
+                return View("Index", new CertManagerModel() { Certs = new SelectList(await LoadTrustlist().ConfigureAwait(false)) });
             }
             catch (Exception ex)
             {
@@ -112,7 +112,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
         }
         [HttpPost]
-        public ActionResult EncryptString(string plainTextString)
+        public async Task<ActionResult> EncryptString(string plainTextString)
         {
             try
             {
@@ -120,7 +120,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 using RSA rsa = cert.GetRSAPublicKey();
                 if (!string.IsNullOrEmpty(plainTextString) && (rsa != null))
                 {
-                    return View("Index", new CertManagerModel() { Encrypt = Convert.ToBase64String(rsa.Encrypt(Encoding.UTF8.GetBytes(plainTextString), RSAEncryptionPadding.Pkcs1)), Certs = new SelectList(LoadTrustlist()) });
+                    return View("Index", new CertManagerModel() { Encrypt = Convert.ToBase64String(rsa.Encrypt(Encoding.UTF8.GetBytes(plainTextString), RSAEncryptionPadding.Pkcs1)), Certs = new SelectList(await LoadTrustlist().ConfigureAwait(false)) });
                 }
                 else
                 {

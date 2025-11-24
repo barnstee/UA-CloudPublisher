@@ -105,7 +105,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                     _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
 
-                    _ = Task.Run(() => HandleCommand());
+                    _ = Task.Run(HandleCommand);
                 }
 
                 Diagnostics.Singleton.Info.ConnectedToBroker = true;
@@ -160,7 +160,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
         }
 
         // handles all incoming commands form the cloud
-        private void HandleCommand()
+        private async Task HandleCommand()
         {
             while (true)
             {
@@ -191,7 +191,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     // route this to the right handler
                     if (request.Command == "publishnodes")
                     {
-                        response.Status = Encoding.UTF8.GetString(_commandProcessor.PublishNodes(requestPayload));
+                        response.Status = Encoding.UTF8.GetString(await _commandProcessor.PublishNodes(requestPayload).ConfigureAwait(false));
                         response.Success = true;
                     }
                     else if (request.Command == "unpublishnodes")

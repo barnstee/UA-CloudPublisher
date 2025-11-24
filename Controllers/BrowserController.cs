@@ -85,13 +85,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public ActionResult Disconnect()
+        public async Task<ActionResult> Disconnect()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             if (!string.IsNullOrEmpty(_session.EndpointUrl))
             {
-                _client.Disconnect(_session.EndpointUrl);
+                await _client.Disconnect(_session.EndpointUrl).ConfigureAwait(false);
             }
 
             HttpContext.Session.SetString("EndpointUrl", string.Empty);

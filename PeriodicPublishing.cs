@@ -14,7 +14,7 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly ILogger _logger;
         private readonly Timer _timer;
 
-        public Session HeartBeatSession { get; }
+        public ISession HeartBeatSession { get; }
 
         public NodeId HeartBeatNodeId { get; }
 
@@ -24,7 +24,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         public PeriodicPublishing(
             uint heartbeatInterval,
-            Session session,
+            ISession session,
             NodeId nodeId,
             string name,
             ILoggerFactory loggerFactory)
@@ -52,7 +52,7 @@ namespace Opc.Ua.Cloud.Publisher
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
-        private void HeartbeatSend(object state)
+        private async void HeartbeatSend(object state)
         {
             try
             {
@@ -64,7 +64,7 @@ namespace Opc.Ua.Cloud.Publisher
                     Name = DisplayName
                 };
 
-                DataValue value = HeartBeatSession.ReadValue(HeartBeatNodeId);
+                DataValue value = await HeartBeatSession.ReadValueAsync(HeartBeatNodeId).ConfigureAwait(false);
                 if (value != null)
                 {
                     messageData.Value = value;
