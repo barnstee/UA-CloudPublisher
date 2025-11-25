@@ -102,7 +102,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                     if (file.FileName.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
                     {
-                        JObject jsonObject = JObject.Parse(Encoding.UTF8.GetString(bytes));
+                        JObject jsonObject = JObject.Parse(Encoding.UTF8.GetString(bytes).Trim('\uFEFF')); // strip BOM, if present
                         name = jsonObject["name"].ToString();
                     }
                 }

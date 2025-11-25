@@ -1270,15 +1270,20 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     assetId = await ExecuteCommand(session, createNodeId, parentNodeId, assetName, null).ConfigureAwait(false);
                 }
-                catch (Exception)
+                catch (ServiceResultException ex)
                 {
-                    // TODO: Check exception for something similar to StatusCodes.BadBrowseNameDuplicated
+                    if (ex.StatusCode == StatusCodes.BadBrowseNameDuplicated)
+                    {
+                        // delete existing asset first
+                        assetId = await ExecuteCommand(session, deleteNodeId, parentNodeId, new NodeId(ex.Result.LocalizedText.Text), null).ConfigureAwait(false);
 
-                    // delete existing asset first
-                    assetId = await ExecuteCommand(session, deleteNodeId, parentNodeId, new NodeId(assetId.Value.ToString()), null).ConfigureAwait(false);
-
-                    // now try again
-                    assetId = await ExecuteCommand(session, createNodeId, parentNodeId, assetName, null).ConfigureAwait(false);
+                        // now try again
+                        assetId = await ExecuteCommand(session, createNodeId, parentNodeId, assetName, null).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
 
                 BrowseDescription nodeToBrowse = new()
@@ -1384,7 +1389,17 @@ namespace Opc.Ua.Cloud.Publisher
         {
             try
             {
-                IList<object> results = await session.CallAsync(parentNodeId, nodeId, CancellationToken.None, [argument1, argument2]).ConfigureAwait(false);
+                List<object> arguments = new();
+                if (argument1 != null)
+                {
+                    arguments.Add(argument1);
+                }
+                if (argument2 != null)
+                {
+                    arguments.Add(argument2);
+                }
+
+                IList<object> results = await session.CallAsync(parentNodeId, nodeId, CancellationToken.None, arguments.ToArray()).ConfigureAwait(false);
 
                 if ((results != null) && (results.Count > 0))
                 {
