@@ -14,7 +14,6 @@ namespace Opc.Ua.Cloud.Publisher
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using System.Net.NetworkInformation;
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading;
@@ -491,6 +490,10 @@ namespace Opc.Ua.Cloud.Publisher
             nodesToRead.Add(valueId);
 
             ReadResponse response = await session.ReadAsync(null, 0, TimestampsToReturn.Both, nodesToRead, CancellationToken.None).ConfigureAwait(false);
+
+            ClientBase.ValidateResponse(response.Results, nodesToRead);
+            ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, nodesToRead);
+
             if (response.Results.Count > 0 && response.Results[0].Value != null)
             {
                 return response.Results[0].WrappedValue.ToString();
