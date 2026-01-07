@@ -48,28 +48,33 @@
         <p>
             <h3>List of Currently Published OPC UA Nodes</h3>
         </p>
-        <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DownloadFile">
-            <p>
-                <input class="btn btn-primary" type="submit" value="Generate publishednodes.json file for currently published nodes">
-            </p>
-        </form>
-        <ul>
-            @foreach (var node in Model)
+     <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Unpublish">
+        <p>
+            <input class="btn btn-primary" type="submit" value="Unpublish Everything">
+        </p>
+    </form>
+    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DownloadFile">
+        <p>
+            <input class="btn btn-primary" type="submit" value="Generate publishednodes.json file for currently published nodes">
+        </p>
+    </form>
+    <ul>
+        @foreach (var node in Model)
+        {
+            @if (node.StartsWith("Error"))
             {
-                @if (node.StartsWith("Error"))
-                {
-                    @node
-                }
-                else
-                {
-                    <li>
-                        @node
-                        <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
-                            <input name="@node" class="btn btn-primary" type="submit" value="Delete">
-                        </form>
-                        <br />
-                    </li>
-                }
+                @node
             }
-        </ul>
+            else
+            {
+                <li>
+                    @node
+                    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
+                        <input name="@node" class="btn btn-primary" type="submit" value="Delete">
+                    </form>
+                    <br />
+                </li>
+            }
+        }
+    </ul>
 </div>

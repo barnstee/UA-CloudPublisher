@@ -108,6 +108,23 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
+        public IActionResult Unpublish()
+        {
+            try
+            {
+                _uaclient.UnpublishAllNodes(true);
+                _logger.LogInformation($"All nodes unpublished successfully.");
+
+                return View("Index", GeneratePublishedNodesArray());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to unpublish everything!");
+                return View("Index", new string[] { "Error: " + ex.Message });
+            }
+        }
+
+        [HttpPost]
         public IActionResult DeleteNode()
         {
             try
