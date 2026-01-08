@@ -302,6 +302,11 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 PersistPublishedNodes();
             }
+
+            // make sure our UA Server telemetry is zeroed out
+            Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected = 0;
+            Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected = 0;
+            Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored = 0;
         }
 
         private async Task<Subscription> CreateSubscription(ISession session, int publishingInterval)
