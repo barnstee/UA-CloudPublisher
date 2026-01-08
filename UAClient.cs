@@ -489,6 +489,12 @@ namespace Opc.Ua.Cloud.Publisher
             };
             nodesToRead.Add(valueId);
 
+            // handle complex types
+            VariableNode node = (VariableNode)await session.ReadNodeAsync(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris)).ConfigureAwait(false);
+            ComplexTypeSystem complexTypeSystem = new(session);
+            ExpandedNodeId nodeTypeId = node.DataType;
+            await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
+
             ReadResponse response = await session.ReadAsync(null, 0, TimestampsToReturn.Both, nodesToRead, CancellationToken.None).ConfigureAwait(false);
 
             ClientBase.ValidateResponse(response.Results, nodesToRead);

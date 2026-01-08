@@ -35,7 +35,7 @@
     <br />
     <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
         <p>
-            2. Load the manually validated asset description file (.jsonld extension) or an OPC UA nodeset file (.xml extension):<br />
+            2. Load the manually validated asset description file (.jsonld extension) or an OPC UA nodeset file dependency (.xml extension):<br />
         </p>
         <p>
             <input class="btn btn-primary" type="file" name="file">
@@ -44,7 +44,8 @@
         <hr style="border-top: 1px solid blue" />
         <br />
         <p>
-            3. Send the loaded asset description or nodeset file to UA Edge Translator (address format: opc.tcp://ipaddress:port): <br />
+            3. Send the loaded asset description (or an OPC UA nodeset file dependency) to UA Edge Translator (address format: opc.tcp://ipaddress:port): <br />
+            <b>Note: After sending OPC UA nodeset file dependencies, UA Edge Translator must be restarted!</b>
         </p>
         <p>
             Address:<br />

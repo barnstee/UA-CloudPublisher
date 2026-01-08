@@ -4,6 +4,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
     using Opc.Ua.Client;
+    using Opc.Ua.Client.ComplexTypes;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
@@ -347,6 +348,11 @@ namespace Opc.Ua.Cloud.Publisher
                 VariableNode variable = (VariableNode)monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).GetAwaiter().GetResult();
                 if (variable != null)
                 {
+                    // handle complex types
+                    ComplexTypeSystem complexTypeSystem = new(monitoredItem.Subscription.Session);
+                    ExpandedNodeId nodeTypeId = variable.DataType;
+                    complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
+
                     dataType = NodeId.ToExpandedNodeId(variable.DataType, monitoredItem.Subscription.Session.NamespaceUris).ToString();
                 }
 
