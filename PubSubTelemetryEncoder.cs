@@ -129,6 +129,11 @@ namespace Opc.Ua.Cloud.Publisher
                     encoder.WriteDateTime("Timestamp", messageData.Value.ServerTimestamp);
                 }
 
+                if (messageData.Value.StatusCode != StatusCodes.Good)
+                {
+                    encoder.WriteUInt32("Status", messageData.Value.StatusCode.Code);
+                }
+
                 encoder.PushStructure("Payload");
 
                 if ((messageData.EventValues != null) && (messageData.EventValues.Count > 0))
