@@ -337,13 +337,6 @@ namespace Opc.Ua.Cloud.Publisher
                     return;
                 }
 
-                // filter out messages with bad status
-                if (StatusCode.IsBad(notification.Value.StatusCode.Code))
-                {
-                    _logger.LogWarning($"Filtered notification with bad status code '{notification.Value.StatusCode.Code}'");
-                    return;
-                }
-
                 string dataType = string.Empty;
                 VariableNode variable = (VariableNode)monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).GetAwaiter().GetResult();
                 if (variable != null)
