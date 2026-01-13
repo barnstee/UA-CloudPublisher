@@ -110,7 +110,14 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 {
                     // make sure our progress bar is correct
                     currentpublishedNodeCount += uniqueEndpoints.Count;
-                    Progress = currentpublishedNodeCount * 100 / totalNodeCount;
+                    if (totalNodeCount > 0)
+                    {
+                        Progress = currentpublishedNodeCount * 100 / totalNodeCount;
+                    }
+                    else
+                    {
+                        Progress = 0;
+                    }
                 }
 
                 foreach (PublishNodesInterfaceModel configFileEntry in _configurationFileEntries)
