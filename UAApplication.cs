@@ -32,6 +32,8 @@ namespace Opc.Ua.Cloud.Publisher
         {
             _logger.LogInformation($"Creating OPC UA app named {Settings.Instance.PublisherName}");
 
+            ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
+
             // create UA app
             UAApplicationInstance = new ApplicationInstance
             {
