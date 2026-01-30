@@ -69,7 +69,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to generate asset description");
                 return View("Index", ex.Message);
             }
         }
@@ -139,7 +139,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to process file");
                 return View("Index", ex.Message);
             }
         }

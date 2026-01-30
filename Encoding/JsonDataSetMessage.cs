@@ -27,10 +27,11 @@
  * http://opcfoundation.org/License/MIT/1.00/
  * ======================================================================*/
 
+using Opc.Ua.PubSub.PublishedData;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Opc.Ua.PubSub.PublishedData;
 
 namespace Opc.Ua.PubSub.Encoding
 {
@@ -675,12 +676,12 @@ namespace Opc.Ua.PubSub.Encoding
                     }
                     else
                     {
-                        Utils.Trace("JsonDataSetMessage - Decoding ValueRank = {0} not supported yet !!!", fieldMetaData.ValueRank);
+                        Log.Logger.Error("JsonDataSetMessage - Decoding ValueRank = {0} not supported yet !!!", fieldMetaData.ValueRank);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Utils.Trace(ex, "JsonDataSetMessage - Error reading element for RawData.");
+                    Log.Logger.Error(ex, "JsonDataSetMessage - Error reading element for RawData.");
                     return (StatusCodes.BadDecodingError);
                 }
             }
@@ -784,7 +785,7 @@ namespace Opc.Ua.PubSub.Encoding
             }
             catch (Exception ex)
             {
-                Utils.Trace(ex, "JsonDataSetMessage - Error decoding field {0}", fieldName);
+                Log.Logger.Error(ex, "JsonDataSetMessage - Error decoding field {0}", fieldName);
             }
 
             return null;

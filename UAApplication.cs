@@ -17,11 +17,13 @@ namespace Opc.Ua.Cloud.Publisher
     {
         private readonly ILogger _logger;
 
+        public ConsoleTelemetry Telemetry { get; } = new();
+
         public X509Certificate2 IssuerCert { get; set; }
 
         public ApplicationInstance UAApplicationInstance { get; set; }
 
-        public ReverseConnectManager ReverseConnectManager { get; set; } = new();
+        public ReverseConnectManager ReverseConnectManager { get; set; }
 
         public UAApplication(ILoggerFactory loggerFactory)
         {
@@ -35,12 +37,14 @@ namespace Opc.Ua.Cloud.Publisher
             ApplicationInstance.MessageDlg = new ApplicationMessageDlg();
 
             // create UA app
-            UAApplicationInstance = new ApplicationInstance
+            UAApplicationInstance = new ApplicationInstance(Telemetry)
             {
                 ApplicationName = Settings.Instance.PublisherName,
                 ApplicationType = ApplicationType.Client,
                 ConfigSectionName = "UACloudPublisher"
             };
+
+            ReverseConnectManager = new (Telemetry);
 
             // overwrite app name in UA config file, while removing spaces from the app name
             string fileContent = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"));
@@ -49,11 +53,6 @@ namespace Opc.Ua.Cloud.Publisher
 
             // now load UA config file
             await UAApplicationInstance.LoadApplicationConfigurationAsync(false).ConfigureAwait(false);
-
-            // set trace masks
-            UAApplicationInstance.ApplicationConfiguration.TraceConfiguration.TraceMasks = Settings.Instance.UAStackTraceMask;
-            Utils.Tracing.TraceEventHandler += new EventHandler<TraceEventArgs>(OpcStackLoggingHandler);
-            _logger.LogInformation($"OPC UA stack trace mask set to: 0x{Settings.Instance.UAStackTraceMask:X}");
 
             // check the application certificate
             bool certOK = await UAApplicationInstance.CheckApplicationInstanceCertificatesAsync(false, 0).ConfigureAwait(false);
@@ -108,28 +107,6 @@ namespace Opc.Ua.Cloud.Publisher
 
             Settings.Instance.UAIssuerCertThumbprint = IssuerCert.Thumbprint;
             Settings.Instance.UAIssuerCertExpiry = IssuerCert.NotAfter;
-        }
-
-        private void OpcStackLoggingHandler(object sender, TraceEventArgs e)
-        {
-            if ((e.TraceMask & Settings.Instance.UAStackTraceMask) != 0)
-            {
-                if (e.Exception != null)
-                {
-                    _logger.LogError(e.Exception, e.Format, e.Arguments);
-                    return;
-                }
-
-                switch (e.TraceMask)
-                {
-                    case Utils.TraceMasks.StartStop:
-                    case Utils.TraceMasks.Information: _logger.LogInformation(e.Format, e.Arguments); break;
-                    case Utils.TraceMasks.Error: _logger.LogError(e.Format, e.Arguments); break;
-                    case Utils.TraceMasks.StackTrace:
-                    case Utils.TraceMasks.Security: _logger.LogWarning(e.Format, e.Arguments); break;
-                    default: _logger.LogTrace(e.Format, e.Arguments); break;
-                }
-            }
         }
     }
 }

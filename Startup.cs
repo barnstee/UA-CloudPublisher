@@ -7,12 +7,12 @@ namespace Opc.Ua.Cloud.Publisher
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;
-    using System;
-    using System.IO;
-    using System.Threading.Tasks;
     using Opc.Ua.Cloud.Publisher.Configuration;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Radzen;
+    using System;
+    using System.IO;
+    using System.Threading.Tasks;
 
     public class Startup
     {
@@ -40,11 +40,6 @@ namespace Opc.Ua.Cloud.Publisher
             services.AddRadzenComponents();
 
             services.AddHttpClient();
-
-            services.AddLogging(logging =>
-            {
-                logging.AddFile("./logs/UACloudPublisher.log");
-            });
 
             // add our singletons
             services.AddSingleton<IUAApplication, UAApplication>();
@@ -79,14 +74,13 @@ namespace Opc.Ua.Cloud.Publisher
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app,
                               IWebHostEnvironment env,
+                              ILogger<Startup> logger,
                               ILoggerFactory loggerFactory,
                               IUAApplication uaApp,
                               IMessageProcessor engine,
                               Settings.BrokerResolver brokerResolver,
                               IPublishedNodesFileHandler publishedNodesFileHandler)
         {
-            ILogger logger = loggerFactory.CreateLogger("Statup");
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -166,7 +160,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex.Message);
+                        logger.LogError(ex, "Failed to auto-load persisted nodes.");
                     }
                 }
             });

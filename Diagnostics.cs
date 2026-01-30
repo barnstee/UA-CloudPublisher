@@ -124,7 +124,7 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;s=" + displayName,
                     ApplicationUri = "urn:" + Settings.Instance.PublisherName,
-                    MessageContext = ServiceMessageContext.GlobalContext,
+                    MessageContext = new ServiceMessageContext(null),
                     Name = displayName,
                     Value = value
                 };

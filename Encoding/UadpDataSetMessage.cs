@@ -2,7 +2,7 @@
  * Copyright (c) 2005-2021 The OPC Foundation, Inc. All rights reserved.
  *
  * OPC Foundation MIT License 1.00
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -11,7 +11,7 @@
  * copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -28,6 +28,7 @@
  * ======================================================================*/
 
 using Opc.Ua.PubSub.PublishedData;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,7 +39,7 @@ namespace Opc.Ua.PubSub.Encoding
 {
     /// <summary>
     /// The UADPDataSetMessage class handler.
-    /// It handles the UADPDataSetMessage encoding 
+    /// It handles the UADPDataSetMessage encoding
     /// </summary>
     public class UadpDataSetMessage : UaDataSetMessage
     {
@@ -62,7 +63,7 @@ namespace Opc.Ua.PubSub.Encoding
 
         /// <summary>
         /// Constructor for <see cref="UadpDataSetMessage"/> with DataSet parameter
-        /// </summary>     
+        /// </summary>
         public UadpDataSetMessage(DataSet dataSet = null) : this()
         {
             DataSet = dataSet;
@@ -118,7 +119,7 @@ namespace Opc.Ua.PubSub.Encoding
         #region Public Methods
 
         /// <summary>
-        /// Set DataSetFieldContentMask 
+        /// Set DataSetFieldContentMask
         /// </summary>
         /// <param name="fieldContentMask">The new <see cref="DataSetFieldContentMask"/> for this dataset</param>
         public override void SetFieldContentMask(DataSetFieldContentMask fieldContentMask)
@@ -156,7 +157,7 @@ namespace Opc.Ua.PubSub.Encoding
         }
 
         /// <summary>
-        /// Set MessageContentMask 
+        /// Set MessageContentMask
         /// </summary>
         /// <param name="messageContentMask"></param>
         public void SetMessageContentMask(UadpDataSetMessageContentMask messageContentMask)
@@ -375,7 +376,7 @@ namespace Opc.Ua.PubSub.Encoding
                     binaryEncoder.WriteUInt16("DataSetFieldCount", (UInt16)DataSet.Fields.Length);
                     foreach (Field field in DataSet.Fields)
                     {
-                        // 10 DataValue type 
+                        // 10 DataValue type
                         binaryEncoder.WriteDataValue("DataValue", field.Value);
                     }
                     break;
@@ -421,7 +422,7 @@ namespace Opc.Ua.PubSub.Encoding
                         binaryEncoder.WriteVariant("FieldValue", field.Value.WrappedValue);
                         break;
                     case FieldTypeEncodingMask.DataValue:
-                        // 10 DataValue type 
+                        // 10 DataValue type
                         binaryEncoder.WriteDataValue("FieldValue", field.Value);
                         break;
                     case FieldTypeEncodingMask.RawData:
@@ -513,7 +514,7 @@ namespace Opc.Ua.PubSub.Encoding
                 {
                     if (dataSetMetaData != null)
                     {
-                        // metadata should provide field count 
+                        // metadata should provide field count
                         fieldCount = (ushort)dataSetMetaData.Fields.Count;
                     }
                 }
@@ -646,7 +647,7 @@ namespace Opc.Ua.PubSub.Encoding
             }
             catch (Exception ex)
             {
-                Utils.Trace(ex, "UadpDataSetMessage.DecodeMessageDataKeyFrame");
+                Log.Logger.Error(ex, "UadpDataSetMessage.DecodeMessageDataKeyFrame");
                 return null;
             }
         }
@@ -727,7 +728,7 @@ namespace Opc.Ua.PubSub.Encoding
             }
             catch (Exception ex)
             {
-                Utils.Trace(ex, "UadpDataSetMessage.DecodeMessageDataDeltaFrame");
+                Log.Logger.Error(ex, "UadpDataSetMessage.DecodeMessageDataDeltaFrame");
             }
             return null;
         }
@@ -741,7 +742,7 @@ namespace Opc.Ua.PubSub.Encoding
         {
             try
             {
-                // 01 RawData Field Encoding 
+                // 01 RawData Field Encoding
                 var variant = field.Value.WrappedValue;
 
                 if (variant.TypeInfo == null || variant.TypeInfo.BuiltInType == BuiltInType.Null)
@@ -832,7 +833,7 @@ namespace Opc.Ua.PubSub.Encoding
             }
             catch (Exception ex)
             {
-                Utils.Trace(ex, "Error encoding field {0}.", field.FieldMetaData.Name);
+                Log.Logger.Error(ex, "Error encoding field {0}.", field.FieldMetaData.Name);
             }
         }
 
@@ -864,13 +865,13 @@ namespace Opc.Ua.PubSub.Encoding
                         // not implemented
 
                         default:
-                            Utils.Trace("Decoding ValueRank = {0} not supported yet !!!", fieldMetaData.ValueRank);
+                            Log.Logger.Error("Decoding ValueRank = {0} not supported yet !!!", fieldMetaData.ValueRank);
                             break;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Utils.Trace(ex, "Error reading element for RawData.");
+                    Log.Logger.Error(ex, "Error reading element for RawData.");
                     return (StatusCodes.BadDecodingError);
                 }
             }

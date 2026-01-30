@@ -10,10 +10,12 @@ namespace Opc.Ua.Cloud.Publisher
 
     public class PubSubTelemetryEncoder : IMessageEncoder
     {
+        private readonly IUAApplication _app;
         private readonly ILogger _logger;
 
-        public PubSubTelemetryEncoder(ILoggerFactory loggerFactory)
+        public PubSubTelemetryEncoder(IUAApplication app, ILoggerFactory loggerFactory)
         {
+            _app = app;
             _logger = loggerFactory.CreateLogger("PubSubTelemetryEncoder");
         }
 
@@ -21,7 +23,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
             // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
-            JsonEncoder encoder = new(ServiceMessageContext.GlobalContext, Settings.Instance.ReversiblePubSubEncoding);
+            JsonEncoder encoder = new(new ServiceMessageContext(_app.Telemetry), Settings.Instance.ReversiblePubSubEncoding);
 
             encoder.WriteString("MessageId", messageID.ToString());
 
@@ -187,7 +189,7 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 // encode a PubSub JSON status message
-                JsonEncoder encoder = new(ServiceMessageContext.GlobalContext, Settings.Instance.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new(new ServiceMessageContext(_app.Telemetry), Settings.Instance.ReversiblePubSubEncoding);
 
                 encoder.WriteString("MessageId", messageID.ToString());
                 encoder.WriteString("MessageType", "ua-status");

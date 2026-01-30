@@ -73,7 +73,7 @@
   <Extensions/>
   <TraceConfiguration>
     <!-- The following setting is not used, but a combined UA Cloud Publisher tracelog is written to the configured directory instead -->
-    <OutputFilePath>./logs/erichbdev.log</OutputFilePath>
+    <OutputFilePath>./logs/UACloudPublisher.log</OutputFilePath>
     <DeleteOnLoad>true</DeleteOnLoad>
     <!--
     Masks supported by the trace feature.

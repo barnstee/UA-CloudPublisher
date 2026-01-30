@@ -62,7 +62,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to load published nodes");
                 return View("Index", new string[] { "Error: " + ex.Message });
             }
         }
@@ -102,7 +102,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to load persistency file");
                 return View("Index", new string[] { "Error: " + ex.Message });
             }
         }

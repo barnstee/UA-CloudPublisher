@@ -37,7 +37,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             List<string> trustList = new();
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync().ConfigureAwait(false))
+            foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync(_app.Telemetry).ConfigureAwait(false))
             {
                 trustList.Add(cert.Subject + " [" + cert.Thumbprint + "] ");
             }
@@ -83,7 +83,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to load certificate");
                 return View("Index", new CertManagerModel() { Certs = new SelectList(new List<string>() { ex.Message }) });
             }
         }
@@ -107,7 +107,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to download trustlist");
                 return View("Index", new CertManagerModel() { Certs = new SelectList(new List<string>() { ex.Message }) });
             }
         }
@@ -129,7 +129,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Encryption failed");
                 return View("Index", new CertManagerModel() { Certs = new SelectList(new List<string>() { ex.Message }) });
             }
         }

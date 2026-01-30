@@ -140,7 +140,7 @@ namespace Opc.Ua.Cloud.Dashboard
 
         private void DecodeMessage(byte[] payload, DateTime receivedTime, UaNetworkMessage encodedMessage)
         {
-            encodedMessage.Decode(ServiceMessageContext.GlobalContext, payload, null);
+            encodedMessage.Decode(new ServiceMessageContext(_app.Telemetry), payload, null);
             if (encodedMessage.IsMetaDataMessage)
             {
                 // setup dataset reader
@@ -158,7 +158,7 @@ namespace Opc.Ua.Cloud.Dashboard
             }
             else
             {
-                encodedMessage.Decode(ServiceMessageContext.GlobalContext, payload, _dataSetReaders.Values.ToArray());
+                encodedMessage.Decode(new ServiceMessageContext(_app.Telemetry), payload, _dataSetReaders.Values.ToArray());
 
                 // reset metadata fields on default dataset readers
                 _dataSetReaders["default_uadp:0"].DataSetMetaData.Fields.Clear();
@@ -265,7 +265,7 @@ namespace Opc.Ua.Cloud.Dashboard
                 {
                     ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;i=" + Math.Abs(item.Key.GetHashCode()),
                     ApplicationUri = _app.UAApplicationInstance.ApplicationConfiguration.ApplicationUri,
-                    MessageContext = new ServiceMessageContext(),
+                    MessageContext = new ServiceMessageContext(_app.Telemetry),
                     Name = item.Key,
                     Value = item.Value
                 };

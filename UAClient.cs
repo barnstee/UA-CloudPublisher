@@ -85,7 +85,7 @@ namespace Opc.Ua.Cloud.Publisher
                     else
                     {
                         // use a discovery client to connect to the server and discover all its endpoints, then pick the one with the highest security
-                        selectedEndpoint = CoreClientUtils.SelectEndpointAsync(_app.UAApplicationInstance.ApplicationConfiguration, endpointUrl, true).GetAwaiter().GetResult();
+                        selectedEndpoint = CoreClientUtils.SelectEndpointAsync(_app.UAApplicationInstance.ApplicationConfiguration, endpointUrl, true, _app.Telemetry).GetAwaiter().GetResult();
 
                         // add to cache
                         _endpointDescriptionCache[endpointUrl] = selectedEndpoint;
@@ -167,11 +167,11 @@ namespace Opc.Ua.Cloud.Publisher
                     throw new ServiceResultException(StatusCodes.BadTimeout, "Waiting for a reverse connection timed out after 30 seconds.");
                 }
 
-                selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(_app.UAApplicationInstance.ApplicationConfiguration, connection, true).ConfigureAwait(false);
+                selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(_app.UAApplicationInstance.ApplicationConfiguration, connection, true, _app.Telemetry).ConfigureAwait(false);
             }
             else
             {
-                selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(_app.UAApplicationInstance.ApplicationConfiguration, endpointUrl, true).ConfigureAwait(false);
+                selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(_app.UAApplicationInstance.ApplicationConfiguration, endpointUrl, true, _app.Telemetry).ConfigureAwait(false);
             }
 
             ConfiguredEndpoint configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, EndpointConfiguration.Create(_app.UAApplicationInstance.ApplicationConfiguration));
@@ -190,13 +190,13 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                userIdentity = new UserIdentity(username, password);
+                userIdentity = new UserIdentity(username, Encoding.UTF8.GetBytes(password));
             }
 
             ISession newSession = null;
             try
             {
-                newSession = await DefaultSessionFactory.Instance.CreateAsync(
+                newSession = await new DefaultSessionFactory(_app.Telemetry).CreateAsync(
                     _app.UAApplicationInstance.ApplicationConfiguration,
                     connection,
                     configuredEndpoint,
@@ -392,7 +392,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                                     Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
                                     _logger.LogInformation($"RECONNECTING session {session.SessionId}...");
-                                    SessionReconnectHandler reconnectHandler = new SessionReconnectHandler();
+                                    SessionReconnectHandler reconnectHandler = new SessionReconnectHandler(_app.Telemetry);
                                     lock (_reconnectHandlersLock)
                                     {
                                         _reconnectHandlers.Add(reconnectHandler);
@@ -775,7 +775,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                             UserNameIdentityToken token = (UserNameIdentityToken)session.Identity.GetIdentityToken();
                             username = token.UserName;
-                            password = token.DecryptedPassword;
+                            password = Encoding.UTF8.GetString(token.DecryptedPassword);
                         }
 
                         PublishNodesInterfaceModel publisherConfigurationFileEntry = new PublishNodesInterfaceModel
@@ -1100,7 +1100,7 @@ namespace Opc.Ua.Cloud.Publisher
                     adminPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
                 }
 
-                serverPushClient.AdminCredentials = new UserIdentity(adminUsername, adminPassword);
+                serverPushClient.AdminCredentials = new UserIdentity(adminUsername, Encoding.UTF8.GetBytes(adminPassword));
 
                 await serverPushClient.ConnectAsync(endpointURL).ConfigureAwait(false);
 
@@ -1241,7 +1241,7 @@ namespace Opc.Ua.Cloud.Publisher
             ByteStringCollection issuersCrls = new ByteStringCollection();
 
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync().ConfigureAwait(false))
+            foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync(_app.Telemetry).ConfigureAwait(false))
             {
                 trusted.Add(cert.Export(X509ContentType.Cert));
             }
@@ -1324,7 +1324,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to upload WoT Thing Description");
 
                 if ((session != null) && (fileId != null) && (fileHandle != null))
                 {
@@ -1376,7 +1376,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError(ex, "Failed to upload WoT Thing Description");
 
                 if ((session != null) && (methodNodeId != null) && (fileHandle != null))
                 {

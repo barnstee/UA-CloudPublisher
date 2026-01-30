@@ -9,6 +9,8 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
     public interface IUAApplication
     {
+        public ConsoleTelemetry Telemetry { get; }
+
         public X509Certificate2 IssuerCert { get; set; }
 
         ApplicationInstance UAApplicationInstance { get; set; }
