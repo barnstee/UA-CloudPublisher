@@ -44,7 +44,7 @@ namespace Opc.Ua.Cloud.Publisher
                 ConfigSectionName = "UACloudPublisher"
             };
 
-            ReverseConnectManager = new (Telemetry);
+            ReverseConnectManager = new(Telemetry);
 
             // overwrite app name in UA config file, while removing spaces from the app name
             string fileContent = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"));
