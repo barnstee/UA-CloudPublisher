@@ -25,9 +25,6 @@ namespace Opc.Ua.Cloud.Publisher
                 string wotContent = Encoding.UTF8.GetString(wotBytes).Trim('\uFEFF'); // strip BOM, if present
                 JObject wotTD = JObject.Parse(wotContent);
 
-                // Extract the asset name from the WoT Thing Description
-                string assetName = wotTD["name"]?.ToString() ?? "asset";
-
                 // Extract properties from the WoT Thing Description
                 JToken properties = wotTD["properties"];
                 if (properties == null || !properties.HasValues)

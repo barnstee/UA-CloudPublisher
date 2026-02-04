@@ -14,6 +14,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using System.ClientModel;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -145,10 +146,16 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                             Directory.CreateDirectory(publishedNodesDir);
                         }
 
-                        string publishedNodesPath = Path.Combine(publishedNodesDir, $"publishednodes_{name}.json");
+                        // Sanitize the name to prevent path traversal attacks
+                        string safeName = Path.GetFileName(name);
+                        safeName = string.Join("_", safeName.Split(Path.GetInvalidFileNameChars()));
+
+                        string publishedNodesPath = Path.Combine(publishedNodesDir, $"publishednodes_{safeName}.json");
                         string publishedNodesJson = JsonConvert.SerializeObject(publishNodesList, Formatting.Indented);
                         System.IO.File.WriteAllText(publishedNodesPath, publishedNodesJson);
-                        _logger.LogInformation($"Generated PublishedNodes file: {publishedNodesPath} with {publishNodesList[0].OpcNodes?.Count ?? 0} nodes");
+                        
+                        int totalNodes = publishNodesList.Sum(p => p.OpcNodes?.Count ?? 0);
+                        _logger.LogInformation($"Generated PublishedNodes file: {publishedNodesPath} with {totalNodes} nodes");
                     }
 
                     // Step 3: Send the WoT file to Edge Translator
@@ -194,7 +201,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                             }
                         }
 
-                        int totalNodes = publishNodesList[0].OpcNodes?.Count ?? 0;
+                        int totalNodes = publishNodesList.Sum(p => p.OpcNodes?.Count ?? 0);
                         return View("Index", $"UA Edge Translator configured successfully! Published {totalNodes} nodes from WoT Thing Description.");
                     }
                 }
