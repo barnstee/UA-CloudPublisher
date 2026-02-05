@@ -13,6 +13,7 @@ namespace Opc.Ua.Cloud.Publisher
     public class WoTTDParser
     {
         private readonly ILogger _logger;
+        private static readonly Regex TemplateRegex = new Regex(@"\{\{([^}]+)\}\}", RegexOptions.Compiled);
 
         public WoTTDParser(ILogger logger)
         {
@@ -119,8 +120,7 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 // Regular expression to find {{template}} patterns
-                Regex regex = new Regex(@"\{\{([^}]+)\}\}");
-                MatchCollection matches = regex.Matches(wotContent);
+                MatchCollection matches = TemplateRegex.Matches(wotContent);
 
                 foreach (Match match in matches)
                 {
