@@ -7,6 +7,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json.Linq;
     using Opc.Ua.Cloud.Publisher.Interfaces;
+    using Opc.Ua.Cloud.Publisher.Models;
     using OpenAI.Chat;
     using System;
     using System.ClientModel;
@@ -106,7 +107,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         name = jsonObject["name"].ToString();
                     }
                 }
-
+                
                 if (Settings.Instance.PushCertsBeforePublishing)
                 {
                     try
@@ -133,6 +134,41 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 else
                 {
                     throw new ArgumentException("Invalid file type specified!");
+                }
+
+                if (Settings.Instance.AutoPublishAllWoTProperties)
+                {
+                    WoTTDParser parser = new(_logger);
+                    List<VariableModel> publishNodesList = parser.ParseWoTThingDescription(bytes);
+                    if (publishNodesList.Count > 0)
+                    {
+                        foreach (VariableModel opcNode in publishNodesList)
+                        {
+                            NodePublishingModel publishingInfo = new NodePublishingModel()
+                            {
+                                ExpandedNodeId = ExpandedNodeId.Parse(opcNode.Id),
+                                EndpointUrl = new Uri(endpointUrl).ToString(),
+                                OpcPublishingInterval = opcNode.OpcPublishingInterval,
+                                OpcSamplingInterval = opcNode.OpcSamplingInterval,
+                                HeartbeatInterval = opcNode.HeartbeatInterval,
+                                SkipFirst = opcNode.SkipFirst,
+                                OpcAuthenticationMode = string.IsNullOrEmpty(username) ? UserAuthModeEnum.Anonymous : UserAuthModeEnum.UsernamePassword,
+                                Username = username,
+                                Password = password
+                            };
+
+                            try
+                            {
+                                await _client.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
+
+                                _logger.LogInformation($"Published node {publishingInfo.ExpandedNodeId} successfully");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError($"Cannot publish node {publishingInfo.ExpandedNodeId}: {ex.Message}");
+                            }
+                        }
+                    }
                 }
 
                 return View("Index", "UA Edge Translator configured successfully!");

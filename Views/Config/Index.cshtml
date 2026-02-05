@@ -22,6 +22,9 @@
 <br />
 <form action="/Config/Apply" method="post">
     <p>
+        <input class="btn btn-primary" type="submit" name="Apply" value="Apply Changes" />
+    </p>
+    <p>
         OPC UA Client Certificate Thumbprint<br />
         @Html.TextBox("UAClientCertThumbprint", @Model.UAClientCertThumbprint, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
     </p>
@@ -44,9 +47,6 @@
     <p>
         MQTT Client Certificate Expiry<br />
         @Html.TextBox("MQTTClientCertExpiry", @Model.MQTTClientCertExpiry, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
-    </p>
-    <p>
-        <input class="btn btn-primary" type="submit" name="Apply" value="Apply Changes" />
     </p>
     <p>
         Publisher Name (<b>required</b>)<br />
@@ -151,6 +151,10 @@
     <p>
         Use reverse connect to connect to OPC UA servers. UA Cloud Publisher will listen on port 50000.<br />
         @Html.CheckBox("UseReverseConnect", @Model.UseReverseConnect)<br />
+    </p>
+    <p>
+        Auto-publish all WoT properties<br />
+        @Html.CheckBox("AutoPublishAllWoTProperties", @Model.AutoPublishAllWoTProperties)<br />
     </p>
     <p>
         Push new OPC UA certificates to server before WoT file upload or before processing published nodes files (GDS Server Push feature)<br />

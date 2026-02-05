@@ -1289,7 +1289,7 @@ namespace Opc.Ua.Cloud.Publisher
                     if (ex.StatusCode == StatusCodes.BadBrowseNameDuplicated)
                     {
                         // delete existing asset first
-                        assetId = await ExecuteCommand(session, deleteNodeId, parentNodeId, new NodeId(ex.Result.LocalizedText.Text), null).ConfigureAwait(false);
+                        assetId = await ExecuteCommand(session, deleteNodeId, parentNodeId, new NodeId(ex.Result.LocalizedText?.Text), null).ConfigureAwait(false);
 
                         // now try again
                         assetId = await ExecuteCommand(session, createNodeId, parentNodeId, assetName, null).ConfigureAwait(false);

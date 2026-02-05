@@ -5,7 +5,7 @@
   schemaLocation="./Schema/ApplicationConfiguration.xsd"
 >
   <ApplicationName>UACloudPublisher</ApplicationName>
-  <ApplicationUri>urn:localhost:UACloudPublisher</ApplicationUri>
+  <ApplicationUri>urn:UACloudPublisher</ApplicationUri>
   <ProductUri>https://github.com/azure/iot-edge-opc-publisher</ProductUri>
   <ApplicationType>Client_1</ApplicationType>
   <SecurityConfiguration>

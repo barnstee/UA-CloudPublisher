@@ -7,7 +7,6 @@ namespace Opc.Ua.Cloud.Publisher
     using System;
     using System.IO;
     using System.Text;
-    using System.Threading.Tasks;
 
     public class Settings
     {
@@ -155,6 +154,8 @@ namespace Opc.Ua.Cloud.Publisher
         public bool UseCustomCertAuth { get; set; } = false;
 
         public bool UseReverseConnect { get; set; } = false;
+
+        public bool AutoPublishAllWoTProperties { get; set; } = false;
 
         public bool PushCertsBeforePublishing { get; set; } = false;
 
