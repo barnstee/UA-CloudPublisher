@@ -21,6 +21,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - Support for sending OPC UA metadata to an alternative broker
 - Support for reverse connects from OPC UA servers
 - Support for subscriptions transfer when server connections are temporarily interrupted
+- Support for auto-publishing of all WoT properties found in a WoT file sent to UA Edge Translator
 - OPC UA Variables publishing
 - OPC UA Alarms, Conditions & other events publishing
 - OPC UA Event filtering
