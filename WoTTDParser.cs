@@ -62,7 +62,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                     if (!opcNodes.ContainsKey(id))
                     {
-                       opcNodes.Add(id, variable);
+                        opcNodes.Add(id, variable);
                         _logger.LogInformation($"Added property '{propertyName}' with Node ID '{nodeId}'");
                     }
                 }
