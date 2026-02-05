@@ -107,7 +107,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         name = jsonObject["name"].ToString();
                     }
                 }
-                
+
                 if (Settings.Instance.PushCertsBeforePublishing)
                 {
                     try
