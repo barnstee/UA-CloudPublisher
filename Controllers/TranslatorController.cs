@@ -118,7 +118,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                                 TempData["EndpointUrl"] = endpointUrl;
                                 TempData["Username"] = username;
                                 TempData["Password"] = password;
-                                TempData["Templates"] = string.Join(",", templates);
 
                                 return Json(new { isThingModel = true, templates = templates });
                             }
@@ -207,7 +206,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             try
             {
                 string wotContent = TempData["WoTContent"] as string;
-                string fileName = TempData["WoTFileName"] as string;
                 string endpointUrl = TempData["EndpointUrl"] as string;
                 string username = TempData["Username"] as string;
                 string password = TempData["Password"] as string;
@@ -233,7 +231,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         await _client.GDSServerPush(endpointUrl, username, password).ConfigureAwait(false);
 
                         // after the cert push, give the server 5s time to become available again before trying to push the WoT file to it
-                        Thread.Sleep(5000);
+                        await Task.Delay(5000).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
