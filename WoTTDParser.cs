@@ -150,6 +150,9 @@ namespace Opc.Ua.Cloud.Publisher
                     string placeholder = "{{" + kvp.Key + "}}";
                     result = result.Replace(placeholder, kvp.Value);
                 }
+
+                // turn the thing model into a thing descripton
+                result = result.Replace("tm:ThingModel", "Thing");
             }
             catch (Exception ex)
             {
