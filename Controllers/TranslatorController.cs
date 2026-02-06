@@ -104,7 +104,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     if (file.FileName.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
                     {
                         string wotContent = Encoding.UTF8.GetString(bytes).Trim('\uFEFF'); // strip BOM, if present
-                        
+
                         // Check if this is a Thing Model with templates
                         WoTTDParser parser = new(_logger);
                         if (parser.IsThingModel(wotContent))
@@ -128,68 +128,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     }
                 }
 
-                if (Settings.Instance.PushCertsBeforePublishing)
-                {
-                    try
-                    {
-                        await _client.GDSServerPush(endpointUrl, username, password).ConfigureAwait(false);
+                await SendWoTFileToEdgeTranslator(file.FileName, endpointUrl, username, password, name, bytes).ConfigureAwait(false);
 
-                        // after the cert push, give the server 5s time to become available again before trying to pudh the WoT file to it
-                        Thread.Sleep(5000);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError("Cannot push new certificates to server " + endpointUrl + "due to " + ex.Message);
-                    }
-                }
-
-                if (file.FileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-                {
-                    await _client.UANodesetUpload(endpointUrl, username, password, bytes).ConfigureAwait(false);
-                }
-                else if (file.FileName.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
-                {
-                    await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
-                }
-                else
-                {
-                    throw new ArgumentException("Invalid file type specified!");
-                }
-
-                if (Settings.Instance.AutoPublishAllWoTProperties)
-                {
-                    WoTTDParser parser = new(_logger);
-                    List<VariableModel> publishNodesList = parser.ParseWoTThingDescription(bytes);
-                    if (publishNodesList.Count > 0)
-                    {
-                        foreach (VariableModel opcNode in publishNodesList)
-                        {
-                            NodePublishingModel publishingInfo = new NodePublishingModel()
-                            {
-                                ExpandedNodeId = ExpandedNodeId.Parse(opcNode.Id),
-                                EndpointUrl = new Uri(endpointUrl).ToString(),
-                                OpcPublishingInterval = opcNode.OpcPublishingInterval,
-                                OpcSamplingInterval = opcNode.OpcSamplingInterval,
-                                HeartbeatInterval = opcNode.HeartbeatInterval,
-                                SkipFirst = opcNode.SkipFirst,
-                                OpcAuthenticationMode = string.IsNullOrEmpty(username) ? UserAuthModeEnum.Anonymous : UserAuthModeEnum.UsernamePassword,
-                                Username = username,
-                                Password = password
-                            };
-
-                            try
-                            {
-                                await _client.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
-
-                                _logger.LogInformation($"Published node {publishingInfo.ExpandedNodeId} successfully");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError($"Cannot publish node {publishingInfo.ExpandedNodeId}: {ex.Message}");
-                            }
-                        }
-                    }
-                }
+                await PublishWoTProperties(endpointUrl, username, password, bytes).ConfigureAwait(false);
 
                 return View("Index", "UA Edge Translator configured successfully!");
             }
@@ -224,57 +165,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 JObject jsonObject = JObject.Parse(processedContent);
                 string name = jsonObject["name"]?.ToString() ?? "asset";
 
-                if (Settings.Instance.PushCertsBeforePublishing)
-                {
-                    try
-                    {
-                        await _client.GDSServerPush(endpointUrl, username, password).ConfigureAwait(false);
+                await SendWoTFileToEdgeTranslator("template.jsonld", endpointUrl, username, password, name, bytes).ConfigureAwait(false);
 
-                        // after the cert push, give the server 5s time to become available again before trying to push the WoT file to it
-                        await Task.Delay(5000).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError("Cannot push new certificates to server " + endpointUrl + "due to " + ex.Message);
-                    }
-                }
-
-                // Upload the processed WoT file
-                await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
-
-                if (Settings.Instance.AutoPublishAllWoTProperties)
-                {
-                    List<VariableModel> publishNodesList = parser.ParseWoTThingDescription(bytes);
-                    if (publishNodesList.Count > 0)
-                    {
-                        foreach (VariableModel opcNode in publishNodesList)
-                        {
-                            NodePublishingModel publishingInfo = new NodePublishingModel()
-                            {
-                                ExpandedNodeId = ExpandedNodeId.Parse(opcNode.Id),
-                                EndpointUrl = new Uri(endpointUrl).ToString(),
-                                OpcPublishingInterval = opcNode.OpcPublishingInterval,
-                                OpcSamplingInterval = opcNode.OpcSamplingInterval,
-                                HeartbeatInterval = opcNode.HeartbeatInterval,
-                                SkipFirst = opcNode.SkipFirst,
-                                OpcAuthenticationMode = string.IsNullOrEmpty(username) ? UserAuthModeEnum.Anonymous : UserAuthModeEnum.UsernamePassword,
-                                Username = username,
-                                Password = password
-                            };
-
-                            try
-                            {
-                                await _client.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
-
-                                _logger.LogInformation($"Published node {publishingInfo.ExpandedNodeId} successfully");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError($"Cannot publish node {publishingInfo.ExpandedNodeId}: {ex.Message}");
-                            }
-                        }
-                    }
-                }
+                await PublishWoTProperties(endpointUrl, username, password, bytes).ConfigureAwait(false);
 
                 return View("Index", "UA Edge Translator configured successfully!");
             }
@@ -282,6 +175,75 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             {
                 _logger.LogError(ex, "Failed to process template");
                 return View("Index", ex.Message);
+            }
+        }
+
+        private async Task SendWoTFileToEdgeTranslator(string filename, string endpointUrl, string username, string password, string name, byte[] bytes)
+        {
+            if (Settings.Instance.PushCertsBeforePublishing)
+            {
+                try
+                {
+                    await _client.GDSServerPush(endpointUrl, username, password).ConfigureAwait(false);
+
+                    // after the cert push, give the server 5s time to become available again before trying to pudh the WoT file to it
+                    Thread.Sleep(5000);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Cannot push new certificates to server " + endpointUrl + "due to " + ex.Message);
+                }
+            }
+
+            if (filename.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+            {
+                await _client.UANodesetUpload(endpointUrl, username, password, bytes).ConfigureAwait(false);
+            }
+            else if (filename.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
+            {
+                await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
+            }
+            else
+            {
+                throw new ArgumentException("Invalid file type specified!");
+            }
+        }
+
+        private async Task PublishWoTProperties(string endpointUrl, string username, string password, byte[] bytes)
+        {
+            if (Settings.Instance.AutoPublishAllWoTProperties)
+            {
+                WoTTDParser parser = new(_logger);
+                List<VariableModel> publishNodesList = parser.ParseWoTThingDescription(bytes);
+                if (publishNodesList.Count > 0)
+                {
+                    foreach (VariableModel opcNode in publishNodesList)
+                    {
+                        NodePublishingModel publishingInfo = new NodePublishingModel()
+                        {
+                            ExpandedNodeId = ExpandedNodeId.Parse(opcNode.Id),
+                            EndpointUrl = new Uri(endpointUrl).ToString(),
+                            OpcPublishingInterval = opcNode.OpcPublishingInterval,
+                            OpcSamplingInterval = opcNode.OpcSamplingInterval,
+                            HeartbeatInterval = opcNode.HeartbeatInterval,
+                            SkipFirst = opcNode.SkipFirst,
+                            OpcAuthenticationMode = string.IsNullOrEmpty(username) ? UserAuthModeEnum.Anonymous : UserAuthModeEnum.UsernamePassword,
+                            Username = username,
+                            Password = password
+                        };
+
+                        try
+                        {
+                            await _client.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
+
+                            _logger.LogInformation($"Published node {publishingInfo.ExpandedNodeId} successfully");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError($"Cannot publish node {publishingInfo.ExpandedNodeId}: {ex.Message}");
+                        }
+                    }
+                }
             }
         }
     }

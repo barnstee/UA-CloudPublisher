@@ -13,6 +13,7 @@ namespace Opc.Ua.Cloud.Publisher
     public class WoTTDParser
     {
         private readonly ILogger _logger;
+
         private static readonly Regex TemplateRegex = new Regex(@"\{\{([^}]+)\}\}", RegexOptions.Compiled);
 
         public WoTTDParser(ILogger logger)
