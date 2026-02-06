@@ -1,0 +1,60 @@
+{
+  "@context": [
+    "https://www.w3.org/2019/wot/td/v1",
+    "https://si-ra.github.io/ontologies/td-context.jsonld",
+    "http://opcfoundation.org/UA/PNEM/"
+  ],
+  "@type": [
+    "tm:ThingModel"
+  ],
+  "id": "urn:{{deviceId}}",
+  "securityDefinitions": {
+    "nosec_sc": {
+      "scheme": "nosec"
+    }
+  },
+  "security": [
+    "nosec_sc"
+  ],
+  "name": "{{deviceName}}",
+  "base": "modbus://{{ipAddress}}:{{port}}",
+  "title": "{{deviceTitle}}",
+  "properties": {
+    "Temperature": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=1&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/{{deviceName}}/;i=1001",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    },
+    "Pressure": {
+      "type": "number",
+      "readOnly": true,
+      "observable": true,
+      "forms": [
+        {
+          "href": "/1?address=3&quantity=2",
+          "op": [
+            "readproperty",
+            "observeproperty"
+          ],
+          "opcua:type": "nsu=http://opcfoundation.org/UA/{{deviceName}}/;i=1002",
+          "modbus:type": "float",
+          "modbus:entity": "holdingregister",
+          "modbus:pollingTime": 2000
+        }
+      ]
+    }
+  }
+}

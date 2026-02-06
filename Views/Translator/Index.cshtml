@@ -33,7 +33,7 @@
     <br />
     <hr style="border-top: 1px solid blue" />
     <br />
-    <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
+    <form id="loadForm" method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
         <p>
             2. Load the manually validated asset description file (.jsonld extension) or an OPC UA nodeset file dependency (.xml extension):<br />
         </p>
@@ -75,4 +75,96 @@
         </p>
     </form>
 </div>
+
+<!-- Modal for Template Replacement -->
+<div class="modal fade" id="templateModal" tabindex="-1" role="dialog" aria-labelledby="templateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title" id="templateModalLabel">Replace Template Values</h5>
+                <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="templateForm" method="post" asp-controller="Translator" asp-action="ProcessTemplate">
+                <div class="modal-body">
+                    <p>This WoT Thing Model contains template placeholders. Please provide values for each template:</p>
+                    <div id="templateFields"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Apply & Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Intercept the Load form submission
+            $('#loadForm').submit(function(e) {
+                e.preventDefault();
+                
+                var formData = new FormData(this);
+                
+                $.ajax({
+                    url: '@Url.Action("Load", "Translator")',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.isThingModel && response.templates && response.templates.length > 0) {
+                            // Show modal with template fields
+                            showTemplateModal(response.templates);
+                        } else {
+                            // Reload page to show success/error message
+                            location.reload();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Error: ' + error);
+                    }
+                });
+            });
+            
+            function showTemplateModal(templates) {
+                var fieldsHtml = '';
+                templates.forEach(function(template) {
+                    fieldsHtml += '<div class="form-group">';
+                    fieldsHtml += '<label for="template_' + template + '">' + template + ':</label>';
+                    fieldsHtml += '<input type="text" class="form-control" id="template_' + template + '" ';
+                    fieldsHtml += 'name="templateValues[' + template + ']" ';
+                    fieldsHtml += 'style="background-color:grey;color:white;" required>';
+                    fieldsHtml += '</div>';
+                });
+                
+                $('#templateFields').html(fieldsHtml);
+                $('#templateModal').modal('show');
+            }
+            
+            // Handle template form submission
+            $('#templateForm').submit(function(e) {
+                e.preventDefault();
+                
+                var formData = $(this).serialize();
+                
+                $.ajax({
+                    url: '@Url.Action("ProcessTemplate", "Translator")',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        $('#templateModal').modal('hide');
+                        location.reload();
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Error: ' + error);
+                    }
+                });
+            });
+        });
+    </script>
+}
 

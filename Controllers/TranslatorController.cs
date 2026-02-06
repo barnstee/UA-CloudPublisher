@@ -103,7 +103,27 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                     if (file.FileName.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
                     {
-                        JObject jsonObject = JObject.Parse(Encoding.UTF8.GetString(bytes).Trim('\uFEFF')); // strip BOM, if present
+                        string wotContent = Encoding.UTF8.GetString(bytes).Trim('\uFEFF'); // strip BOM, if present
+                        
+                        // Check if this is a Thing Model with templates
+                        WoTTDParser parser = new(_logger);
+                        if (parser.IsThingModel(wotContent))
+                        {
+                            List<string> templates = parser.ExtractTemplates(wotContent);
+                            if (templates.Count > 0)
+                            {
+                                // Store file in session or TempData for later processing
+                                TempData["WoTContent"] = wotContent;
+                                TempData["WoTFileName"] = file.FileName;
+                                TempData["EndpointUrl"] = endpointUrl;
+                                TempData["Username"] = username;
+                                TempData["Password"] = password;
+
+                                return Json(new { isThingModel = true, templates = templates });
+                            }
+                        }
+
+                        JObject jsonObject = JObject.Parse(wotContent);
                         name = jsonObject["name"].ToString();
                     }
                 }
@@ -176,6 +196,91 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process file");
+                return View("Index", ex.Message);
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ProcessTemplate(Dictionary<string, string> templateValues)
+        {
+            try
+            {
+                string wotContent = TempData["WoTContent"] as string;
+                string endpointUrl = TempData["EndpointUrl"] as string;
+                string username = TempData["Username"] as string;
+                string password = TempData["Password"] as string;
+
+                if (string.IsNullOrEmpty(wotContent))
+                {
+                    throw new ArgumentException("No WoT content found in session!");
+                }
+
+                // Replace templates in the content
+                WoTTDParser parser = new(_logger);
+                string processedContent = parser.ReplaceTemplates(wotContent, templateValues);
+                byte[] bytes = Encoding.UTF8.GetBytes(processedContent);
+
+                // Extract name from processed content
+                JObject jsonObject = JObject.Parse(processedContent);
+                string name = jsonObject["name"]?.ToString() ?? "asset";
+
+                if (Settings.Instance.PushCertsBeforePublishing)
+                {
+                    try
+                    {
+                        await _client.GDSServerPush(endpointUrl, username, password).ConfigureAwait(false);
+
+                        // after the cert push, give the server 5s time to become available again before trying to push the WoT file to it
+                        await Task.Delay(5000).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Cannot push new certificates to server " + endpointUrl + "due to " + ex.Message);
+                    }
+                }
+
+                // Upload the processed WoT file
+                await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
+
+                if (Settings.Instance.AutoPublishAllWoTProperties)
+                {
+                    List<VariableModel> publishNodesList = parser.ParseWoTThingDescription(bytes);
+                    if (publishNodesList.Count > 0)
+                    {
+                        foreach (VariableModel opcNode in publishNodesList)
+                        {
+                            NodePublishingModel publishingInfo = new NodePublishingModel()
+                            {
+                                ExpandedNodeId = ExpandedNodeId.Parse(opcNode.Id),
+                                EndpointUrl = new Uri(endpointUrl).ToString(),
+                                OpcPublishingInterval = opcNode.OpcPublishingInterval,
+                                OpcSamplingInterval = opcNode.OpcSamplingInterval,
+                                HeartbeatInterval = opcNode.HeartbeatInterval,
+                                SkipFirst = opcNode.SkipFirst,
+                                OpcAuthenticationMode = string.IsNullOrEmpty(username) ? UserAuthModeEnum.Anonymous : UserAuthModeEnum.UsernamePassword,
+                                Username = username,
+                                Password = password
+                            };
+
+                            try
+                            {
+                                await _client.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
+
+                                _logger.LogInformation($"Published node {publishingInfo.ExpandedNodeId} successfully");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError($"Cannot publish node {publishingInfo.ExpandedNodeId}: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+
+                return View("Index", "UA Edge Translator configured successfully!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process template");
                 return View("Index", ex.Message);
             }
         }
