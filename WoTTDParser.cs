@@ -151,7 +151,7 @@ namespace Opc.Ua.Cloud.Publisher
                     result = result.Replace(placeholder, kvp.Value);
                 }
 
-                // turn the thing model into a thing descripton
+                // turn the thing model into a thing description
                 result = result.Replace("tm:ThingModel", "Thing");
             }
             catch (Exception ex)
