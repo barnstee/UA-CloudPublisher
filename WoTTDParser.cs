@@ -83,7 +83,7 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 JObject wotObject = JObject.Parse(wotContent);
-                
+
                 // Check if @type contains "tm:ThingModel"
                 JToken typeToken = wotObject["@type"];
                 if (typeToken != null)
@@ -117,7 +117,7 @@ namespace Opc.Ua.Cloud.Publisher
         public List<string> ExtractTemplates(string wotContent)
         {
             var templates = new HashSet<string>();
-            
+
             try
             {
                 // Regular expression to find {{template}} patterns
