@@ -252,7 +252,7 @@ namespace Opc.Ua.PubSub.Encoding
         }
 
         /// <summary>
-        /// Atempt to Decode dataset
+        /// Attempt to Decode dataset
         /// </summary>
         /// <returns></returns>
         public void DecodePossibleDataSetReader(BinaryDecoder binaryDecoder, DataSetReaderDataType dataSetReader)

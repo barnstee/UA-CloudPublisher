@@ -87,7 +87,7 @@ namespace Opc.Ua.Cloud.Publisher
             string[] issuerCerts = Directory.GetFiles(pathToIssuerStore);
             if ((issuerCerts == null) || (issuerCerts.Count() == 0))
             {
-                _logger.LogError("Could not load issuer cert file, creating a new one. This means all conected OPC UA servers need to be issued a new cert!");
+                _logger.LogError("Could not load issuer cert file, creating a new one. This means all connected OPC UA servers need to be issued a new cert!");
 
                 string subjectName = "CN=" + Settings.Instance.PublisherName + ", O=OPC Foundation";
                 IssuerCert = await CertificateFactory.CreateCertificate(subjectName)

@@ -312,7 +312,7 @@ namespace Opc.Ua.Cloud.Publisher
             // initialize the event with the values in the notification.
             e.Update(session.SystemContext, filter.SelectClauses, notification);
 
-            // save the orginal notification.
+            // save the original notification.
             e.Handle = notification;
 
             return e;
