@@ -52,7 +52,7 @@
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.378.106" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.378.106" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Gds.Client.Common" Version="1.5.378.106" />
-    <PackageReference Include="Radzen.Blazor" Version="8.7.5" />
+    <PackageReference Include="Radzen.Blazor" Version="9.0.6" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
