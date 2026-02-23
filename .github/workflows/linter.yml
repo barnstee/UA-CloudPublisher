@@ -41,6 +41,10 @@ jobs:
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
           VALIDATE_CHECKOV: false
+          ALIDATE_GIT_COMMITLINT: false
           VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
           VALIDATE_TRIVY: false
-          FILTER_REGEX_EXCLUDE: .*wwwroot/.*
+          VALIDATE_PYTHON_BLACK: false
+          IGNORE_GITIGNORED_FILES: true
+          FILTER_REGEX_EXCLUDE: .*wwwroot/.*|.gitignore
