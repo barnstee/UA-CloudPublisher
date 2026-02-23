@@ -217,11 +217,11 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     else
                     {
                         _logger.LogError("Unknown command received: " + result.Topic);
-                        response.Status = "Unkown command " + result.Topic;
+                        response.Status = "Unknown command " + result.Topic;
                         response.Success = false;
                     }
 
-                    // send reponse to Kafka broker
+                    // send response to Kafka broker
                     Publish(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response)));
                 }
                 catch (Exception ex)

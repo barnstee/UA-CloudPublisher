@@ -160,7 +160,7 @@ namespace Opc.Ua.PubSub.Encoding
                     bool wasPush = jsonDecoder.PushArray(messagesListName, index);
                     if (wasPush)
                     {
-                        // atempt decoding the DataSet fields
+                        // Attempt decoding the DataSet fields
                         DecodePossibleDataSetReader(jsonDecoder, dataSetReader);
 
                         // redo jsonDecoder stack
@@ -177,7 +177,7 @@ namespace Opc.Ua.PubSub.Encoding
         }
 
         /// <summary>
-        /// Atempt to decode dataset from the KeyValue pairs
+        /// Attempt to decode dataset from the KeyValue pairs
         /// </summary>
         private void DecodePossibleDataSetReader(JsonDecoder jsonDecoder, DataSetReaderDataType dataSetReader)
         {

@@ -565,7 +565,7 @@ namespace Opc.Ua.PubSub.Encoding
 
                 if (messagesList != null)
                 {
-                    // atempt decoding for each filtered data set reader
+                    // Attempt decoding for each filtered data set reader
                     foreach (DataSetReaderDataType dataSetReader in dataSetReadersFiltered)
                     {
                         JsonDataSetReaderMessageDataType jsonMessageSettings = ExtensionObject.ToEncodeable(dataSetReader.MessageSettings)
@@ -645,7 +645,7 @@ namespace Opc.Ua.PubSub.Encoding
                     }
                 }
 
-                // atempt decoding for each filtered data set reader
+                // Attempt decoding for each filtered data set reader
                 foreach (DataSetReaderDataType dataSetReader in dataSetReadersFiltered)
                 {
                     JsonDataSetReaderMessageDataType jsonMessageSettings = ExtensionObject.ToEncodeable(dataSetReader.MessageSettings)

@@ -356,11 +356,11 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     else
                     {
                         _logger.LogError("Unknown command received: " + args.ApplicationMessage.Topic);
-                        response.Status = "Unkown command " + args.ApplicationMessage.Topic;
+                        response.Status = "Unknown command " + args.ApplicationMessage.Topic;
                         response.Success = false;
                     }
 
-                    // send reponse to MQTT broker
+                    // send response to MQTT broker
                     await _client.PublishAsync(BuildResponse("200", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))), _cancellationTokenSource.Token).ConfigureAwait(false);
                 }
             }
