@@ -46,13 +46,13 @@
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageReference Include="Confluent.Kafka" Version="2.13.1" />
+    <PackageReference Include="Confluent.Kafka" Version="2.13.2" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.378.106" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client.ComplexTypes" Version="1.5.378.106" />
     <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Gds.Client.Common" Version="1.5.378.106" />
-    <PackageReference Include="Radzen.Blazor" Version="9.0.6" />
+    <PackageReference Include="Radzen.Blazor" Version="10.0.3" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
