@@ -106,9 +106,9 @@
             // Intercept the Load form submission
             $('#loadForm').submit(function(e) {
                 e.preventDefault();
-                
+
                 var formData = new FormData(this);
-                
+
                 $.ajax({
                     url: '@Url.Action("Load", "Translator")',
                     type: 'POST',
@@ -129,7 +129,7 @@
                     }
                 });
             });
-            
+
             function showTemplateModal(templates) {
                 var fieldsHtml = '';
                 templates.forEach(function(template) {
@@ -140,17 +140,17 @@
                     fieldsHtml += 'style="background-color:grey;color:white;" required>';
                     fieldsHtml += '</div>';
                 });
-                
+
                 $('#templateFields').html(fieldsHtml);
                 $('#templateModal').modal('show');
             }
-            
+
             // Handle template form submission
             $('#templateForm').submit(function(e) {
                 e.preventDefault();
-                
+
                 var formData = $(this).serialize();
-                
+
                 $.ajax({
                     url: '@Url.Action("ProcessTemplate", "Translator")',
                     type: 'POST',

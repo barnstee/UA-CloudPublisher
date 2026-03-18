@@ -3,7 +3,6 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 {
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
-    using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
@@ -17,15 +16,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
     {
         private readonly IUAApplication _app;
         private readonly IUAClient _client;
-        private readonly ILogger _logger;
 
         private SessionModel _session;
 
-        public BrowserController(IUAApplication app, IUAClient client, ILoggerFactory loggerFactory)
+        public BrowserController(IUAApplication app, IUAClient client)
         {
             _app = app;
             _client = client;
-            _logger = loggerFactory.CreateLogger("BrowserController");
             _session = new();
         }
 

@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Cloud.Publisher.Controllers
+﻿namespace Opc.Ua.Cloud.Publisher.Controllers
 {
     using Azure.AI.OpenAI;
     using Microsoft.AspNetCore.Http;
@@ -30,7 +29,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
         public IActionResult Index()
         {
-            return View("Index", string.Empty);
+            string message = TempData["StatusMessage"] as string ?? string.Empty;
+            return View("Index", message);
         }
 
         [HttpPost]
@@ -132,12 +132,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 await PublishWoTProperties(endpointUrl, username, password, bytes).ConfigureAwait(false);
 
-                return View("Index", "UA Edge Translator configured successfully!");
+                TempData["StatusMessage"] = "UA Edge Translator configured successfully!";
+                return Json(new { success = true });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process file");
-                return View("Index", ex.Message);
+                TempData["StatusMessage"] = ex.Message;
+                return Json(new { success = false });
             }
         }
 
@@ -169,12 +171,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 await PublishWoTProperties(endpointUrl, username, password, bytes).ConfigureAwait(false);
 
-                return View("Index", "UA Edge Translator configured successfully!");
+                TempData["StatusMessage"] = "UA Edge Translator configured successfully!";
+                return Json(new { success = true });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process template");
-                return View("Index", ex.Message);
+                TempData["StatusMessage"] = ex.Message;
+                return Json(new { success = false });
             }
         }
 
