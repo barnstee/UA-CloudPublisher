@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Cloud.Publisher
+﻿namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
@@ -181,7 +180,8 @@ namespace Opc.Ua.Cloud.Publisher
 
         public string AzureOpenAIDeploymentName { get; set; } = string.Empty;
 
-
+        public const uint ReconnectIntervalMs = 10000;
+        public const uint MaxMissedKeepAlives = 3;
         public const int MaxResponsePayloadLength = (128 * 1024) - 256;
         public const uint HubMessageSizeMax = 256 * 1024;
     }

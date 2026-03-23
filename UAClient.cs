@@ -1,4 +1,3 @@
-
 namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
@@ -314,6 +313,7 @@ namespace Opc.Ua.Cloud.Publisher
             Subscription subscription = new Subscription(session.DefaultSubscription)
             {
                 PublishingInterval = publishingInterval,
+                MinLifetimeInterval = (uint)(session.SessionTimeout * 2) // set lifetime to 2x session timeout to avoid unintentional deletion of subscriptions in case of transient session disconnects
             };
 
             // add needs to happen before create to set the Session property
@@ -344,75 +344,79 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
 
-                    lock (_missedKeepAlivesLock)
+                    if (!ServiceResult.IsGood(eventArgs.Status))
                     {
-                        if (!ServiceResult.IsGood(eventArgs.Status))
+                        // check early if a reconnection is already in progress — if so, skip all
+                        // further processing to avoid unbounded counter growth and log flooding
+                        lock (_reconnectHandlersLock)
                         {
-                            _logger.LogWarning("Session endpoint: {endpointUrl} has Status: {status}", session.ConfiguredEndpoint.EndpointUrl, eventArgs.Status);
-                            _logger.LogInformation("Outstanding requests: {outstandingRequestCount}, Defunct requests: {defunctRequestCount}", session.OutstandingRequestCount, session.DefunctRequestCount);
-                            _logger.LogInformation("Good publish requests: {goodPublishRequestCount}, KeepAlive interval: {keepAliveInterval}", session.GoodPublishRequestCount, session.KeepAliveInterval);
-                            _logger.LogInformation("SessionId: {sessionId}", session.SessionId);
-                            _logger.LogInformation("Session State: {connected}", session.Connected);
-
-                            if (session.Connected)
+                            foreach (SessionReconnectHandler handler in _reconnectHandlers)
                             {
-                                // add a new entry, if required
+                                if (ReferenceEquals(handler.Session, session))
+                                {
+                                    // reconnect already in progress
+                                    return;
+                                }
+                            }
+                        }
+
+                        _logger.LogWarning("Session {id} with endpoint {endpointUrl} has status {status}", session.SessionId, session.ConfiguredEndpoint.EndpointUrl, eventArgs.Status);
+
+                        uint missedCount = 0;
+                        if (session.Connected)
+                        {
+                            lock (_missedKeepAlivesLock)
+                            {
                                 if (!_missedKeepAlives.ContainsKey(endpoint))
                                 {
                                     _missedKeepAlives.Add(endpoint, 0);
                                 }
 
                                 _missedKeepAlives[endpoint]++;
-                                _logger.LogInformation("Missed Keep-Alive: {missedKeepAlives}", _missedKeepAlives[endpoint]);
+                                missedCount = _missedKeepAlives[endpoint];
                             }
 
-                            // start reconnect if there are 3 missed keep alives
-                            if (_missedKeepAlives[endpoint] >= 3)
-                            {
-                                // check if a reconnection is already in progress
-                                bool reconnectInProgress = false;
-                                lock (_reconnectHandlersLock)
-                                {
-                                    foreach (SessionReconnectHandler handler in _reconnectHandlers)
-                                    {
-                                        if (ReferenceEquals(handler.Session, session))
-                                        {
-                                            reconnectInProgress = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!reconnectInProgress)
-                                {
-                                    lock (_sessionLock)
-                                    {
-                                        _sessions.Remove(session);
-                                    }
-
-                                    Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
-                                    _logger.LogInformation($"RECONNECTING session {session.SessionId}...");
-                                    SessionReconnectHandler reconnectHandler = new SessionReconnectHandler(_app.Telemetry);
-                                    lock (_reconnectHandlersLock)
-                                    {
-                                        _reconnectHandlers.Add(reconnectHandler);
-                                    }
-                                    reconnectHandler.BeginReconnect(session, 10000, ReconnectCompleteHandler);
-                                }
-                            }
+                            _logger.LogInformation("Missed Keep-Alive: {missedKeepAlives}", missedCount);
                         }
-                        else
-                        {
-                            if (_missedKeepAlives.ContainsKey(endpoint) && (_missedKeepAlives[endpoint] != 0))
-                            {
-                                // Reset missed keep alive count
-                                _logger.LogInformation("Session endpoint: {endpoint} got a keep alive after {missedKeepAlives} {verb} missed.",
-                                    endpoint,
-                                    _missedKeepAlives[endpoint],
-                                    _missedKeepAlives[endpoint] == 1 ? "was" : "were");
 
+                        // start reconnect if threshold is reached
+                        if (missedCount >= Settings.MaxMissedKeepAlives)
+                        {
+                            lock (_sessionLock)
+                            {
+                                _sessions.Remove(session);
+                                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
+                            }
+
+                            _logger.LogInformation("RECONNECTING session {SessionId}...", session.SessionId);
+                            SessionReconnectHandler reconnectHandler = new SessionReconnectHandler(_app.Telemetry);
+
+                            lock (_reconnectHandlersLock)
+                            {
+                                _reconnectHandlers.Add(reconnectHandler);
+                            }
+
+                            reconnectHandler.BeginReconnect(session, (int)Settings.ReconnectIntervalMs, ReconnectCompleteHandler);
+                        }
+                    }
+                    else
+                    {
+                        uint previousCount = 0;
+                        lock (_missedKeepAlivesLock)
+                        {
+                            if (_missedKeepAlives.TryGetValue(endpoint, out uint count) && count != 0)
+                            {
+                                previousCount = count;
                                 _missedKeepAlives[endpoint] = 0;
                             }
+                        }
+
+                        if (previousCount > 0)
+                        {
+                            _logger.LogInformation("Session endpoint: {endpoint} got a keep alive after {missedKeepAlives} {verb} missed.",
+                                endpoint,
+                                previousCount,
+                                previousCount == 1 ? "was" : "were");
                         }
                     }
                 }
@@ -458,6 +462,14 @@ namespace Opc.Ua.Cloud.Publisher
                 _sessions.Add(session);
             }
 
+            // Reset the missed keep-alive counter so the next transient failure
+            // doesn't immediately trigger another reconnect
+            string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
+            lock (_missedKeepAlivesLock)
+            {
+                _missedKeepAlives[endpoint] = 0;
+            }
+
             Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
             lock (_reconnectHandlersLock)
             {
@@ -465,7 +477,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             reconnectHandler.Dispose();
 
-            _logger.LogInformation($"RECONNECTED session {session.SessionId}!");
+            _logger.LogInformation("RECONNECTED session {SessionId}!", session.SessionId);
         }
 
         public async Task<string> ReadNode(string endpointUrl, string username, string password, string nodeId)
