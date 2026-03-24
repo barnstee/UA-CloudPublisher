@@ -1,25 +1,34 @@
-﻿
-namespace Opc.Ua.Cloud.Publisher
+﻿namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
+    using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
-    using System.Collections.Generic;
+    using System.Collections.Concurrent;
     using System.Diagnostics;
     using System.IO;
-    using Opc.Ua.Cloud.Publisher.Interfaces;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class StoreForwardPublisher : IMessagePublisher
     {
         private IBrokerClient _client;
 
         private readonly ILogger _logger;
+        private readonly string _pathToStore;
 
-        private Queue<long> _lastMessageLatencies = new Queue<long>();
-        private object _lastMessageLatenciesLock = new object();
+        private readonly ConcurrentQueue<long> _lastMessageLatencies = new();
+        private int _latencyCount;
+        private long _latencySum;
 
         public StoreForwardPublisher(ILoggerFactory loggerFactory, Settings.BrokerResolver brokerResolver)
         {
             _logger = loggerFactory.CreateLogger("StoreForwardPublisher");
+
+            _pathToStore = Path.Combine(Directory.GetCurrentDirectory(), "store");
+            if (!Directory.Exists(_pathToStore))
+            {
+                Directory.CreateDirectory(_pathToStore);
+            }
 
             if (Settings.Instance.UseKafka)
             {
@@ -36,18 +45,16 @@ namespace Opc.Ua.Cloud.Publisher
             _client = client;
         }
 
-        public bool SendMetadata(byte[] message)
+        public async Task<bool> SendMetadataAsync(byte[] message)
         {
             bool success = false;
-
-            Stopwatch watch = new Stopwatch();
-            watch.Start();
+            long startTime = Stopwatch.GetTimestamp();
 
             try
             {
                 if (_client != null)
                 {
-                    _client.PublishMetadata(message);
+                    await _client.PublishMetadataAsync(message).ConfigureAwait(false);
                     success = true;
 
                     Diagnostics.Singleton.Info.SentBytes += message.Length;
@@ -56,140 +63,111 @@ namespace Opc.Ua.Cloud.Publisher
                 }
                 else
                 {
-                    _logger.LogError("MQTT client not available for sending message.");
+                    _logger.LogError("Broker client not available for sending metadata.");
                 }
             }
             catch (Exception ex)
             {
-                if (ex is AggregateException)
+                if (ex is AggregateException agg)
                 {
-                    ex = ((AggregateException)ex).Flatten();
+                    ex = agg.Flatten();
                 }
 
                 _logger.LogError(ex, "Error while sending metadata message.");
             }
 
-            watch.Stop();
-
-            lock (_lastMessageLatenciesLock)
-            {
-                _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
-
-                // calc the average for the last 100 messages
-                if (_lastMessageLatencies.Count > 100)
-                {
-                    _lastMessageLatencies.Dequeue();
-                }
-
-                long sum = 0;
-                foreach (long latency in _lastMessageLatencies)
-                {
-                    sum += latency;
-                }
-
-                Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
-            }
+            long elapsed = Stopwatch.GetTimestamp() - startTime;
+            RecordLatency(Stopwatch.GetElapsedTime(0, elapsed).Milliseconds);
 
             return success;
         }
 
-        public bool SendMessage(byte[] message)
+        public async Task<bool> SendMessageAsync(byte[] message)
         {
             bool success = false;
-
-            string pathToStore = Path.Combine(Directory.GetCurrentDirectory(), "store");
-            if (!Directory.Exists(pathToStore))
-            {
-                Directory.CreateDirectory(pathToStore);
-            }
-
-            Stopwatch watch = new Stopwatch();
-            watch.Start();
+            long startTime = Stopwatch.GetTimestamp();
 
             try
             {
                 if (_client != null)
                 {
-                    _client.Publish(message);
+                    await _client.PublishAsync(message).ConfigureAwait(false);
                     success = true;
 
                     Diagnostics.Singleton.Info.SentBytes += message.Length;
                     Diagnostics.Singleton.Info.SentMessages++;
                     Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
 
-                    // check if there are still messages in our store we should also send
-                    string[] filePaths = Directory.GetFiles(pathToStore);
-                    if (filePaths.Length > 0)
-                    {
-                        // send at least 1
-                        _logger.LogInformation("Forwarding stored message to Broker, now that the connection has been re-established...");
-
-                        try
-                        {
-                            byte[] bytes = File.ReadAllBytes(filePaths[0]);
-                            _client.Publish(bytes);
-
-                            File.Delete(filePaths[0]);
-
-                            Diagnostics.Singleton.Info.SentBytes += bytes.Length;
-                            Diagnostics.Singleton.Info.SentMessages++;
-                            Diagnostics.Singleton.Info.FailedMessages--;
-                            Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
-
-                            if (Diagnostics.Singleton.Info.FailedMessages < 0)
-                            {
-                                Diagnostics.Singleton.Info.FailedMessages = 0;
-                            }
-
-                            _logger.LogInformation($"There are {filePaths.Length - 1} stored messages left to send.");
-                        }
-                        catch (Exception ex)
-                        {
-                            // do nothing, just try again next time around
-                            _logger.LogError(ex, $"Sending stored message failed, will retry later. There are {filePaths.Length} stored messages left to send.");
-                        }
-                    }
+                    // forward stored messages in the background
+                    _ = Task.Run(async () => await ForwardStoredMessageAsync().ConfigureAwait(false));
                 }
                 else
                 {
-                    throw new Exception("MQTT client not available for sending message.");
+                    throw new InvalidOperationException("Broker client not available for sending message.");
                 }
             }
             catch (Exception ex)
             {
-                if (ex is AggregateException)
+                if (ex is AggregateException agg)
                 {
-                    ex = ((AggregateException)ex).Flatten();
+                    ex = agg.Flatten();
                 }
 
                 _logger.LogError(ex, "Error while sending message. Storing locally for later forward...");
                 Diagnostics.Singleton.Info.FailedMessages++;
 
-                File.WriteAllBytes(Path.Combine(pathToStore, Path.GetRandomFileName()), message);
+                await File.WriteAllBytesAsync(Path.Combine(_pathToStore, Path.GetRandomFileName()), message).ConfigureAwait(false);
             }
 
-            watch.Stop();
-
-            lock (_lastMessageLatenciesLock)
-            {
-                _lastMessageLatencies.Enqueue(watch.ElapsedMilliseconds);
-
-                // calc the average for the last 100 messages
-                if (_lastMessageLatencies.Count > 100)
-                {
-                    _lastMessageLatencies.Dequeue();
-                }
-
-                long sum = 0;
-                foreach (long latency in _lastMessageLatencies)
-                {
-                    sum += latency;
-                }
-
-                Diagnostics.Singleton.Info.AverageMessageLatency = sum / _lastMessageLatencies.Count;
-            }
+            long elapsed = Stopwatch.GetTimestamp() - startTime;
+            RecordLatency(Stopwatch.GetElapsedTime(0, elapsed).Milliseconds);
 
             return success;
+        }
+
+        private async Task ForwardStoredMessageAsync()
+        {
+            try
+            {
+                string[] filePaths = Directory.GetFiles(_pathToStore);
+                if (filePaths.Length == 0)
+                {
+                    // nothing to send
+                    return;
+                }
+
+                byte[] bytes = await File.ReadAllBytesAsync(filePaths[0]).ConfigureAwait(false);
+                await _client.PublishAsync(bytes).ConfigureAwait(false);
+
+                File.Delete(filePaths[0]);
+
+                Diagnostics.Singleton.Info.SentBytes += bytes.Length;
+                Diagnostics.Singleton.Info.SentMessages++;
+                Diagnostics.Singleton.Info.FailedMessages = Math.Max(0, Diagnostics.Singleton.Info.FailedMessages - 1);
+                Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
+
+                _logger.LogInformation("There are {Count} stored messages left to send.", filePaths.Length - 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Sending stored message failed, will retry later.");
+            }
+        }
+
+        private void RecordLatency(long milliseconds)
+        {
+            _lastMessageLatencies.Enqueue(milliseconds);
+            Interlocked.Add(ref _latencySum, milliseconds);
+            int count = Interlocked.Increment(ref _latencyCount);
+
+            while (count > 100 && _lastMessageLatencies.TryDequeue(out long old))
+            {
+                Interlocked.Add(ref _latencySum, -old);
+                count = Interlocked.Decrement(ref _latencyCount);
+            }
+
+            long sum = Interlocked.Read(ref _latencySum);
+            Diagnostics.Singleton.Info.AverageMessageLatency = count > 0 ? sum / count : 0;
         }
     }
 }

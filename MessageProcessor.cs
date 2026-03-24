@@ -11,6 +11,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System.Linq;
+    using System.Threading.Tasks;
 
     public class MessageProcessor : IMessageProcessor
     {
@@ -87,7 +88,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        public void Run(CancellationToken cancellationToken = default)
+        public async Task RunAsync(CancellationToken cancellationToken = default)
         {
             if (_isRunning)
             {
@@ -123,7 +124,7 @@ namespace Opc.Ua.Cloud.Publisher
                             if (!_batchEmpty)
                             {
                                 // send what we have so far
-                                SendBatch(FinishBatch());
+                                await SendBatchAsync(FinishBatch()).ConfigureAwait(false);
                                 continue;
                             }
                             else
@@ -143,13 +144,13 @@ namespace Opc.Ua.Cloud.Publisher
                     // check if we should send the new item straight away (single message send case or if there are events)
                     if (_singleMessageSend || (messageData.EventValues.Count > 0))
                     {
-                        BatchMessage(JsonEncodeMessage(messageData));
-                        SendBatch(FinishBatch());
+                        BatchMessage(await JsonEncodeMessageAsync(messageData).ConfigureAwait(false));
+                        await SendBatchAsync(FinishBatch()).ConfigureAwait(false);
                     }
                     else
                     {
                         // batch message instead
-                        string jsonMessage = JsonEncodeMessage(messageData);
+                        string jsonMessage = await JsonEncodeMessageAsync(messageData).ConfigureAwait(false);
                         int jsonMessageSize = Encoding.UTF8.GetByteCount(jsonMessage);
                         uint hubMessageBufferSize = Settings.Instance.BrokerMessageSize > 0 ? Settings.Instance.BrokerMessageSize : Settings.HubMessageSizeMax;
                         int encodedMessagePropertiesLengthMax = 512;
@@ -172,7 +173,7 @@ namespace Opc.Ua.Cloud.Publisher
                         }
                         else
                         {
-                            SendBatch(FinishBatch());
+                            await SendBatchAsync(FinishBatch()).ConfigureAwait(false);
                             BatchMessage(jsonMessage);
                         }
                     }
@@ -207,12 +208,12 @@ namespace Opc.Ua.Cloud.Publisher
 
             if (Settings.Instance.MetadataSendInterval != 0)
             {
-                _metadataTimer = new Timer(SendMetadataOnTimer, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+                _metadataTimer = new Timer(SendMetadataOnTimerAsync, null, (int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
             }
 
             if (Settings.Instance.SendUAStatus)
             {
-                _statusTimer = new Timer(SendStatusOnTimer, null, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+                _statusTimer = new Timer(SendStatusOnTimerAsync, null, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
             }
         }
 
@@ -254,9 +255,9 @@ namespace Opc.Ua.Cloud.Publisher
             return _batchBuffer.ToArray();
         }
 
-        private void SendBatch(byte[] bytesToSend)
+        private async Task SendBatchAsync(byte[] bytesToSend)
         {
-            if (_sink.SendMessage(bytesToSend))
+            if (await _sink.SendMessageAsync(bytesToSend).ConfigureAwait(false))
             {
                 _logger.LogDebug($"Sent {bytesToSend.Length} bytes to broker!");
             }
@@ -268,7 +269,7 @@ namespace Opc.Ua.Cloud.Publisher
             _nextSendTime = DateTime.UtcNow + TimeSpan.FromSeconds(Settings.Instance.DefaultSendIntervalSeconds);
         }
 
-        private void SendStatusOnTimer(object state)
+        private async void SendStatusOnTimerAsync(object state)
         {
             // stop the timer while we're sending
             _statusTimer.Change(Timeout.Infinite, Timeout.Infinite);
@@ -276,7 +277,7 @@ namespace Opc.Ua.Cloud.Publisher
             using (MemoryStream buffer = new MemoryStream())
             {
                 buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeStatus(_messageID++)));
-                if (_sink.SendMetadata(buffer.ToArray()))
+                if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
                 {
                     _logger.LogDebug($"Sent status message to broker!");
                 }
@@ -286,7 +287,7 @@ namespace Opc.Ua.Cloud.Publisher
             _statusTimer.Change((int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
         }
 
-        private void SendMetadataOnTimer(object state)
+        private async void SendMetadataOnTimerAsync(object state)
         {
             // stop the timer while we're sending
             _metadataTimer.Change(Timeout.Infinite, Timeout.Infinite);
@@ -309,7 +310,7 @@ namespace Opc.Ua.Cloud.Publisher
                             buffer.Write(Encoding.UTF8.GetBytes(","));
                             buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
 
-                            if (_sink.SendMetadata(buffer.ToArray()))
+                            if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
                             {
                                 _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
                             }
@@ -322,7 +323,7 @@ namespace Opc.Ua.Cloud.Publisher
             _metadataTimer.Change((int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
         }
 
-        private string JsonEncodeMessage(MessageProcessorModel messageData)
+        private async Task<string> JsonEncodeMessageAsync(MessageProcessorModel messageData)
         {
             ushort hash;
             string jsonMessage = _encoder.EncodePayload(messageData, out hash);
@@ -343,7 +344,7 @@ namespace Opc.Ua.Cloud.Publisher
                         buffer.Write(Encoding.UTF8.GetBytes(","));
                         buffer.Write(Encoding.UTF8.GetBytes(metadataMessage));
 
-                        if (_sink.SendMetadata(buffer.ToArray()))
+                        if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
                         {
                             _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
                         }

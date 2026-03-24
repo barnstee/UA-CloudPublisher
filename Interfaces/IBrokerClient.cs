@@ -1,12 +1,13 @@
-﻿
+﻿using System.Threading.Tasks;
+
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     public interface IBrokerClient
     {
         void Connect(bool altBroker = false);
 
-        void Publish(byte[] payload);
+        Task PublishAsync(byte[] payload);
 
-        void PublishMetadata(byte[] metadata);
+        Task PublishMetadataAsync(byte[] metadata);
     }
 }

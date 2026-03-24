@@ -1,11 +1,12 @@
-﻿
+﻿using System.Threading.Tasks;
+
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     public interface IMessagePublisher
     {
-        bool SendMessage(byte[] message);
+        Task<bool> SendMessageAsync(byte[] message);
 
-        bool SendMetadata(byte[] metadata);
+        Task<bool> SendMetadataAsync(byte[] metadata);
 
         void ApplyNewClient(IBrokerClient client);
     }

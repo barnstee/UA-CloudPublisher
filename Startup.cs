@@ -140,7 +140,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // run the telemetry engine
-                _ = Task.Run(() => engine.Run());
+                _ = Task.Run(async () => await engine.RunAsync().ConfigureAwait(false));
 
                 // load our persistency file
                 if (Settings.Instance.AutoLoadPersistedNodes)

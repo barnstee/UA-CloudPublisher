@@ -91,6 +91,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _client.DisconnectAsync().GetAwaiter().GetResult();
 
                     _cancellationTokenSource.Cancel();
+                    _cancellationTokenSource.Dispose();
+                    _cancellationTokenSource = new CancellationTokenSource();
 
                     Diagnostics.Singleton.Info.ConnectedToBroker = false;
                 }
@@ -192,6 +194,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                 try
                 {
+                    _cancellationTokenSource.Cancel();
                     _cancellationTokenSource.Dispose();
                     _cancellationTokenSource = new CancellationTokenSource();
 
@@ -240,7 +243,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             }
         }
 
-        public void Publish(byte[] payload)
+        public async Task PublishAsync(byte[] payload)
         {
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
@@ -248,10 +251,10 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 .WithPayload(payload)
                 .Build();
 
-            _client.PublishAsync(message, _cancellationTokenSource.Token).GetAwaiter().GetResult();
+            await _client.PublishAsync(message, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
 
-        public void PublishMetadata(byte[] payload)
+        public async Task PublishMetadataAsync(byte[] payload)
         {
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
@@ -259,7 +262,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 .WithPayload(payload)
                 .Build();
 
-            _client.PublishAsync(message, _cancellationTokenSource.Token).GetAwaiter().GetResult();
+            await _client.PublishAsync(message, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
 
         private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)
