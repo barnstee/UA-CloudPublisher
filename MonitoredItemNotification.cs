@@ -338,7 +338,7 @@
                 }
 
                 string dataType = string.Empty;
-                VariableNode variable = (VariableNode) await monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).ConfigureAwait(false);
+                VariableNode variable = (VariableNode)await monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).ConfigureAwait(false);
                 if (variable != null)
                 {
                     // handle complex types
