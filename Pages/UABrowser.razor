@@ -72,7 +72,7 @@
     protected async override void OnInitialized()
     {
         StatusMessage = "Connecting to " + EndpointUrl + "...";
-        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        await InvokeAsync(StateHasChanged);
 
         UANode root = new()
         {
@@ -80,7 +80,7 @@
             NodeId = ObjectIds.ObjectsFolder.ToString()
         };
 
-        root.Children = await GetChildrenAsync(root).ConfigureAwait(false);
+        root.Children = await GetChildrenAsync(root);
         if (root.Children == null)
         {
             StatusMessage = "Could not connect to server " + EndpointUrl + "!";
@@ -89,7 +89,7 @@
         {
             UANodes.Add(root);
             StatusMessage = "Connected to " + EndpointUrl + ".";
-            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -97,13 +97,13 @@
     {
         if (expendedNode.Children == null)
         {
-            expendedNode.Children = await GetChildrenAsync(expendedNode).ConfigureAwait(false);
+            expendedNode.Children = await GetChildrenAsync(expendedNode);
         }
     }
 
     private async Task SelectedNodeChanged(UANode node)
     {
-        await VariableRead(node).ConfigureAwait(false);
+        await VariableRead(node);
     }
 
     private bool HasChildNodes(UANode node)
@@ -135,7 +135,7 @@
 
         try
         {
-            ReferenceDescriptionCollection references = await _client.Browse(EndpointUrl, Username, Password, nodeToBrowse, true).ConfigureAwait(false);
+            ReferenceDescriptionCollection references = await _client.BrowseAsync(EndpointUrl, Username, Password, nodeToBrowse, true);
 
             Dictionary<string, UANode> processedReferences = new();
             foreach (ReferenceDescription nodeReference in references)
@@ -171,7 +171,7 @@
             NodeDisplayName = node.Text;
             NodeNotPublishable = true;
 
-            NodeValue = await _client.ReadNode(EndpointUrl, Username, Password, NodeId).ConfigureAwait(false);
+            NodeValue = await _client.ReadNodeAsync(EndpointUrl, Username, Password, NodeId);
             if (!string.IsNullOrEmpty(NodeValue))
             {
                 NodeNotPublishable = false;
@@ -204,7 +204,7 @@
                 node.OpcAuthenticationMode = UserAuthModeEnum.UsernamePassword;
             }
 
-            StatusMessage = await _client.PublishNodeAsync(node).ConfigureAwait(false);
+            StatusMessage = await _client.PublishNodeAsync(node);
         }
         catch (Exception ex)
         {

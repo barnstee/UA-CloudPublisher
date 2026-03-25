@@ -1,4 +1,3 @@
-
 namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.AspNetCore.Builder;
@@ -110,13 +109,13 @@ namespace Opc.Ua.Cloud.Publisher
             });
 
             // do all further initialization on a background thread to load the webserver independently
-            _ = Task.Run(() =>
+            _ = Task.Run(async () =>
             {
-                // kick off the task to show periodic diagnostic info
-                _ = Task.Run(() => Diagnostics.Singleton.RunAsync());
+                // kick off the task to show periodic diagnostic info (fire-and-forget)
+                _ = Task.Run(async () => await Diagnostics.Singleton.RunAsync().ConfigureAwait(false));
 
                 // create our app
-                uaApp.CreateAsync().GetAwaiter().GetResult();
+                await uaApp.CreateAsync().ConfigureAwait(false);
 
                 IBrokerClient broker;
                 IBrokerClient altBroker;
@@ -130,17 +129,17 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // connect to broker
-                broker.Connect();
+                await broker.ConnectAsync().ConfigureAwait(false);
 
                 // check if we need a second broker
                 if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
                 {
                     altBroker = brokerResolver("MQTT");
-                    altBroker.Connect(true);
+                    await altBroker.ConnectAsync(true).ConfigureAwait(false);
                 }
 
-                // run the telemetry engine
-                _ = Task.Run(async () => await engine.RunAsync().ConfigureAwait(false));
+                // run the telemetry engine (fire-and-forget)
+                _ = Task.Run(async () => engine.RunAsync().ConfigureAwait(false));
 
                 // load our persistency file
                 if (Settings.Instance.AutoLoadPersistedNodes)
@@ -155,7 +154,8 @@ namespace Opc.Ua.Cloud.Publisher
                         }
                         else
                         {
-                            _ = Task.Run(() => publishedNodesFileHandler.ParseFile(persistencyFile));
+                            // parse the file (fire-and-forget)
+                            _ = Task.Run(async () => await publishedNodesFileHandler.ParseFileAsync(persistencyFile).ConfigureAwait(false));
                         }
                     }
                     catch (Exception ex)

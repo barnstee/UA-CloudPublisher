@@ -13,12 +13,12 @@
             _message = text;
         }
 
-        public override async Task<bool> ShowAsync()
+        public override Task<bool> ShowAsync()
         {
             Log.Logger.Information(_message);
 
             // always return yes
-            return await Task.FromResult(true);
+            return Task.FromResult(true);
         }
     }
 }

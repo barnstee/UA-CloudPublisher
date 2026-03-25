@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Cloud.Publisher
+﻿namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
@@ -9,6 +8,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
 
     public class MonitoredItemNotification : IMessageSource
     {
@@ -33,7 +33,7 @@ namespace Opc.Ua.Cloud.Publisher
             _logger = loggerFactory.CreateLogger("MonitoredItemNotification");
         }
 
-        public void EventNotificationHandler(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
+        public async void EventNotificationHandlerAsync(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
         {
             try
             {
@@ -59,11 +59,11 @@ namespace Opc.Ua.Cloud.Publisher
                     return;
                 }
 
-                ConditionState condition = ConstructEvent(
+                ConditionState condition = await ConstructEventAsync(
                     (Session)monitoredItem.Subscription.Session,
                     monitoredItem,
                     notification,
-                    new Dictionary<NodeId, NodeId>()) as ConditionState;
+                    new Dictionary<NodeId, NodeId>()).ConfigureAwait(false) as ConditionState;
                 if (condition == null)
                 {
                     return;
@@ -113,7 +113,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // Type
-                INode type = monitoredItem.Subscription.Session.NodeCache.FindAsync(condition.TypeDefinitionId).GetAwaiter().GetResult();
+                INode type = await monitoredItem.Subscription.Session.NodeCache.FindAsync(condition.TypeDefinitionId).ConfigureAwait(false);
                 if (type != null)
                 {
                     EventValueModel eventValue = new EventValueModel()
@@ -216,7 +216,7 @@ namespace Opc.Ua.Cloud.Publisher
             return null;
         }
 
-        private BaseEventState ConstructEvent(
+        private async Task<BaseEventState> ConstructEventAsync(
             Session session,
             MonitoredItem monitoredItem,
             EventFieldList notification,
@@ -249,7 +249,7 @@ namespace Opc.Ua.Cloud.Publisher
                 // browse for the supertypes of the event type.
                 if (knownTypeId == null)
                 {
-                    ReferenceDescriptionCollection supertypes = UAClient.BrowseSuperTypes(session, eventTypeId, false).GetAwaiter().GetResult();
+                    ReferenceDescriptionCollection supertypes = await UAClient.BrowseSuperTypesAsync(session, eventTypeId, false).ConfigureAwait(false);
 
                     // can't do anything with unknown types.
                     if (supertypes == null)
@@ -318,7 +318,7 @@ namespace Opc.Ua.Cloud.Publisher
             return e;
         }
 
-        public void DataChangedNotificationHandler(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
+        public async void DataChangedNotificationHandlerAsync(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
         {
             try
             {
@@ -338,36 +338,39 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 string dataType = string.Empty;
-                VariableNode variable = (VariableNode)monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).GetAwaiter().GetResult();
+                VariableNode variable = (VariableNode) await monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).ConfigureAwait(false);
                 if (variable != null)
                 {
                     // handle complex types
                     ComplexTypeSystem complexTypeSystem = new(monitoredItem.Subscription.Session);
                     ExpandedNodeId nodeTypeId = variable.DataType;
-                    complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
+                    await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
 
-                    dataType = NodeId.ToExpandedNodeId(variable.DataType, monitoredItem.Subscription.Session.NamespaceUris).ToString();
+                    dataType = NodeId.ToExpandedNodeId(variable.DataType, monitoredItem.Subscription?.Session?.NamespaceUris).ToString();
                 }
 
-                MessageProcessorModel messageData = new MessageProcessorModel
+                if (monitoredItem.Subscription != null)
                 {
-                    ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
-                    ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
-                    MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
-                    Name = monitoredItem.DisplayName,
-                    Value = value,
-                    DataType = dataType
-                };
+                    MessageProcessorModel messageData = new MessageProcessorModel
+                    {
+                        ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                        ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
+                        MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
+                        Name = monitoredItem.DisplayName,
+                        Value = value,
+                        DataType = dataType
+                    };
 
-                // skip event if needed
-                if (SkipFirst.ContainsKey(messageData.ExpandedNodeId) && SkipFirst[messageData.ExpandedNodeId])
-                {
-                    _logger.LogInformation($"Skipping first telemetry event for node '{messageData.ExpandedNodeId}'.");
-                    SkipFirst[messageData.ExpandedNodeId] = false;
-                }
-                else
-                {
-                    MessageProcessor.Enqueue(messageData);
+                    // skip event if needed
+                    if (SkipFirst.ContainsKey(messageData.ExpandedNodeId) && SkipFirst[messageData.ExpandedNodeId])
+                    {
+                        _logger.LogInformation($"Skipping first telemetry event for node '{messageData.ExpandedNodeId}'.");
+                        SkipFirst[messageData.ExpandedNodeId] = false;
+                    }
+                    else
+                    {
+                        MessageProcessor.Enqueue(messageData);
+                    }
                 }
             }
             catch (Exception ex)

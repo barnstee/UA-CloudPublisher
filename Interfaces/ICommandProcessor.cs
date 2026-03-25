@@ -1,15 +1,14 @@
-﻿
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     public interface ICommandProcessor
     {
-        Task<byte[]> PublishNodes(string payload);
+        Task<byte[]> PublishNodesAsync(string payload);
 
-        byte[] UnpublishNodes(string payload);
+        Task<byte[]> UnpublishNodesAsync(string payload);
 
-        byte[] UnpublishAllNodes();
+        Task<byte[]> UnpublishAllNodesAsync();
 
         byte[] GetPublishedNodes();
 

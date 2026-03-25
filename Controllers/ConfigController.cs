@@ -95,7 +95,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult Apply(Settings settings)
+        public async Task<IActionResult> ApplyAsync(Settings settings)
         {
             if (ModelState.IsValid)
             {
@@ -112,13 +112,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 }
 
                 // reconnect to broker with new settings
-                _brokerClient.Connect();
+                await _brokerClient.ConnectAsync().ConfigureAwait(false);
 
                 // check if we need a second broker
                 if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
                 {
                     _alternativeBrokerClient = _brokerResolver("MQTT");
-                    _alternativeBrokerClient.Connect(true);
+                    await _alternativeBrokerClient.ConnectAsync(true).ConfigureAwait(false);
                 }
 
                 _messagePublisher.ApplyNewClient(_brokerClient);

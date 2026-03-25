@@ -128,9 +128,9 @@
                     }
                 }
 
-                await SendWoTFileToEdgeTranslator(file.FileName, endpointUrl, username, password, name, bytes).ConfigureAwait(false);
+                await SendWoTFileToEdgeTranslatorAsync(file.FileName, endpointUrl, username, password, name, bytes).ConfigureAwait(false);
 
-                await PublishWoTProperties(endpointUrl, username, password, bytes).ConfigureAwait(false);
+                await PublishWoTPropertiesAsync(endpointUrl, username, password, bytes).ConfigureAwait(false);
 
                 TempData["StatusMessage"] = "UA Edge Translator configured successfully!";
                 return Json(new { success = true });
@@ -167,9 +167,9 @@
                 JObject jsonObject = JObject.Parse(processedContent);
                 string name = jsonObject["name"]?.ToString() ?? "asset";
 
-                await SendWoTFileToEdgeTranslator("template.jsonld", endpointUrl, username, password, name, bytes).ConfigureAwait(false);
+                await SendWoTFileToEdgeTranslatorAsync("template.jsonld", endpointUrl, username, password, name, bytes).ConfigureAwait(false);
 
-                await PublishWoTProperties(endpointUrl, username, password, bytes).ConfigureAwait(false);
+                await PublishWoTPropertiesAsync(endpointUrl, username, password, bytes).ConfigureAwait(false);
 
                 TempData["StatusMessage"] = "UA Edge Translator configured successfully!";
                 return Json(new { success = true });
@@ -182,16 +182,16 @@
             }
         }
 
-        private async Task SendWoTFileToEdgeTranslator(string filename, string endpointUrl, string username, string password, string name, byte[] bytes)
+        private async Task SendWoTFileToEdgeTranslatorAsync(string filename, string endpointUrl, string username, string password, string name, byte[] bytes)
         {
             if (Settings.Instance.PushCertsBeforePublishing)
             {
                 try
                 {
-                    await _client.GDSServerPush(endpointUrl, username, password).ConfigureAwait(false);
+                    await _client.GDSServerPushAsync(endpointUrl, username, password).ConfigureAwait(false);
 
                     // after the cert push, give the server 5s time to become available again before trying to pudh the WoT file to it
-                    Thread.Sleep(5000);
+                    await Task.Delay(5000).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -201,11 +201,11 @@
 
             if (filename.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
             {
-                await _client.UANodesetUpload(endpointUrl, username, password, bytes).ConfigureAwait(false);
+                await _client.UANodesetUploadAsync(endpointUrl, username, password, bytes).ConfigureAwait(false);
             }
             else if (filename.EndsWith(".jsonld", StringComparison.OrdinalIgnoreCase))
             {
-                await _client.WoTConUpload(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
+                await _client.WoTConUploadAsync(endpointUrl, username, password, bytes, name).ConfigureAwait(false);
             }
             else
             {
@@ -213,7 +213,7 @@
             }
         }
 
-        private async Task PublishWoTProperties(string endpointUrl, string username, string password, byte[] bytes)
+        private async Task PublishWoTPropertiesAsync(string endpointUrl, string username, string password, byte[] bytes)
         {
             if (Settings.Instance.AutoPublishAllWoTProperties)
             {

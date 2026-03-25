@@ -1,5 +1,4 @@
-﻿
-@using MW.Blazor
+﻿@using MW.Blazor
 
 @typeparam TNode
 
@@ -115,7 +114,7 @@
         StateHasChanged();
     }
 
-    private void OnSelectNode(TNode node)
+    private async Task OnSelectNode(TNode node)
     {
         if (NodeDisabled(node))
         {
@@ -123,6 +122,6 @@
         }
 
         SelectedNode = node;
-        SelectedNodeChanged.InvokeAsync(node);
+        await SelectedNodeChanged.InvokeAsync(node);
     }
 }

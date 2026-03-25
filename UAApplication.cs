@@ -69,14 +69,14 @@ namespace Opc.Ua.Cloud.Publisher
 
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
 
-            await CreateIssuerCert().ConfigureAwait(false);
+            await CreateIssuerCertAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Creating reverse connection endpoint on local port 50000.");
             ReverseConnectManager.AddEndpoint(new Uri("opc.tcp://localhost:50000"));
             ReverseConnectManager.StartService(UAApplicationInstance.ApplicationConfiguration);
         }
 
-        private async Task CreateIssuerCert()
+        private async Task CreateIssuerCertAsync()
         {
             string pathToIssuerStore = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "private");
             if (!Directory.Exists(pathToIssuerStore))

@@ -3,13 +3,14 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     using Opc.Ua.Client;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
 
     public interface IMessageSource
     {
         Dictionary<string, bool> SkipFirst { get; set; }
 
-        void EventNotificationHandler(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e);
+        void EventNotificationHandlerAsync(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e);
 
-        void DataChangedNotificationHandler(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e);
+        void DataChangedNotificationHandlerAsync(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e);
     }
 }

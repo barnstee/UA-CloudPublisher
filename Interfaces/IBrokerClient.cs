@@ -4,7 +4,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     public interface IBrokerClient
     {
-        void Connect(bool altBroker = false);
+        Task ConnectAsync(bool altBroker = false);
 
         Task PublishAsync(byte[] payload);
 

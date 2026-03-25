@@ -72,7 +72,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public ActionResult ConnectAsync(string username, string password)
+        public ActionResult Connect(string username, string password)
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
             _session.UserName = username;
@@ -82,13 +82,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> Disconnect()
+        public async Task<ActionResult> DisconnectAsync()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             if (!string.IsNullOrEmpty(_session.EndpointUrl))
             {
-                await _client.Disconnect(_session.EndpointUrl).ConfigureAwait(false);
+                await _client.DisconnectAsync(_session.EndpointUrl).ConfigureAwait(false);
             }
 
             HttpContext.Session.SetString("EndpointUrl", string.Empty);
@@ -97,7 +97,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GeneratePN()
+        public async Task<ActionResult> GeneratePNAsync()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
@@ -140,7 +140,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GenerateCSV()
+        public async Task<ActionResult> GenerateCSVAsync()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
@@ -183,13 +183,13 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> PushCert()
+        public async Task<ActionResult> PushCertAsync()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             try
             {
-                await _client.GDSServerPush(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+                await _client.GDSServerPushAsync(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
 
                 _session.StatusMessage = "New certificate and trust list pushed successfully to server!";
             }

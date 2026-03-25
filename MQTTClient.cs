@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Cloud.Publisher.Configuration
+﻿namespace Opc.Ua.Cloud.Publisher.Configuration
 {
     using Microsoft.Extensions.Logging;
     using MQTTnet;
@@ -79,7 +78,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             }
         }
 
-        public void Connect(bool altBroker = false)
+        public async Task ConnectAsync(bool altBroker = false)
         {
             _isAltBroker = altBroker;
 
@@ -88,7 +87,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 // disconnect if still connected
                 if ((_client != null) && _client.IsConnected)
                 {
-                    _client.DisconnectAsync().GetAwaiter().GetResult();
+                    await _client.DisconnectAsync().ConfigureAwait(false);
 
                     _cancellationTokenSource.Cancel();
                     _cancellationTokenSource.Dispose();
@@ -172,24 +171,23 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 }
 
                 // setup disconnection handling
-                _client.DisconnectedAsync += disconnectArgs =>
+                _client.DisconnectedAsync += async disconnectArgs =>
                 {
                     _logger.LogWarning($"Disconnected from MQTT broker: {disconnectArgs.Reason}");
 
                     // wait a 5 seconds, then simply reconnect again, if needed
-                    Task.Delay(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+                    await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 
                     if (!_client.IsConnected)
                     {
-                        MqttClientConnectResult connectResult = _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).GetAwaiter().GetResult();
+                        MqttClientConnectResult connectResult = await _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).ConfigureAwait(false);
+
                         if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
                         {
                             string status = GetStatus(connectResult.UserProperties)?.ToString("x4");
                             throw new Exception($"Connection to MQTT broker failed. Status: {connectResult.ResultCode}; status: {status}");
                         }
                     }
-
-                    return Task.CompletedTask;
                 };
 
                 try
@@ -198,7 +196,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     _cancellationTokenSource.Dispose();
                     _cancellationTokenSource = new CancellationTokenSource();
 
-                    MqttClientConnectResult connectResult = _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).GetAwaiter().GetResult();
+                    MqttClientConnectResult connectResult = await _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).ConfigureAwait(false);
+
                     if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
                     {
                         string status = GetStatus(connectResult.UserProperties)?.ToString("x4");
@@ -207,12 +206,12 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                     if (!string.IsNullOrEmpty(receiveTopic))
                     {
-                        MqttClientSubscribeResult subscribeResult = _client.SubscribeAsync(
-                        new MqttTopicFilter
-                        {
-                            Topic = receiveTopic,
-                            QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
-                        }).GetAwaiter().GetResult();
+                        MqttClientSubscribeResult subscribeResult = await _client.SubscribeAsync(
+                            new MqttTopicFilter
+                            {
+                                Topic = receiveTopic,
+                                QualityOfServiceLevel = MqttQualityOfServiceLevel.AtMostOnce
+                            }).ConfigureAwait(false);
 
                         // make sure subscriptions were successful
                         if (subscribeResult.Items.Count != 1 || subscribeResult.Items.ElementAt(0).ResultCode != MqttClientSubscribeResultCode.GrantedQoS0)
@@ -333,17 +332,17 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     // route this to the right handler
                     if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "PublishNodes"))
                     {
-                        response.Status = Encoding.UTF8.GetString(await _commandProcessor.PublishNodes(requestPayload).ConfigureAwait(false));
+                        response.Status = Encoding.UTF8.GetString(await _commandProcessor.PublishNodesAsync(requestPayload).ConfigureAwait(false));
                         response.Success = true;
                     }
                     else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishNodes"))
                     {
-                        response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishNodes(requestPayload));
+                        response.Status = Encoding.UTF8.GetString(await _commandProcessor.UnpublishNodesAsync(requestPayload).ConfigureAwait(false));
                         response.Success = true;
                     }
                     else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "UnpublishAllNodes"))
                     {
-                        response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishAllNodes());
+                        response.Status = Encoding.UTF8.GetString(await _commandProcessor.UnpublishAllNodesAsync().ConfigureAwait(false));
                         response.Success = true;
                     }
                     else if (args.ApplicationMessage.Topic.StartsWith(requestTopic.TrimEnd('#') + "GetPublishedNodes"))

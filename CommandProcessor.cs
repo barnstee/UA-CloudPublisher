@@ -1,5 +1,4 @@
-﻿
-namespace Opc.Ua.Cloud.Publisher
+﻿namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
@@ -23,7 +22,7 @@ namespace Opc.Ua.Cloud.Publisher
             _uaClient = client;
         }
 
-        public async Task<byte[]> PublishNodes(string payload)
+        public async Task<byte[]> PublishNodesAsync(string payload)
         {
             UserAuthModeEnum desiredAuthenticationMode = UserAuthModeEnum.Anonymous;
             List<string> statusResponse = new List<string>();
@@ -92,7 +91,7 @@ namespace Opc.Ua.Cloud.Publisher
             return BuildResponseAndCropStatus(statusResponse);
         }
 
-        public byte[] UnpublishNodes(string payload)
+        public async Task<byte[]> UnpublishNodesAsync(string payload)
         {
             List<string> statusResponse = new List<string>();
 
@@ -109,7 +108,7 @@ namespace Opc.Ua.Cloud.Publisher
                         EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
                     };
 
-                    _uaClient.UnpublishNode(node);
+                    await _uaClient.UnpublishNodeAsync(node).ConfigureAwait(false);
 
                     string statusMessage = $"Event {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.";
                     statusResponse.Add(statusMessage);
@@ -128,7 +127,7 @@ namespace Opc.Ua.Cloud.Publisher
                         EndpointUrl = new Uri(unpublishNodesMethodData.EndpointUrl).ToString()
                     };
 
-                    _uaClient.UnpublishNode(node);
+                    await _uaClient.UnpublishNodeAsync(node).ConfigureAwait(false);
 
                     string statusMessage = $"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.";
                     statusResponse.Add(statusMessage);
@@ -139,9 +138,9 @@ namespace Opc.Ua.Cloud.Publisher
             return BuildResponseAndCropStatus(statusResponse);
         }
 
-        public byte[] UnpublishAllNodes()
+        public async Task<byte[]> UnpublishAllNodesAsync()
         {
-            _uaClient.UnpublishAllNodes();
+            await _uaClient.UnpublishAllNodesAsync().ConfigureAwait(false);
 
             return BuildResponseAndTruncateResult("All nodes unpublished successfully.");
         }

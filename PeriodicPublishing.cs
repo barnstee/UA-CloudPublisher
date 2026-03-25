@@ -38,7 +38,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             if (heartbeatInterval > 0)
             {
-                _timer = new Timer(HeartbeatSend, null, heartbeatInterval, heartbeatInterval);
+                _timer = new Timer(HeartbeatSendAsync, null, heartbeatInterval, heartbeatInterval);
             }
         }
 
@@ -52,7 +52,7 @@ namespace Opc.Ua.Cloud.Publisher
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
-        private async void HeartbeatSend(object state)
+        private async void HeartbeatSendAsync(object state)
         {
             try
             {

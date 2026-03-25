@@ -26,7 +26,7 @@ public class KafkaClient : IBrokerClient
         _commandProcessor = commandProcessor;
     }
 
-    public void Connect(bool altBroker = false)
+    public async Task ConnectAsync(bool altBroker = false)
     {
         try
         {
@@ -118,7 +118,8 @@ public class KafkaClient : IBrokerClient
 
                 _consumer.Subscribe(Settings.Instance.BrokerCommandTopic);
 
-                _ = Task.Run(HandleCommand);
+                // start background task to handle incoming commands
+                _ = Task.Run(async () => await HandleCommandAsync().ConfigureAwait(false));
             }
 
             Diagnostics.Singleton.Info.ConnectedToBroker = true;
@@ -172,7 +173,7 @@ public class KafkaClient : IBrokerClient
     }
 
     // handles all incoming commands form the cloud
-    private async Task HandleCommand()
+    private async Task HandleCommandAsync()
     {
         while (true)
         {
@@ -203,17 +204,17 @@ public class KafkaClient : IBrokerClient
                 // route this to the right handler
                 if (request.Command == "publishnodes")
                 {
-                    response.Status = Encoding.UTF8.GetString(await _commandProcessor.PublishNodes(requestPayload).ConfigureAwait(false));
+                    response.Status = Encoding.UTF8.GetString(await _commandProcessor.PublishNodesAsync(requestPayload).ConfigureAwait(false));
                     response.Success = true;
                 }
                 else if (request.Command == "unpublishnodes")
                 {
-                    response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishNodes(requestPayload));
+                    response.Status = Encoding.UTF8.GetString(await _commandProcessor.UnpublishNodesAsync(requestPayload).ConfigureAwait(false));
                     response.Success = true;
                 }
                 else if (request.Command == "unpublishallnodes")
                 {
-                    response.Status = Encoding.UTF8.GetString(_commandProcessor.UnpublishAllNodes());
+                    response.Status = Encoding.UTF8.GetString(await _commandProcessor.UnpublishAllNodesAsync().ConfigureAwait(false));
                     response.Success = true;
                 }
                 else if (request.Command == "getpublishednodes")

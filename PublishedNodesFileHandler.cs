@@ -1,4 +1,3 @@
-
 namespace Opc.Ua.Cloud.Publisher.Configuration
 {
     using Microsoft.Extensions.Logging;
@@ -12,6 +11,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
     using System.Security.Cryptography.X509Certificates;
     using System.Text;
     using System.Threading;
+    using System.Threading.Tasks;
 
     public class PublishedNodesFileHandler : IPublishedNodesFileHandler
     {
@@ -52,7 +52,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                 return string.Empty;
             }
         }
-        public void ParseFile(byte[] content)
+
+        public async Task ParseFileAsync(byte[] content)
         {
             _logger.LogInformation($"Processing persistency file...");
             List<PublishNodesInterfaceModel> _configurationFileEntries = JsonConvert.DeserializeObject<List<PublishNodesInterfaceModel>>(Encoding.UTF8.GetString(content));
@@ -92,10 +93,10 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         try
                         {
-                            _uaClient.GDSServerPush(server.EndpointUrl, server.UserName, DecryptString(server.Password)).GetAwaiter().GetResult();
+                            await _uaClient.GDSServerPushAsync(server.EndpointUrl, server.UserName, DecryptString(server.Password)).ConfigureAwait(false);
 
                             // after the cert push, give the server 5s time to become available again before trying to publish from it
-                            Thread.Sleep(5000);
+                            await Task.Delay(5000).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
@@ -135,21 +136,19 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                     {
                         foreach (EventModel opcEvent in configFileEntry.OpcEvents)
                         {
-                            NodePublishingModel publishingInfo = new NodePublishingModel()
+                            NodePublishingModel publishingInfo = new NodePublishingModel
                             {
                                 ExpandedNodeId = ExpandedNodeId.Parse(opcEvent.ExpandedNodeId),
                                 EndpointUrl = new Uri(configFileEntry.EndpointUrl).ToString(),
                                 OpcAuthenticationMode = configFileEntry.OpcAuthenticationMode,
                                 Username = configFileEntry.UserName,
-                                Password = DecryptString(configFileEntry.Password)
+                                Password = DecryptString(configFileEntry.Password),
+                                Filter = [.. opcEvent.Filter]
                             };
-
-                            publishingInfo.Filter = new List<FilterModel>();
-                            publishingInfo.Filter.AddRange(opcEvent.Filter);
 
                             try
                             {
-                                _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                                await _uaClient.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
                             }
                             catch (Exception ex)
                             {
@@ -182,7 +181,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                             try
                             {
-                                _uaClient.PublishNodeAsync(publishingInfo).GetAwaiter().GetResult();
+                                await _uaClient.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
                             }
                             catch (Exception ex)
                             {

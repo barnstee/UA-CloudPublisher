@@ -7,28 +7,28 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
     using System.Threading;
     using System.Threading.Tasks;
 
-    public interface IUAClient : IDisposable
+    public interface IUAClient : IAsyncDisposable
     {
-        Task<ReferenceDescriptionCollection> Browse(string endpointUrl, string username, string password, BrowseDescription nodeToBrowse, bool throwOnError);
+        Task<ReferenceDescriptionCollection> BrowseAsync(string endpointUrl, string username, string password, BrowseDescription nodeToBrowse, bool throwOnError);
 
         Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId nodeId);
 
-        Task<string> ReadNode(string endpointUrl, string username, string password, string nodeId);
+        Task<string> ReadNodeAsync(string endpointUrl, string username, string password, string nodeId);
 
         Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);
 
-        Task UnpublishNode(NodePublishingModel nodeToUnpublish);
+        Task UnpublishNodeAsync(NodePublishingModel nodeToUnpublish);
 
-        void UnpublishAllNodes(bool updatePersistencyFile = true);
+        Task UnpublishAllNodesAsync(bool updatePersistencyFile = true);
 
         IEnumerable<PublishNodesInterfaceModel> GetPublishedNodes();
 
-        Task GDSServerPush(string endpointURL, string adminUsername, string adminPassword);
+        Task GDSServerPushAsync(string endpointURL, string adminUsername, string adminPassword);
 
-        Task WoTConUpload(string endpoint, string username, string password, byte[] bytes, string assetName);
+        Task WoTConUploadAsync(string endpoint, string username, string password, byte[] bytes, string assetName);
 
-        Task UANodesetUpload(string endpoint, string username, string password, byte[] bytes);
+        Task UANodesetUploadAsync(string endpoint, string username, string password, byte[] bytes);
 
-        Task Disconnect(string endpointUrl);
+        Task DisconnectAsync(string endpointUrl);
     }
 }

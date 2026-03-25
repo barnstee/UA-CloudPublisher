@@ -36,7 +36,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult Load(IFormFile file)
+        public async Task<IActionResult> LoadAsync(IFormFile file)
         {
             try
             {
@@ -55,7 +55,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     byte[] bytes = new byte[file.Length];
                     content.ReadExactly(bytes, 0, (int)file.Length);
 
-                    _publishedNodesFileHandler.ParseFile(bytes);
+                    await _publishedNodesFileHandler.ParseFileAsync(bytes).ConfigureAwait(false);
                 }
 
                 return View("Index", GeneratePublishedNodesArray());
@@ -83,7 +83,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult LoadPersisted()
+        public async Task<IActionResult> LoadPersistedAsync()
         {
             try
             {
@@ -95,7 +95,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 }
                 else
                 {
-                    _ = Task.Run(() => _publishedNodesFileHandler.ParseFile(persistencyFile));
+                    _ = Task.Run(async () => await _publishedNodesFileHandler.ParseFileAsync(persistencyFile).ConfigureAwait(false));
                 }
 
                 return View("Index", GeneratePublishedNodesArray());
@@ -108,11 +108,11 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult Unpublish()
+        public async Task<IActionResult> UnpublishAsync()
         {
             try
             {
-                _uaclient.UnpublishAllNodes(true);
+                await _uaclient.UnpublishAllNodesAsync(true).ConfigureAwait(false);
                 _logger.LogInformation($"All nodes unpublished successfully.");
 
                 return View("Index", GeneratePublishedNodesArray());
@@ -125,7 +125,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult DeleteNode()
+        public async Task<IActionResult> DeleteNodeAsync()
         {
             try
             {
@@ -145,7 +145,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     }
                 }
 
-                _uaclient.UnpublishNode(node);
+                await _uaclient.UnpublishNodeAsync(node).ConfigureAwait(false);
                 _logger.LogInformation($"Node {node.ExpandedNodeId} on endpoint {node.EndpointUrl} unpublished successfully.");
 
                 return View("Index", GeneratePublishedNodesArray());
