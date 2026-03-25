@@ -246,7 +246,7 @@ namespace Opc.Ua.Cloud.Dashboard
                                 }
                                 catch (Exception ex)
                                 {
-                                    Console.WriteLine($"Cannot parse field {field.Value}: {ex.Message}");
+                                    _logger.LogError($"Cannot parse field {field.Value}: {ex.Message}");
                                 }
                             }
                         }
