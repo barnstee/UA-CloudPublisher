@@ -438,7 +438,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                 }
 
-                // check if below # missed keep alives threashold
+                // check if below # missed keep alives threshold
                 if (missedCount < Settings.MaxMissedKeepAlives)
                 {
                     return;
