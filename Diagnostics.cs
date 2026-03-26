@@ -103,7 +103,10 @@ namespace Opc.Ua.Cloud.Publisher
                     DiagnosticsSend("BrokerMessagesSecond", new DataValue(messagesPerSecond));
                     DiagnosticsSend("NumOpcMonitoredItemsSecond", new DataValue(messagesPerSecond * Info.AverageNotificationsInBrokerMessage));
                     DiagnosticsSend("BrokerMessageSendFailures", new DataValue(Info.FailedMessages));
-                    DiagnosticsSend("CurrentWorkingSetMBs", new DataValue(Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024)));
+                    using (Process currentProcess = Process.GetCurrentProcess())
+                    {
+                        DiagnosticsSend("CurrentWorkingSetMBs", new DataValue(currentProcess.WorkingSet64 / (1024 * 1024)));
+                    }
 
                     _lastNumMessagesSent = Info.SentMessages;
                 }

@@ -64,6 +64,9 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 _monitoredItemsDataQueue.Dispose();
             }
+
+            _metadataTimer?.Dispose();
+            _statusTimer?.Dispose();
         }
 
         public static void Enqueue(MessageProcessorModel json)

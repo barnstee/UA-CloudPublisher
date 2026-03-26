@@ -1,4 +1,4 @@
-﻿namespace Opc.Ua.Cloud.Publisher
+namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.Extensions.Logging;
     using Opc.Ua;
@@ -8,11 +8,13 @@
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
 
     public class MonitoredItemNotification : IMessageSource
     {
         private readonly ILogger _logger;
+        private readonly ConditionalWeakTable<ISession, ComplexTypeSystem> _complexTypeSystems = new();
 
         public Dictionary<string, bool> SkipFirst { get; set; } = new Dictionary<string, bool>();
 
@@ -341,8 +343,9 @@
                 VariableNode variable = (VariableNode)await monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).ConfigureAwait(false);
                 if (variable != null)
                 {
-                    // handle complex types
-                    ComplexTypeSystem complexTypeSystem = new(monitoredItem.Subscription.Session);
+                    // handle complex types using a per-session cached type system
+                    ISession session = monitoredItem.Subscription.Session;
+                    ComplexTypeSystem complexTypeSystem = _complexTypeSystems.GetValue(session, s => new ComplexTypeSystem(s));
                     ExpandedNodeId nodeTypeId = variable.DataType;
                     await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
 

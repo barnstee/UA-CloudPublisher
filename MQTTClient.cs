@@ -88,6 +88,8 @@
                 if ((_client != null) && _client.IsConnected)
                 {
                     await _client.DisconnectAsync().ConfigureAwait(false);
+                    _client.Dispose();
+                    _client = null;
 
                     _cancellationTokenSource.Cancel();
                     _cancellationTokenSource.Dispose();
@@ -119,7 +121,7 @@
                     int week = 60 * 60 * 24 * 7;
                     string expiry = Convert.ToString((int)sinceEpoch.TotalSeconds + week);
                     string stringToSign = HttpUtility.UrlEncode(brokerUrl + "/devices/" + publisherName) + "\n" + expiry;
-                    HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
+                    using HMACSHA256 hmac = new HMACSHA256(Convert.FromBase64String(password));
                     string signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
                     password = "SharedAccessSignature sr=" + HttpUtility.UrlEncode(brokerUrl + "/devices/" + publisherName) + "&sig=" + HttpUtility.UrlEncode(signature) + "&se=" + expiry;
                 }
@@ -307,7 +309,8 @@
                 // check if this should be a data message (and we are the alternative broker) or a command
                 if (_isAltBroker)
                 {
-                    new UAPubSubBinaryMessageDecoder(_uAApplication, new LoggerFactory()).ProcessMessage(args.ApplicationMessage.Payload.ToArray(), DateTime.UtcNow, args.ApplicationMessage.ContentType);
+                    using var loggerFactory = new LoggerFactory();
+                    new UAPubSubBinaryMessageDecoder(_uAApplication, loggerFactory).ProcessMessage(args.ApplicationMessage.Payload.ToArray(), DateTime.UtcNow, args.ApplicationMessage.ContentType);
                 }
                 else
                 {

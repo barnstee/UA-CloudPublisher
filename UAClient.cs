@@ -145,9 +145,19 @@ namespace Opc.Ua.Cloud.Publisher
             if ((existingSession != null) && (existingSession.SubscriptionCount == 0))
             {
                 await existingSession.CloseAsync().ConfigureAwait(false);
-                _sessions.Remove(existingSession);
-                _complexTypeList.Remove(existingSession);
+
+                lock (_sessionLock)
+                {
+                    _sessions.Remove(existingSession);
+                }
+
+                if (_complexTypeList.TryGetValue(existingSession, out ComplexTypeSystem cts))
+                {
+                    _complexTypeList.Remove(existingSession);
+                }
+
                 Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
+
                 existingSession = null;
             }
         }
@@ -164,7 +174,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
                 else
                 {
-                    await existingSession.CloseAsync().ConfigureAwait(false);
+                    await DisconnectAsync(endpointUrl).ConfigureAwait(false);
                 }
             }
 
@@ -308,7 +318,10 @@ namespace Opc.Ua.Cloud.Publisher
 
                 string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
                 await session.CloseAsync().ConfigureAwait(false);
-                _complexTypeList.Remove(session);
+                if (_complexTypeList.TryGetValue(session, out ComplexTypeSystem cts))
+                {
+                    _complexTypeList.Remove(session);
+                }
                 Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
 
                 _logger.LogInformation("Session to endpoint {endpoint} closed successfully.", endpoint);
@@ -542,9 +555,13 @@ namespace Opc.Ua.Cloud.Publisher
             };
             nodesToRead.Add(valueId);
 
-            // handle complex types
+            // handle complex types (reuse cached type system when available)
             VariableNode node = (VariableNode)await session.ReadNodeAsync(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris)).ConfigureAwait(false);
-            ComplexTypeSystem complexTypeSystem = new(session);
+            if (!_complexTypeList.TryGetValue(session, out ComplexTypeSystem complexTypeSystem))
+            {
+                complexTypeSystem = new ComplexTypeSystem(session);
+                _complexTypeList[session] = complexTypeSystem;
+            }
             ExpandedNodeId nodeTypeId = node.DataType;
             await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
 
