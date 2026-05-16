@@ -1,42 +1,90 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var currentController = (ViewContext.RouteData.Values["controller"] ?? string.Empty).ToString();
+    string NavActive(string controller) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - UA Cloud Publisher</title>
     <base href="~/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-table/bootstrap-table.css" />
-    <link rel="stylesheet" href="~/css/site.css" />
-    <link rel="stylesheet" href="~/styles.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/styles.css" asp-append-version="true" />
     <link rel="stylesheet" href=https://use.fontawesome.com/releases/v5.8.1/css/all.css integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('uacp-theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) { }
+        })();
+    </script>
 </head>
-<body class="bg-dark text-light">
+<body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark text-light bg-secondary border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-md navbar-toggleable-md mb-3">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-controller="Diag" asp-action="Index">Home</a>
+                <a class="navbar-brand" asp-area="" asp-controller="Diag" asp-action="Index">
+                    <span class="brand-mark"><i class="fas fa-cloud-upload-alt"></i></span>
+                    <span class="brand-text">
+                        UA Cloud Publisher
+                        <small>OPC Foundation</small>
+                    </span>
+                </a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
-                    <a href="https://opcfoundation.org/"><img src="~/OPCUA.png" width="250"/></a>
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-controller="Config" asp-action="Index">Configuration</a>
+                <div class="navbar-collapse collapse">
+                    <ul class="navbar-nav ml-auto align-items-md-center">
+                        <li class="nav-item @NavActive("Diag")">
+                            <a class="nav-link" asp-area="" asp-controller="Diag" asp-action="Index">
+                                <i class="fas fa-chart-line mr-1"></i>Diagnostics
+                            </a>
+                        </li>
+                        <li class="nav-item @NavActive("Config")">
+                            <a class="nav-link" asp-area="" asp-controller="Config" asp-action="Index">
+                                <i class="fas fa-sliders-h mr-1"></i>Configuration
+                            </a>
+                        </li>
+                        <li class="nav-item @NavActive("Browser")">
+                            <a class="nav-link" asp-area="" asp-controller="Browser" asp-action="Index">
+                                <i class="fas fa-plug mr-1"></i>OPC UA Connect
+                            </a>
+                        </li>
+                        <li class="nav-item @NavActive("Published")">
+                            <a class="nav-link" asp-area="" asp-controller="Published" asp-action="Index">
+                                <i class="fas fa-list-ul mr-1"></i>Published Nodes
+                            </a>
+                        </li>
+                        <li class="nav-item @NavActive("Translator")">
+                            <a class="nav-link" asp-area="" asp-controller="Translator" asp-action="Index">
+                                <i class="fas fa-exchange-alt mr-1"></i>Edge Translator
+                            </a>
+                        </li>
+                        <li class="nav-item @NavActive("CertManager")">
+                            <a class="nav-link" asp-area="" asp-controller="CertManager" asp-action="Index">
+                                <i class="fas fa-shield-alt mr-1"></i>Certificates
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-controller="Browser" asp-action="Index">OPC UA Server Connect</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-controller="Published" asp-action="Index">Published Nodes</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-controller="Translator" asp-action="Index">UA Edge Translator</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-controller="CertManager" asp-action="Index">Certificate Management</a>
+                            <button type="button"
+                                    id="uacp-theme-toggle"
+                                    class="uacp-theme-toggle"
+                                    aria-label="Toggle light and dark theme"
+                                    title="Toggle theme">
+                                <i class="fas fa-moon uacp-theme-toggle__icon uacp-theme-toggle__icon--dark"></i>
+                                <i class="fas fa-sun  uacp-theme-toggle__icon uacp-theme-toggle__icon--light"></i>
+                            </button>
                         </li>
                     </ul>
                 </div>
@@ -49,9 +97,16 @@
         </main>
     </div>
 
-    <footer class="border-top footer text-light bg-secondary">
-        <div class="container">
-            &copy; 2022 - Erich Barnstedt - <a asp-area="" asp-controller="Config" asp-action="Privacy">Privacy</a>
+    <footer class="footer">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center">
+            <span>&copy; @DateTime.UtcNow.Year &middot; Erich Barnstedt &middot; UA Cloud Publisher</span>
+            <span>
+                <a asp-area="" asp-controller="Config" asp-action="Privacy">Privacy</a>
+                <span class="mx-2 text-muted">&middot;</span>
+                <a href="https://github.com/barnstee/UA-CloudPublisher" target="_blank" rel="noopener">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+            </span>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -59,6 +114,20 @@
     <script src="~/lib/bootstrap-table/bootstrap-table.min.js"></script>
     <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            var btn = document.getElementById('uacp-theme-toggle');
+            if (!btn) return;
+            function currentTheme() {
+                return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            }
+            btn.addEventListener('click', function () {
+                var next = currentTheme() === 'light' ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', next);
+                try { localStorage.setItem('uacp-theme', next); } catch (e) { }
+            });
+        })();
+    </script>
     <script src="_framework/blazor.server.js"></script>
     <script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=@(typeof(Radzen.Colors).Assembly.GetName().Version)"></script>
     @RenderSection("Scripts", required: false)

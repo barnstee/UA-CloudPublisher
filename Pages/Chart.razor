@@ -23,32 +23,36 @@
     </ChildContent>
 </RadzenChart>
 
-<table width='800px' cellpadding='3' cellspacing='3'>
-    <tr><th><b>Name</b></th><th><b>Latest Value</b></th></tr>
-    <tr><td style='width:400px'>Publisher Start Time</td><td style='width:200px'>@Diagnostics.Singleton.Info.PublisherStartTime</td></tr>
-    <tr><td style='width:400px'>Connected to broker(s)</td><td style='width:200px'>@Diagnostics.Singleton.Info.ConnectedToBroker</td></tr>
-    <tr><td style='width:400px'>OPC UA sessions</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected</td></tr>
-    <tr><td style='width:400px'>OPC UA subscriptions</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected</td></tr>
-    <tr><td style='width:400px'>OPC UA monitored items</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored</td></tr>
-    <tr><td style='width:400px'>OPC UA monitored items queue capacity</td><td style='width:200px'>@Settings.Instance.InternalQueueCapacity</td></tr>
-    <tr><td style='width:400px'>OPC UA monitored items queue current items</td><td style='width:200px'>@Diagnostics.Singleton.Info.MonitoredItemsQueueCount</td></tr>
-    <tr><td style='width:400px'>OPC UA monitored items enqueued</td><td style='width:200px'>@Diagnostics.Singleton.Info.EnqueueCount</td></tr>
-    <tr><td style='width:400px'>OPC UA monitored items enqueue failure</td><td style='width:200px'>@Diagnostics.Singleton.Info.EnqueueFailureCount</td></tr>
-    <tr><td style='width:400px'>Messages sent to broker</td><td style='width:200px'>@Diagnostics.Singleton.Info.SentMessages</td></tr>
-    <tr><td style='width:400px'>Last successful broker message sent at</td><td style='width:200px'>@Diagnostics.Singleton.Info.SentLastTime</td></tr>
-    <tr><td style='width:400px'>Total bytes sent to broker</td><td style='width:200px'>@Diagnostics.Singleton.Info.SentBytes</td></tr>
-    <tr><td style='width:400px'>Average broker message size (bytes)</td><td style='width:200px'>@(Diagnostics.Singleton.Info.SentBytes /(Diagnostics.Singleton.Info.SentMessages == 0 ? 1 : Diagnostics.Singleton.Info.SentMessages))</td></tr>
-    <tr><td style='width:400px'>Average broker message latency (ms)</td><td style='width:200px'>@Diagnostics.Singleton.Info.AverageMessageLatency</td></tr>
-    <tr><td style='width:400px'>Average broker messages/second sent</td><td style='width:200px'>@_messagesPerSecond</td></tr>
-    <tr><td style='width:400px'>Average number of OPC UA monitored items batched in broker message</td><td style='width:200px'>@Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage</td></tr>
-    <tr><td style='width:400px'>Average number of OPC UA monitored items/second sent</td><td style='width:200px'>@(_messagesPerSecond* Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage)</td></tr>
-    <tr><td style='width:400px'>Broker message send failures</td><td style='width:200px'>@Diagnostics.Singleton.Info.FailedMessages</td></tr>
-    <tr><td style='width:400px'>Broker messages too large to send to broker</td><td style='width:200px'>@Diagnostics.Singleton.Info.TooLargeCount</td></tr>
-    <tr><td style='width:400px'>Missed broker message send intervals</td><td style='width:200px'>@Diagnostics.Singleton.Info.MissedSendIntervalCount</td></tr>
-    <tr><td style='width:400px'>Number of OPC UA monitored items encoded</td><td style='width:200px'>@Diagnostics.Singleton.Info.NumberOfEvents</td></tr>
-    <tr><td style='width:400px'>Current working set in MB</td><td style='width:200px'>@(Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024))</td></tr>
-    <tr><td style='width:400px'>Broker send interval setting (s)</td><td style='width:200px'>@Settings.Instance.DefaultSendIntervalSeconds</td></tr>
-    <tr><td style='width:400px'>Broker message size setting (bytes)</td><td style='width:200px'>@Settings.Instance.BrokerMessageSize</td></tr>
+<table class="metrics-table">
+    <thead>
+        <tr><th>Metric</th><th>Latest Value</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Publisher start time</td><td>@Diagnostics.Singleton.Info.PublisherStartTime</td></tr>
+        <tr><td>Connected to broker(s)</td><td>@Diagnostics.Singleton.Info.ConnectedToBroker</td></tr>
+        <tr><td>OPC UA sessions</td><td>@Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected</td></tr>
+        <tr><td>OPC UA subscriptions</td><td>@Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected</td></tr>
+        <tr><td>OPC UA monitored items</td><td>@Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored</td></tr>
+        <tr><td>OPC UA monitored items queue capacity</td><td>@Settings.Instance.InternalQueueCapacity</td></tr>
+        <tr><td>OPC UA monitored items queue current items</td><td>@Diagnostics.Singleton.Info.MonitoredItemsQueueCount</td></tr>
+        <tr><td>OPC UA monitored items enqueued</td><td>@Diagnostics.Singleton.Info.EnqueueCount</td></tr>
+        <tr><td>OPC UA monitored items enqueue failure</td><td>@Diagnostics.Singleton.Info.EnqueueFailureCount</td></tr>
+        <tr><td>Messages sent to broker</td><td>@Diagnostics.Singleton.Info.SentMessages</td></tr>
+        <tr><td>Last successful broker message sent at</td><td>@Diagnostics.Singleton.Info.SentLastTime</td></tr>
+        <tr><td>Total bytes sent to broker</td><td>@Diagnostics.Singleton.Info.SentBytes</td></tr>
+        <tr><td>Average broker message size (bytes)</td><td>@(Diagnostics.Singleton.Info.SentBytes / (Diagnostics.Singleton.Info.SentMessages == 0 ? 1 : Diagnostics.Singleton.Info.SentMessages))</td></tr>
+        <tr><td>Average broker message latency (ms)</td><td>@Diagnostics.Singleton.Info.AverageMessageLatency</td></tr>
+        <tr><td>Average broker messages/second sent</td><td>@_messagesPerSecond</td></tr>
+        <tr><td>Average OPC UA monitored items batched in broker message</td><td>@Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage</td></tr>
+        <tr><td>Average OPC UA monitored items/second sent</td><td>@(_messagesPerSecond * Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage)</td></tr>
+        <tr><td>Broker message send failures</td><td>@Diagnostics.Singleton.Info.FailedMessages</td></tr>
+        <tr><td>Broker messages too large to send</td><td>@Diagnostics.Singleton.Info.TooLargeCount</td></tr>
+        <tr><td>Missed broker message send intervals</td><td>@Diagnostics.Singleton.Info.MissedSendIntervalCount</td></tr>
+        <tr><td>Number of OPC UA monitored items encoded</td><td>@Diagnostics.Singleton.Info.NumberOfEvents</td></tr>
+        <tr><td>Current working set (MB)</td><td>@(Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024))</td></tr>
+        <tr><td>Broker send interval setting (s)</td><td>@Settings.Instance.DefaultSendIntervalSeconds</td></tr>
+        <tr><td>Broker message size setting (bytes)</td><td>@Settings.Instance.BrokerMessageSize</td></tr>
+    </tbody>
 </table>
 
 @code {

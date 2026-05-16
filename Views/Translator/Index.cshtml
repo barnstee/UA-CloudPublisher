@@ -1,4 +1,4 @@
-﻿@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Models
 
 @model string
 
@@ -6,75 +6,73 @@
     ViewData["Title"] = "UA Edge Translator Configuration";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="page-header">
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    <div class="page-subtitle">Generate or load Web of Things descriptions and push them, along with OPC UA nodeset dependencies, to UA Edge Translator.</div>
+</div>
 
-<div class="container-fluid browser_connect_container">
-    <p>
-       You can use the <b>Azure OpenAI</b> service to generate and download a Web of Things (WoT) Thing Description for the asset you want to configure automatically.<br />
-       <a href="https://eclipse-editdor.github.io/editdor/">Here</a> is a good online editor for WoT files.<br />
-       After validating its contents, choose the file below.<br />
-       Finally, send it to UA Edge Translator via OPC UA to configure the asset.<br />
-       Although UA Edge Translator can load OPC UA nodeset files directly from the UA Cloud Library, you can also manually send OPC UA nodeset files to UA Edge Translator below. They can be used to map WoT properties to specific OPC UA types.<br />
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-info-circle"></i> Overview</h3>
+    <p class="card-subtitle" style="margin:0;">
+        You can use the <b>Azure OpenAI</b> service to generate and download a Web of Things (WoT) Thing Description for the asset you want to configure automatically.
+        <a href="https://eclipse-editdor.github.io/editdor/" target="_blank" rel="noopener">Here</a> is a good online editor for WoT files.
+        After validating its contents, choose the file below and finally send it to UA Edge Translator via OPC UA to configure the asset.
+        Although UA Edge Translator can load OPC UA nodeset files directly from the UA Cloud Library, you can also manually send OPC UA nodeset files to UA Edge Translator below. They can be used to map WoT properties to specific OPC UA types.
     </p>
-    <br />
-    <hr style="border-top: 1px solid blue" />
-    <br />
+</div>
+
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-magic"></i> 1. Generate Asset Description</h3>
+    <p class="card-subtitle">
+        ChatGPT prompt to automatically generate the description file for your asset (e.g. enter Siemens Sentron PAC4200).
+    </p>
     <form method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Generate">
         <p>
-            1. ChatGPT prompt to automatically generate the description file for your asset (e.g. enter "Siemens Sentron PAC4200"):<br />
+            @Html.TextBox("chatprompt", null, new { @class = "modern-input", placeholder = "Describe your asset..." })
         </p>
         <p>
-            @Html.TextBox("chatprompt", null, new { style = "width:50%;background-color:grey;color:white;" })
-        </p>
-        <p>
-            <input id="chatButton" class="btn btn-primary btn_browser" type="submit" value="Generate & Download File">
-        </p>
-    </form>
-    <br />
-    <hr style="border-top: 1px solid blue" />
-    <br />
-    <form id="loadForm" method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
-        <p>
-            2. Load the manually validated asset description file (.jsonld extension) or an OPC UA nodeset file dependency (.xml extension):<br />
-        </p>
-        <p>
-            <input class="btn btn-primary" type="file" name="file">
-        </p>
-        <br />
-        <hr style="border-top: 1px solid blue" />
-        <br />
-        <p>
-            3. Send the loaded asset description (or an OPC UA nodeset file dependency) to UA Edge Translator (address format: opc.tcp://ipaddress:port): <br />
-            <b>Note: After sending OPC UA nodeset file dependencies, UA Edge Translator must be restarted!</b>
-        </p>
-        <p>
-            Address:<br />
-        </p>
-        <p>
-            @Html.TextBox("endpointUrl", null, new { style = "width:50%;background-color:grey;color:white;" })
-        </p>
-        <p>
-            Username:<br />
-        </p>
-        <p>
-            @Html.TextBox("username", null, new { style = "width:50%;background-color:grey;color:white;" })
-        </p>
-        <p>
-            Password:<br />
-        </p>
-        <p>
-            @Html.Password("password", null, new { style = "width:50%;background-color:grey;color:white;" })
-        </p>
-        <p>
-            <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Send">
-        </p>
-        <p>
-            <div class="text-danger">
-                @Model
-            </div>
+            <input id="chatButton" class="btn btn-primary" type="submit" value="Generate &amp; Download File">
         </p>
     </form>
 </div>
+
+<form id="loadForm" method="post" enctype="multipart/form-data" asp-controller="Translator" asp-action="Load">
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-file-import"></i> 2. Load Asset Description</h3>
+        <p class="card-subtitle">
+            Load the manually validated asset description file (.jsonld) or an OPC UA nodeset file dependency (.xml).
+        </p>
+        <p>
+            <input class="modern-input" type="file" name="file">
+        </p>
+    </div>
+
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-paper-plane"></i> 3. Send To UA Edge Translator</h3>
+        <p class="card-subtitle">
+            <br /><b>Note:</b> After sending OPC UA nodeset file dependencies, UA Edge Translator must be restarted.
+        </p>
+        <p>
+            Address
+            @Html.TextBox("endpointUrl", null, new { @class = "modern-input", placeholder = "opc.tcp://ipaddress:4840" })
+        </p>
+        <p>
+            Username
+            @Html.TextBox("username", null, new { @class = "modern-input", autocomplete = "off" })
+        </p>
+        <p>
+            Password
+            @Html.Password("password", null, new { @class = "modern-input", autocomplete = "new-password" })
+        </p>
+        <p>
+            <input id="connectButton" class="btn btn-primary" type="submit" value="Send">
+        </p>
+        @if (!string.IsNullOrEmpty(Model))
+        {
+            <p class="uacp-status-error">@Model</p>
+        }
+    </div>
+</form>
 
 <!-- Modal for Template Replacement -->
 <div class="modal fade" id="templateModal" tabindex="-1" role="dialog" aria-labelledby="templateModalLabel" aria-hidden="true">
@@ -93,7 +91,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Apply & Send</button>
+                    <button type="submit" class="btn btn-primary">Apply &amp; Send</button>
                 </div>
             </form>
         </div>
@@ -102,9 +100,8 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function() {
-            // Intercept the Load form submission
-            $('#loadForm').submit(function(e) {
+        $(document).ready(function () {
+            $('#loadForm').submit(function (e) {
                 e.preventDefault();
 
                 var formData = new FormData(this);
@@ -115,16 +112,14 @@
                     data: formData,
                     processData: false,
                     contentType: false,
-                    success: function(response) {
+                    success: function (response) {
                         if (response.isThingModel && response.templates && response.templates.length > 0) {
-                            // Show modal with template fields
                             showTemplateModal(response.templates);
                         } else {
-                            // Reload page to show success/error message
                             location.reload();
                         }
                     },
-                    error: function(xhr, status, error) {
+                    error: function (xhr, status, error) {
                         alert('Error: ' + error);
                     }
                 });
@@ -132,12 +127,11 @@
 
             function showTemplateModal(templates) {
                 var fieldsHtml = '';
-                templates.forEach(function(template) {
+                templates.forEach(function (template) {
                     fieldsHtml += '<div class="form-group">';
-                    fieldsHtml += '<label for="template_' + template + '">' + template + ':</label>';
-                    fieldsHtml += '<input type="text" class="form-control" id="template_' + template + '" ';
-                    fieldsHtml += 'name="templateValues[' + template + ']" ';
-                    fieldsHtml += 'style="background-color:grey;color:white;" required>';
+                    fieldsHtml += '<label for="template_' + template + '">' + template + '</label>';
+                    fieldsHtml += '<input type="text" class="form-control modern-input" id="template_' + template + '" ';
+                    fieldsHtml += 'name="templateValues[' + template + ']" required>';
                     fieldsHtml += '</div>';
                 });
 
@@ -145,8 +139,7 @@
                 $('#templateModal').modal('show');
             }
 
-            // Handle template form submission
-            $('#templateForm').submit(function(e) {
+            $('#templateForm').submit(function (e) {
                 e.preventDefault();
 
                 var formData = $(this).serialize();
@@ -155,11 +148,11 @@
                     url: '@Url.Action("ProcessTemplate", "Translator")',
                     type: 'POST',
                     data: formData,
-                    success: function(response) {
+                    success: function (response) {
                         $('#templateModal').modal('hide');
                         location.reload();
                     },
-                    error: function(xhr, status, error) {
+                    error: function (xhr, status, error) {
                         alert('Error: ' + error);
                     }
                 });
@@ -167,4 +160,3 @@
         });
     </script>
 }
-

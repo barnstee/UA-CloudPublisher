@@ -32,6 +32,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - UI for displaying the list of publishes nodes
 - UI for displaying diagnostic information
 - UI for configuration
+- Light and dark themed UI
 - Publishing from the cloud via a broker
 - Publishing on data changes or on regular intervals
 - Supports `publishednodes.json` input file format

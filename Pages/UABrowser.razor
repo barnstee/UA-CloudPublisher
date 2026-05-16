@@ -7,12 +7,13 @@
 @inject IUAClient _client
 
 <div class="text-light">
-    <p>
-        <b>@StatusMessage</b>
-    </p>
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <p><b>@StatusMessage</b></p>
+    }
 </div>
-<div class="col-12 row">
-    <div class="col-6">
+<div class="row">
+    <div class="col-lg-6 col-md-12 mb-3">
         <Tree Nodes="UANodes" TNode="UANode" ChildSelector="node => node.Children" SelectedNodeChanged="SelectedNodeChanged" OnNodeExpand="OnNodeExpand" HasChildNodes="HasChildNodes">
             <TitleTemplate>
                 @{
@@ -28,11 +29,17 @@
             </TitleTemplate>
         </Tree>
     </div>
-    <div class="col-6">
-        NodeId: <b>@NodeId</b><br />
-        NodeDisplayName: <b>@NodeDisplayName</b><br />
-        NodeValue: <b>@NodeValue</b><br />
-        <button class="btn btn-primary" hidden="@NodeNotPublishable" @onclick="VariablePublishAsync">Publish</button>
+    <div class="col-lg-6 col-md-12">
+        <div class="node-inspector">
+            <div><span class="field-label">NodeId</span><span class="field-value">@NodeId</span></div>
+            <div><span class="field-label">Display Name</span><span class="field-value">@NodeDisplayName</span></div>
+            <div><span class="field-label">Value</span><span class="field-value">@NodeValue</span></div>
+            <div class="mt-3">
+                <button class="btn btn-primary" hidden="@NodeNotPublishable" @onclick="VariablePublishAsync">
+                    <i class="fas fa-cloud-upload-alt mr-1"></i>Publish
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 

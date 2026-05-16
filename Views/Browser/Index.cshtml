@@ -1,4 +1,4 @@
-﻿@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Models
 
 @model SessionModel
 
@@ -6,44 +6,38 @@
     ViewData["Title"] = "Connect to an OPC UA Server";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="page-header">
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    <div class="page-subtitle">Establish a session with an OPC UA server to browse its address space.</div>
+</div>
 
-<div class="container-fluid browser_connect_container">
-    <p>
-        Enter an OPC UA Server's URL to connect to (address format: opc.tcp://ipaddress:port):
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-plug"></i> Endpoint</h3>
+    <p class="card-subtitle">
+        Enter an OPC UA Server's URL to connect to.
     </p>
-    <div class="row browser_top_container">
-        <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="UserPassword">
-            <div class="browser_connect_selection_textbox">
-                <p>
-                    @Html.TextBox("endpointUrl", null, new { style = "width:300%;background-color:grey;color:white;" })
-                </p>
-            </div>
-            <div class="browser_browse_connect_button">
-                <p>
-                    <input id="connectButton" class="btn btn-primary btn_browser" type="submit" value="Connect">
-                </p>
-            </div>
-            <div class="text-danger" id="message">
-                <p>
-                    @Model.StatusMessage
-                </p>
-            </div>
-        </form>
-    </div>
-    <br />
-    <hr style="border-top: 1px solid blue" />
-    <br />
-    <div class="row browser_select_connect_container">
-        <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="DownloadUACert">
-            <p>
-                Download UA Cloud Publisher's OPC UA certificate to establish trust with the OPC UA server manually:
-            </p>
-            <div class="browser_browse_connect_button">
-                <p>
-                    <input class="btn btn-primary" type="submit" value="Download">
-                </p>
-            </div>
-        </form>
-    </div>
+    <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="UserPassword">
+        <p>
+            @Html.TextBox("endpointUrl", null, new { @class = "modern-input", placeholder = "opc.tcp://ipaddress:port" })
+        </p>
+        <p>
+            <input id="connectButton" class="btn btn-primary" type="submit" value="Connect">
+        </p>
+        @if (!string.IsNullOrEmpty(Model.StatusMessage))
+        {
+            <p class="uacp-status-error" id="message">@Model.StatusMessage</p>
+        }
+    </form>
+</div>
+
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-download"></i> Trust Anchor</h3>
+    <p class="card-subtitle">
+        Download UA Cloud Publisher's OPC UA certificate to establish trust with the OPC UA server manually.
+    </p>
+    <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="DownloadUACert">
+        <p>
+            <input class="btn btn-secondary" type="submit" value="Download Certificate">
+        </p>
+    </form>
 </div>

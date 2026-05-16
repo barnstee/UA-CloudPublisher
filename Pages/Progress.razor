@@ -6,7 +6,13 @@
 
 @inject IPublishedNodesFileHandler _publishedNodesFileHandler
 
-<RadzenProgressBar @bind-Value="_progressValue" Mode="ProgressBarMode.Determinate" Visible="@_progressVisible" />
+@if (_progressVisible)
+{
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-tasks"></i> Progress</h3>
+        <RadzenProgressBar @bind-Value="_progressValue" Mode="ProgressBarMode.Determinate" />
+    </div>
+}
 
 @code {
 

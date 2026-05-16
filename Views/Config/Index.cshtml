@@ -1,4 +1,4 @@
-﻿@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Models
 
 @model Settings
 
@@ -6,202 +6,220 @@
     ViewData["Title"] = "Configuration";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="page-header">
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    <div class="page-subtitle">Manage certificates, broker connectivity, and publisher behavior.</div>
+</div>
 
-<form method="post" enctype="multipart/form-data" asp-controller="Config" asp-action="LocalCertOpen">
-    <br />
-    By default, the OPC UA client cert is also used as the MQTT client cert, but a custom MQTT client cert can be loaded here:
-    <br />
-    <p>
-        <input class="btn btn-primary" type="file" name="file" accept=".pfx,.der">
-        <input class="btn btn-primary" type="submit" value="Load">
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-file-upload"></i> Custom MQTT Client Certificate</h3>
+    <p class="card-subtitle">
+        By default, the OPC UA client cert is also used as the MQTT client cert. A custom MQTT client cert can be loaded here.
     </p>
-</form>
-<br />
-<hr style="border-top: 1px solid blue" />
-<br />
+    <form method="post" enctype="multipart/form-data" asp-controller="Config" asp-action="LocalCertOpen">
+        <p>
+            <input class="modern-input" type="file" name="file" accept=".pfx,.der">
+        </p>
+        <p>
+            <input class="btn btn-primary" type="submit" value="Load">
+        </p>
+    </form>
+</div>
+
 <form action="/Config/Apply" method="post">
-    <p>
+
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-shield-alt"></i> Certificate Status</h3>
+
+        <p>
+            OPC UA Client Certificate Thumbprint
+            @Html.TextBox("UAClientCertThumbprint", @Model.UAClientCertThumbprint, new { @class = "modern-input", @readonly = "readonly" })
+        </p>
+        <p>
+            OPC UA Client Certificate Expiry
+            @Html.TextBox("UAClientCertExpiry", @Model.UAClientCertExpiry, new { @class = "modern-input", @readonly = "readonly" })
+        </p>
+        <p>
+            OPC UA Issuer Certificate Thumbprint
+            @Html.TextBox("UAIssuerCertThumbprint", @Model.UAIssuerCertThumbprint, new { @class = "modern-input", @readonly = "readonly" })
+        </p>
+        <p>
+            OPC UA Issuer Certificate Expiry
+            @Html.TextBox("UAIssuerCertExpiry", @Model.UAIssuerCertExpiry, new { @class = "modern-input", @readonly = "readonly" })
+        </p>
+        <p>
+            MQTT Client Certificate Thumbprint
+            @Html.TextBox("MQTTClientCertThumbprint", @Model.MQTTClientCertThumbprint, new { @class = "modern-input", @readonly = "readonly" })
+        </p>
+        <p>
+            MQTT Client Certificate Expiry
+            @Html.TextBox("MQTTClientCertExpiry", @Model.MQTTClientCertExpiry, new { @class = "modern-input", @readonly = "readonly" })
+        </p>
+    </div>
+
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-broadcast-tower"></i> Broker Connection</h3>
+
+        <p>
+            Publisher Name (<b>required</b>)
+            @Html.TextBox("PublisherName", @Model.PublisherName, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker URL (<b>required</b>)
+            @Html.TextBox("BrokerUrl", @Model.BrokerUrl, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker Port (<b>required</b>)
+            @Html.TextBox("BrokerPort", @Model.BrokerPort, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker Username (<b>required</b>)
+            @Html.TextBox("BrokerUsername", @Model.BrokerUsername, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker Password (<b>required</b>)
+            @Html.Password("BrokerPassword", @Model.BrokerPassword, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker Message Topic (<b>required</b>)
+            @Html.TextBox("BrokerMessageTopic", @Model.BrokerMessageTopic, new { @class = "modern-input" })
+        </p>
+        <p>
+            <label>@Html.CheckBox("UseTLS", @Model.UseTLS) Use TLS with Broker (when switching off TLS, you will most likely also need to update the Broker Port)</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("UseKafka", @Model.UseKafka) Use Kafka</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("CreateBrokerSASToken", @Model.CreateBrokerSASToken) Create Broker SAS Token</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("UseUACertAuth", @Model.UseUACertAuth) Use OPC UA certificate for authentication with Broker</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("UseCustomCertAuth", @Model.UseCustomCertAuth) Use custom certificate for authentication with Broker (loaded above)</label>
+        </p>
+        <p>
+            Broker Message Size
+            @Html.TextBox("BrokerMessageSize", @Model.BrokerMessageSize, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker Command Topic
+            @Html.TextBox("BrokerCommandTopic", @Model.BrokerCommandTopic, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker Data Received Topic
+            @Html.TextBox("BrokerDataReceivedTopic", @Model.BrokerDataReceivedTopic, new { @class = "modern-input" })
+        </p>
+        <p>
+            Broker Command Response Topic
+            @Html.TextBox("BrokerResponseTopic", @Model.BrokerResponseTopic, new { @class = "modern-input" })
+        </p>
+    </div>
+
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-server"></i> Alternative Broker &amp; Metadata</h3>
+
+        <p>
+            <label>@Html.CheckBox("SendUAMetadata", @Model.SendUAMetadata) Send OPC UA Metadata Messages</label>
+        </p>
+        <p>
+            Broker Metadata Topic
+            @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { @class = "modern-input" })
+        </p>
+        <p>
+            <label>@Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata) Use Alternative Broker For OPC UA Metadata Messages (must not be enabled in conjunction with Use Alt Broker For Receiving UA Over MQTT)</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("UseAltBrokerForReceivingUAOverMQTT", @Model.UseAltBrokerForReceivingUAOverMQTT) Use Alternative Broker For Receiving OPC UA PubSub Over MQTT Messages (must not be enabled in conjunction with Use Alt Broker For Metadata)</label>
+        </p>
+        <p>
+            Alternative Broker URL
+            @Html.TextBox("AltBrokerUrl", @Model.AltBrokerUrl, new { @class = "modern-input" })
+        </p>
+        <p>
+            Alternative Broker Port
+            @Html.TextBox("AltBrokerPort", @Model.AltBrokerPort, new { @class = "modern-input" })
+        </p>
+        <p>
+            Alternative Broker Username
+            @Html.TextBox("AltBrokerUsername", @Model.AltBrokerUsername, new { @class = "modern-input" })
+        </p>
+        <p>
+            Alternative Broker Password
+            @Html.Password("AltBrokerPassword", @Model.AltBrokerPassword, new { @class = "modern-input" })
+        </p>
+        <p>
+            <label>@Html.CheckBox("SendUAStatus", @Model.SendUAStatus) Send OPC UA Status Messages</label>
+        </p>
+        <p>
+            Metadata Send Interval in Seconds
+            @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { @class = "modern-input" })
+        </p>
+    </div>
+
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-cogs"></i> Publisher Behavior</h3>
+
+        <p>
+            <label>@Html.CheckBox("UseReverseConnect", @Model.UseReverseConnect) Use reverse connect to connect to OPC UA servers. UA Cloud Publisher will listen on port 50000.</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("AutoPublishAllWoTProperties", @Model.AutoPublishAllWoTProperties) Auto-publish all WoT properties</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("PushCertsBeforePublishing", @Model.PushCertsBeforePublishing) Push new OPC UA certificates to server before WoT file upload or before processing published nodes files (GDS Server Push feature)</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("ReversiblePubSubEncoding", @Model.ReversiblePubSubEncoding) Use Reversible PubSub Encoding</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("AutoLoadPersistedNodes", @Model.AutoLoadPersistedNodes) Auto-Load Previously Published Nodes on Startup</label>
+        </p>
+        <p>
+            Internal Queue Capacity
+            @Html.TextBox("InternalQueueCapacity", @Model.InternalQueueCapacity, new { @class = "modern-input" })
+        </p>
+        <p>
+            Default Send Interval in Seconds
+            @Html.TextBox("DefaultSendIntervalSeconds", @Model.DefaultSendIntervalSeconds, new { @class = "modern-input" })
+        </p>
+        <p>
+            Diagnostics Logging Interval in Seconds
+            @Html.TextBox("DiagnosticsLoggingInterval", @Model.DiagnosticsLoggingInterval, new { @class = "modern-input" })
+        </p>
+        <p>
+            Default OPC UA Sampling Interval in Milliseconds
+            @Html.TextBox("DefaultOpcSamplingInterval", @Model.DefaultOpcSamplingInterval, new { @class = "modern-input" })
+        </p>
+        <p>
+            Default OPC UA Publishing Interval in Milliseconds
+            @Html.TextBox("DefaultOpcPublishingInterval", @Model.DefaultOpcPublishingInterval, new { @class = "modern-input" })
+        </p>
+        <p>
+            OPC UA Stack Trace Mask
+            @Html.TextBox("UAStackTraceMask", @Model.UAStackTraceMask, new { @class = "modern-input" })
+        </p>
+    </div>
+
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-robot"></i> Azure OpenAI</h3>
+
+        <p>
+            Azure OpenAI API Endpoint, e.g. https://wotgpt4.openai.azure.com/
+            @Html.TextBox("AzureOpenAIAPIEndpoint", @Model.AzureOpenAIAPIEndpoint, new { @class = "modern-input" })
+        </p>
+        <p>
+            Azure OpenAI API Key
+            @Html.TextBox("AzureOpenAIAPIKey", @Model.AzureOpenAIAPIKey, new { @class = "modern-input" })
+        </p>
+        <p>
+            Azure OpenAI Deployment or Model Name
+            @Html.TextBox("AzureOpenAIDeploymentName", @Model.AzureOpenAIDeploymentName, new { @class = "modern-input" })
+        </p>
+    </div>
+
+    <div class="app-card" style="position:sticky;bottom:1rem;">
         <input class="btn btn-primary" type="submit" name="Apply" value="Apply Changes" />
-    </p>
-    <p>
-        OPC UA Client Certificate Thumbprint<br />
-        @Html.TextBox("UAClientCertThumbprint", @Model.UAClientCertThumbprint, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
-    </p>
-    <p>
-        OPC UA Client Certificate Expiry<br />
-        @Html.TextBox("UAClientCertExpiry", @Model.UAClientCertExpiry, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
-    </p>
-    <p>
-        OPC UA Issuer Certificate Thumbprint<br />
-        @Html.TextBox("UAIssuerCertThumbprint", @Model.UAIssuerCertThumbprint, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
-    </p>
-    <p>
-        OPC UA Issuer Certificate Expiry<br />
-        @Html.TextBox("UAIssuerCertExpiry", @Model.UAIssuerCertExpiry, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
-    </p>
-    <p>
-        MQTT Client Certificate Thumbprint<br />
-        @Html.TextBox("MQTTClientCertThumbprint", @Model.MQTTClientCertThumbprint, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
-    </p>
-    <p>
-        MQTT Client Certificate Expiry<br />
-        @Html.TextBox("MQTTClientCertExpiry", @Model.MQTTClientCertExpiry, new { style = "width:100%;background-color:darkgrey;color:lightgrey;", @readonly = true })<br />
-    </p>
-    <p>
-        Publisher Name (<b>required</b>)<br />
-        @Html.TextBox("PublisherName", @Model.PublisherName, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker URL (<b>required</b>)<br />
-        @Html.TextBox("BrokerUrl", @Model.BrokerUrl, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Port (<b>required</b>)<br />
-        @Html.TextBox("BrokerPort", @Model.BrokerPort, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Username (<b>required</b>)<br />
-        @Html.TextBox("BrokerUsername", @Model.BrokerUsername, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Password (<b>required</b>)<br />
-        @Html.Password("BrokerPassword", @Model.BrokerPassword, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Message Topic (<b>required</b>)<br />
-        @Html.TextBox("BrokerMessageTopic", @Model.BrokerMessageTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Send OPC UA Metadata Messages<br />
-        @Html.CheckBox("SendUAMetadata", @Model.SendUAMetadata)<br />
-    </p>
-    <p>
-        Broker Metadata Topic<br />
-        @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Use Alternative Broker For OPC UA Metadata Messages (must not be enabled in conjunction with Use Alt Broker For Receiving UA Over MQTT)<br />
-        @Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata)<br />
-    </p>
-    <p>
-        Use Alternative Broker For Receiving OPC UA PubSub Over MQTT Messages (must not be enabled in conjunction with Use Alt Broker For Metadata)<br />
-        @Html.CheckBox("UseAltBrokerForReceivingUAOverMQTT", @Model.UseAltBrokerForReceivingUAOverMQTT)<br />
-    </p>
-    <p>
-        Alternative Broker URL<br />
-        @Html.TextBox("AltBrokerUrl", @Model.AltBrokerUrl, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Alternative Broker Port<br />
-        @Html.TextBox("AltBrokerPort", @Model.AltBrokerPort, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Alternative Broker Username<br />
-        @Html.TextBox("AltBrokerUsername", @Model.AltBrokerUsername, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Alternative Broker Password<br />
-        @Html.Password("AltBrokerPassword", @Model.AltBrokerPassword, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Send OPC UA Status Messages<br />
-        @Html.CheckBox("SendUAStatus", @Model.SendUAStatus)<br />
-    </p>
-    <p>
-        Metadata Send Interval in Seconds<br />
-        @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Command Topic<br />
-        @Html.TextBox("BrokerCommandTopic", @Model.BrokerCommandTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Data Received Topic<br />
-        @Html.TextBox("BrokerDataReceivedTopic", @Model.BrokerDataReceivedTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Command Response Topic<br />
-        @Html.TextBox("BrokerResponseTopic", @Model.BrokerResponseTopic, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Broker Message Size<br />
-        @Html.TextBox("BrokerMessageSize", @Model.BrokerMessageSize, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Use Kafka<br />
-        @Html.CheckBox("UseKafka", @Model.UseKafka)<br />
-    </p>
-    <p>
-        Create Broker SAS Token<br />
-        @Html.CheckBox("CreateBrokerSASToken", @Model.CreateBrokerSASToken)<br />
-    </p>
-     <p>
-        Use TLS with Broker (when switching off TLS, you will most likely also need to update the Broker Port)<br />
-        @Html.CheckBox("UseTLS", @Model.UseTLS)<br />
-    </p>
-    <p>
-        Use OPC UA certificate for authentication with Broker<br />
-        @Html.CheckBox("UseUACertAuth", @Model.UseUACertAuth)<br />
-    </p>
-    <p>
-        Use custom certificate for authentication with Broker (loaded above)<br />
-        @Html.CheckBox("UseCustomCertAuth", @Model.UseCustomCertAuth)<br />
-    </p>
-    <p>
-        Use reverse connect to connect to OPC UA servers. UA Cloud Publisher will listen on port 50000.<br />
-        @Html.CheckBox("UseReverseConnect", @Model.UseReverseConnect)<br />
-    </p>
-    <p>
-        Auto-publish all WoT properties<br />
-        @Html.CheckBox("AutoPublishAllWoTProperties", @Model.AutoPublishAllWoTProperties)<br />
-    </p>
-    <p>
-        Push new OPC UA certificates to server before WoT file upload or before processing published nodes files (GDS Server Push feature)<br />
-        @Html.CheckBox("PushCertsBeforePublishing", @Model.PushCertsBeforePublishing)<br />
-    </p>
-    <p>
-        Internal Queue Capacity<br />
-        @Html.TextBox("InternalQueueCapacity", @Model.InternalQueueCapacity, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Default Send Interval in Seconds<br />
-        @Html.TextBox("DefaultSendIntervalSeconds", @Model.DefaultSendIntervalSeconds, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Diagnostics Logging Interval in Seconds<br />
-        @Html.TextBox("DiagnosticsLoggingInterval", @Model.DiagnosticsLoggingInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Default OPC UA Sampling Interval in Milliseconds<br />
-        @Html.TextBox("DefaultOpcSamplingInterval", @Model.DefaultOpcSamplingInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Default OPC UA Publishing Interval in Milliseconds<br />
-        @Html.TextBox("DefaultOpcPublishingInterval", @Model.DefaultOpcPublishingInterval, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        OPC UA Stack Trace Mask<br />
-        @Html.TextBox("UAStackTraceMask", @Model.UAStackTraceMask, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Use Reversible PubSub Encoding<br />
-        @Html.CheckBox("ReversiblePubSubEncoding", @Model.ReversiblePubSubEncoding)<br />
-    </p>
-    <p>
-        Auto-Load Previously Published Nodes on Startup<br />
-        @Html.CheckBox("AutoLoadPersistedNodes", @Model.AutoLoadPersistedNodes)<br />
-    </p>
-    <p>
-        Azure OpenAI API Endpoint, e.g. https://wotgpt4.openai.azure.com/<br />
-        @Html.TextBox("AzureOpenAIAPIEndpoint", @Model.AzureOpenAIAPIEndpoint, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Azure OpenAI API Key<br />
-        @Html.TextBox("AzureOpenAIAPIKey", @Model.AzureOpenAIAPIKey, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
-    <p>
-        Azure OpenAI Deployment or Model Name<br />
-        @Html.TextBox("AzureOpenAIDeploymentName", @Model.AzureOpenAIDeploymentName, new { style = "width:100%;background-color:grey;color:white;" })<br />
-    </p>
+    </div>
 </form>

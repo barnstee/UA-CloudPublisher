@@ -1,4 +1,4 @@
-﻿@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Models
 @using Opc.Ua.Cloud.Publisher.Pages
 
 @model SessionModel
@@ -7,49 +7,49 @@
     ViewData["Title"] = "Browse, Read & Select Telemetry for Publishing to the Cloud";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="page-header">
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    <div class="page-subtitle">Navigate the server's address space, read values, and select variables to publish.</div>
+</div>
 
-<p>
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-sitemap"></i> Address Space</h3>
     <component>@(await Html.RenderComponentAsync<UABrowser>(
         RenderMode.Server,
-        new {
+        new
+        {
             EndpointUrl = Model.EndpointUrl,
             Username = Model.UserName,
             Password = Model.Password,
             StatusMessage = Model.StatusMessage
         }).ConfigureAwait(false))</component>
-</p>
+</div>
 
-<p>
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-tools"></i> Session Actions</h3>
+
     <div class="row browser_browse_generate_pn_button">
         @using (Html.BeginForm("GeneratePN", "Browser"))
         {
-            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate publishednodes.json file from all OPC UA variables in the server" />
+            <input class="btn btn-primary" type="submit" value="Generate publishednodes.json file from all OPC UA variables in the server" />
         }
     </div>
-</p>
-<p>
     <div class="row browser_browse_generate_csv_button">
         @using (Html.BeginForm("GenerateCSV", "Browser"))
         {
-            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
+            <input class="btn btn-primary" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
         }
     </div>
-</p>
-<p>
     <div class="row browser_browse_gds_push_button">
         @using (Html.BeginForm("PushCert", "Browser"))
         {
-            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Send new certificate and trust list to the server (GDS Server Push)" />
+            <input class="btn btn-primary" type="submit" value="Send new certificate and trust list to the server (GDS Server Push)" />
         }
     </div>
-</p>
-<p>
     <div class="row browser_browse_disconnect_button">
         @using (Html.BeginForm("Disconnect", "Browser"))
         {
-            <input id="disconnectButton" class="btn btn-primary btn_browser" type="submit" value="Disconnect" />
+            <input id="disconnectButton" class="btn btn-secondary" type="submit" value="Disconnect" />
         }
     </div>
-</p>
-
+</div>

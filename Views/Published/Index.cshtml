@@ -1,80 +1,92 @@
-﻿@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Models
 @using Opc.Ua.Cloud.Publisher.Pages
 
 @model string[]
 
 @{
     ViewData["Title"] = "Published OPC UA Nodes Management";
+    var nodes = Model ?? Array.Empty<string>();
+    var publishedCount = nodes.Count(n => !string.IsNullOrEmpty(n) && !n.StartsWith("Error"));
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="page-header">
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    <div class="page-subtitle">Load, manage, and export the set of OPC UA nodes that UA Cloud Publisher publishes.</div>
+</div>
 
-<p>
-    <component>@(await Html.RenderComponentAsync<Progress>(
-        RenderMode.Server,
-        new {
-        }).ConfigureAwait(false))</component>
-</p>
+<component>@(await Html.RenderComponentAsync<Progress>(
+    RenderMode.Server,
+    new { }).ConfigureAwait(false))</component>
 
-<div class="container-fluid browser_connect_container">
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-history"></i> Load Previously Published Nodes</h3>
+    <p class="card-subtitle">
+        UA Cloud Publisher persists its settings and the configuration of all published nodes.
+    </p>
     <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="LoadPersisted">
-        <br/>
         <p>
-            <h3>Load previously published nodes</h3>
-        </p>
-        UA Cloud Publisher stores its settings and the configuration of all publishes nodes.<br />
-        <br />
-        <p>
-            <input class="btn btn-primary" type="submit" value="Load">
+            <input class="btn btn-primary" type="submit" value="Load Persisted">
         </p>
     </form>
+</div>
+
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-folder-open"></i> Open Local publishednodes.json</h3>
     <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Load">
-        <br />
-        <hr style="border-top: 1px solid blue" />
-        <br />
         <p>
-            <h3>Open a local publishednodes.json file</h3>
-        </p>
-        <p>
-            <input class="btn btn-primary" type="file" name="file">
+            <input class="modern-input" type="file" name="file">
         </p>
         <p>
             <input class="btn btn-primary" type="submit" value="Open">
         </p>
     </form>
-        <br />
-        <hr style="border-top: 1px solid blue" />
-        <br />
-        <p>
-            <h3>List of Currently Published OPC UA Nodes</h3>
-        </p>
-     <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Unpublish">
-        <p>
-            <input class="btn btn-primary" type="submit" value="Unpublish Everything">
-        </p>
-    </form>
-    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DownloadFile">
-        <p>
-            <input class="btn btn-primary" type="submit" value="Generate publishednodes.json file for currently published nodes">
-        </p>
-    </form>
-    <ul>
-        @foreach (var node in Model)
-        {
-            @if (node.StartsWith("Error"))
+</div>
+
+<div class="app-card">
+    <h3 class="card-title">
+        <i class="fas fa-list-ul"></i> Currently Published OPC UA Nodes
+        <span class="ml-auto text-muted" style="font-size:.85rem;font-weight:500;">
+            @publishedCount node@(publishedCount == 1 ? "" : "s")
+        </span>
+    </h3>
+
+    <div class="d-flex flex-wrap" style="gap:.6rem;margin-bottom:1rem;">
+        <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DownloadFile">
+            <input class="btn btn-primary" type="submit" value="Export publishednodes.json">
+        </form>
+        <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="Unpublish">
+            <input class="btn btn-secondary" type="submit" value="Unpublish Everything">
+        </form>
+    </div>
+
+    @if (publishedCount == 0)
+    {
+        <p class="text-muted" style="margin:0;">No nodes are currently published.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var node in nodes)
             {
-                @node
+                if (string.IsNullOrEmpty(node))
+                {
+                    continue;
+                }
+
+                if (node.StartsWith("Error"))
+                {
+                    <li class="text-danger">@node</li>
+                }
+                else
+                {
+                    <li>
+                        <span><i class="fas fa-circle" style="font-size:.55rem;color:var(--uacp-success);margin-right:.4rem;"></i>@node</span>
+                        <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
+                            <input name="@node" class="btn btn-secondary" type="submit" value="Delete">
+                        </form>
+                    </li>
+                }
             }
-            else
-            {
-                <li>
-                    @node
-                    <form method="post" enctype="multipart/form-data" asp-controller="Published" asp-action="DeleteNode">
-                        <input name="@node" class="btn btn-primary" type="submit" value="Delete">
-                    </form>
-                    <br />
-                </li>
-            }
-        }
-    </ul>
+        </ul>
+    }
 </div>
