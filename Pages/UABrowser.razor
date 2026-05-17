@@ -76,7 +76,7 @@
     private string NodeValue { get; set; } = string.Empty;
     private bool NodeNotPublishable { get; set; } = true;
 
-    protected async override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         StatusMessage = "Connecting to " + EndpointUrl + "...";
         await InvokeAsync(StateHasChanged);
@@ -148,18 +148,18 @@
             foreach (ReferenceDescription nodeReference in references)
             {
                 UANode newNode = new() {
-                    NodeId = nodeReference.NodeId.ToString(),
-                    Text = nodeReference.DisplayName.ToString()
+                    NodeId = nodeReference.NodeId?.ToString() ?? string.Empty,
+                    Text = nodeReference.DisplayName?.ToString() ?? string.Empty
                 };
 
-                if (!processedReferences.ContainsKey(newNode.NodeId))
+                if (!string.IsNullOrEmpty(newNode.NodeId) && !processedReferences.ContainsKey(newNode.NodeId))
                 {
                     processedReferences.Add(newNode.NodeId, newNode);
                 }
             }
 
             List<UANode> nodes = processedReferences.Values.ToList();
-            nodes.Sort((x, y) => x.Text.CompareTo(y.Text));
+            nodes.Sort((x, y) => string.Compare(x.Text, y.Text, StringComparison.Ordinal));
             return nodes;
         }
         catch (Exception ex)

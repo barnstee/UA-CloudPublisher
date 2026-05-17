@@ -2,12 +2,11 @@
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     using Opc.Ua.Client;
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
+    using System.Collections.Concurrent;
 
     public interface IMessageSource
     {
-        Dictionary<string, bool> SkipFirst { get; set; }
+        ConcurrentDictionary<string, bool> SkipFirst { get; set; }
 
         void EventNotificationHandlerAsync(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e);
 

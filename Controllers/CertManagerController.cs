@@ -66,7 +66,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     byte[] bytes = new byte[file.Length];
                     content.ReadExactly(bytes, 0, (int)file.Length);
 
-                    if (file.FileName.ToLower().EndsWith(".pfx"))
+                    if (!string.IsNullOrEmpty(file.FileName) && file.FileName.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase))
                     {
                         certificate = X509CertificateLoader.LoadPkcs12(bytes, string.Empty);
                     }
@@ -91,24 +91,29 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public ActionResult DownloadTrustlist()
         {
+            string zipfile = null;
             try
             {
-                string zipfile = "trustlist.zip";
-
-                if (System.IO.File.Exists(zipfile))
-                {
-                    System.IO.File.Delete(zipfile);
-                }
+                // use a unique temp file to avoid races between concurrent requests
+                zipfile = Path.Combine(Path.GetTempPath(), "trustlist_" + Guid.NewGuid().ToString("N") + ".zip");
 
                 string pathToTrustList = Path.Combine(Directory.GetCurrentDirectory(), "pki", "trusted", "certs");
                 ZipFile.CreateFromDirectory(pathToTrustList, zipfile);
 
-                return File(System.IO.File.ReadAllBytes(zipfile), "APPLICATION/octet-stream", zipfile);
+                byte[] payload = System.IO.File.ReadAllBytes(zipfile);
+                return File(payload, "APPLICATION/octet-stream", "trustlist.zip");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to download trustlist");
                 return View("Index", new CertManagerModel() { Certs = new SelectList(new List<string>() { ex.Message }) });
+            }
+            finally
+            {
+                if (zipfile != null && System.IO.File.Exists(zipfile))
+                {
+                    try { System.IO.File.Delete(zipfile); } catch { /* best effort */ }
+                }
             }
         }
         [HttpPost]
@@ -116,16 +121,24 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             try
             {
+                if (string.IsNullOrEmpty(plainTextString))
+                {
+                    throw new Exception("No plain text provided.");
+                }
+
                 X509Certificate2 cert = _app.IssuerCert;
+                if (cert == null)
+                {
+                    throw new Exception("Issuer certificate is not available.");
+                }
+
                 using RSA rsa = cert.GetRSAPublicKey();
-                if (!string.IsNullOrEmpty(plainTextString) && (rsa != null))
+                if (rsa == null)
                 {
-                    return View("Index", new CertManagerModel() { Encrypt = Convert.ToBase64String(rsa.Encrypt(Encoding.UTF8.GetBytes(plainTextString), RSAEncryptionPadding.Pkcs1)), Certs = new SelectList(await LoadTrustlist().ConfigureAwait(false)) });
+                    throw new Exception("Issuer certificate does not contain an RSA public key.");
                 }
-                else
-                {
-                    throw new Exception("Encryption failed");
-                }
+
+                return View("Index", new CertManagerModel() { Encrypt = Convert.ToBase64String(rsa.Encrypt(Encoding.UTF8.GetBytes(plainTextString), RSAEncryptionPadding.Pkcs1)), Certs = new SelectList(await LoadTrustlist().ConfigureAwait(false)) });
             }
             catch (Exception ex)
             {

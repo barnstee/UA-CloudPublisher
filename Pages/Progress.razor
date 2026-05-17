@@ -1,5 +1,6 @@
 ﻿@using Opc.Ua.Cloud.Publisher.Interfaces
 @using Radzen.Blazor
+@implements IDisposable
 
 <RadzenTheme Theme="material" @rendermode="InteractiveAuto" />
 <RadzenComponents @rendermode="InteractiveAuto" />
@@ -20,13 +21,26 @@
 
     private bool _progressVisible = false;
 
+    private System.Timers.Timer _timer;
+
     protected override void OnInitialized()
     {
-        System.Timers.Timer timer = new System.Timers.Timer();
-        timer.Interval = 200;
-        timer.Elapsed += OnTimedEvent;
-        timer.AutoReset = true;
-        timer.Enabled = true;
+        _timer = new System.Timers.Timer();
+        _timer.Interval = 200;
+        _timer.Elapsed += OnTimedEvent;
+        _timer.AutoReset = true;
+        _timer.Enabled = true;
+    }
+
+    public void Dispose()
+    {
+        if (_timer != null)
+        {
+            _timer.Enabled = false;
+            _timer.Elapsed -= OnTimedEvent;
+            _timer.Dispose();
+            _timer = null;
+        }
     }
 
     void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)

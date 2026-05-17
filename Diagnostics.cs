@@ -74,16 +74,8 @@ namespace Opc.Ua.Cloud.Publisher
                 return;
             }
 
-            uint ticks = 0;
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                ticks++;
-
                 try
                 {
                     await Task.Delay((int)Settings.Instance.DiagnosticsLoggingInterval * 1000, cancellationToken).ConfigureAwait(false);
@@ -109,6 +101,10 @@ namespace Opc.Ua.Cloud.Publisher
                     }
 
                     _lastNumMessagesSent = Info.SentMessages;
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {

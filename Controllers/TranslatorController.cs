@@ -124,7 +124,7 @@
                         }
 
                         JObject jsonObject = JObject.Parse(wotContent);
-                        name = jsonObject["name"].ToString();
+                        name = jsonObject["name"]?.ToString() ?? "asset";
                     }
                 }
 

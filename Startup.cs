@@ -111,57 +111,66 @@ namespace Opc.Ua.Cloud.Publisher
             // do all further initialization on a background thread to load the webserver independently
             _ = Task.Run(async () =>
             {
-                // kick off the task to show periodic diagnostic info (fire-and-forget)
-                _ = Task.Run(async () => await Diagnostics.Singleton.RunAsync().ConfigureAwait(false));
-
-                // create our app
-                await uaApp.CreateAsync().ConfigureAwait(false);
-
-                IBrokerClient broker;
-                IBrokerClient altBroker;
-                if (Settings.Instance.UseKafka)
+                try
                 {
-                    broker = brokerResolver("Kafka");
-                }
-                else
-                {
-                    broker = brokerResolver("MQTT");
-                }
+                    // kick off the task to show periodic diagnostic info (fire-and-forget)
+                    _ = Task.Run(async () => await Diagnostics.Singleton.RunAsync().ConfigureAwait(false));
 
-                // connect to broker
-                await broker.ConnectAsync().ConfigureAwait(false);
+                    // create our app
+                    await uaApp.CreateAsync().ConfigureAwait(false);
 
-                // check if we need a second broker
-                if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
-                {
-                    altBroker = brokerResolver("MQTT");
-                    await altBroker.ConnectAsync(true).ConfigureAwait(false);
-                }
-
-                // run the telemetry engine (fire-and-forget)
-                _ = Task.Run(async () => engine.RunAsync().ConfigureAwait(false));
-
-                // load our persistency file
-                if (Settings.Instance.AutoLoadPersistedNodes)
-                {
-                    try
+                    IBrokerClient broker;
+                    IBrokerClient altBroker;
+                    if (Settings.Instance.UseKafka)
                     {
-                        byte[] persistencyFile = File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"));
-                        if (persistencyFile == null)
+                        broker = brokerResolver("Kafka");
+                    }
+                    else
+                    {
+                        broker = brokerResolver("MQTT");
+                    }
+
+                    // connect to broker
+                    await broker.ConnectAsync().ConfigureAwait(false);
+
+                    // check if we need a second broker
+                    if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
+                    {
+                        altBroker = brokerResolver("MQTT");
+                        await altBroker.ConnectAsync(true).ConfigureAwait(false);
+                    }
+
+                    // run the telemetry engine (fire-and-forget)
+                    _ = Task.Run(async () => await engine.RunAsync().ConfigureAwait(false));
+
+                    // load our persistency file
+                    if (Settings.Instance.AutoLoadPersistedNodes)
+                    {
+                        try
                         {
-                            // no file persisted yet
-                            throw new Exception("Persistency file not found.");
+                            string persistencyFilePath = Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json");
+                            if (!File.Exists(persistencyFilePath))
+                            {
+                                // no file persisted yet
+                                logger.LogInformation("No persistency file found at {Path}; skipping auto-load.", persistencyFilePath);
+                            }
+                            else
+                            {
+                                byte[] persistencyFile = await File.ReadAllBytesAsync(persistencyFilePath).ConfigureAwait(false);
+
+                                // parse the file (fire-and-forget)
+                                _ = Task.Run(async () => await publishedNodesFileHandler.ParseFileAsync(persistencyFile).ConfigureAwait(false));
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            // parse the file (fire-and-forget)
-                            _ = Task.Run(async () => await publishedNodesFileHandler.ParseFileAsync(persistencyFile).ConfigureAwait(false));
+                            logger.LogError(ex, "Failed to auto-load persisted nodes.");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "Failed to auto-load persisted nodes.");
-                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Background initialization failed.");
                 }
             });
         }

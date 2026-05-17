@@ -402,12 +402,15 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 bool validSession = false;
-                for (int i = 0; i < _sessions.Count; i++)
+                lock (_sessionLock)
                 {
-                    if (ReferenceEquals(session, _sessions[i]))
+                    for (int i = 0; i < _sessions.Count; i++)
                     {
-                        validSession = true;
-                        break;
+                        if (ReferenceEquals(session, _sessions[i]))
+                        {
+                            validSession = true;
+                            break;
+                        }
                     }
                 }
 
@@ -654,7 +657,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // if it is already published, we unpublish first, then we create a new monitored item
-                foreach (MonitoredItem monitoredItem in opcSubscription.MonitoredItems)
+                foreach (MonitoredItem monitoredItem in opcSubscription.MonitoredItems.ToList())
                 {
                     if (monitoredItem.ResolvedNodeId == resolvedNodeId)
                     {
@@ -793,8 +796,8 @@ namespace Opc.Ua.Cloud.Publisher
             // loop through all subscriptions of the session
             foreach (Subscription subscription in session.Subscriptions)
             {
-                // loop through all monitored items
-                foreach (MonitoredItem monitoredItem in subscription.MonitoredItems)
+                // loop through all monitored items (take a snapshot first so we can safely modify the underlying collection)
+                foreach (MonitoredItem monitoredItem in subscription.MonitoredItems.ToList())
                 {
                     if (monitoredItem.ResolvedNodeId == resolvedNodeId)
                     {
@@ -815,7 +818,6 @@ namespace Opc.Ua.Cloud.Publisher
                         return;
                     }
                 }
-                break;
             }
         }
 
@@ -949,8 +951,14 @@ namespace Opc.Ua.Cloud.Publisher
                 // iterate through all sessions, subscriptions and monitored items and create config file entries
                 IEnumerable<PublishNodesInterfaceModel> publisherNodeConfiguration = GetPublishedNodes();
 
+                string settingsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "settings");
+                if (!Directory.Exists(settingsDirectory))
+                {
+                    Directory.CreateDirectory(settingsDirectory);
+                }
+
                 // update the persistency file
-                File.WriteAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)));
+                File.WriteAllBytes(Path.Combine(settingsDirectory, "persistency.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(publisherNodeConfiguration, Formatting.Indented)));
             }
             catch (Exception ex)
             {
@@ -1165,7 +1173,7 @@ namespace Opc.Ua.Cloud.Publisher
                     adminPassword = Environment.GetEnvironmentVariable("OPCUA_PASSWORD");
                 }
 
-                serverPushClient.AdminCredentials = new UserIdentity(adminUsername, Encoding.UTF8.GetBytes(adminPassword));
+                serverPushClient.AdminCredentials = new UserIdentity(adminUsername, Encoding.UTF8.GetBytes(adminPassword ?? string.Empty));
 
                 await serverPushClient.ConnectAsync(endpointURL).ConfigureAwait(false);
 
@@ -1375,6 +1383,11 @@ namespace Opc.Ua.Cloud.Publisher
 
                 ReferenceDescriptionCollection references = await BrowseAsync(endpoint, username, password, nodeToBrowse, true).ConfigureAwait(false);
 
+                if (references == null || references.Count == 0)
+                {
+                    throw new Exception($"Asset '{assetName}' has no FileType child node; cannot upload WoT Thing Description.");
+                }
+
                 fileId = (NodeId)references[0].NodeId;
                 fileHandle = await ExecuteCommandAsync(session, MethodIds.FileType_Open, fileId, (byte)6, null).ConfigureAwait(false);
 
@@ -1400,15 +1413,8 @@ namespace Opc.Ua.Cloud.Publisher
             }
             finally
             {
-                if (session != null)
-                {
-                    if (session.Connected)
-                    {
-                        await session.CloseAsync().ConfigureAwait(false);
-                    }
-
-                    session.Dispose();
-                }
+                // session is cached in _sessions; close any leftover file handle but do NOT dispose the shared session here
+                // (DisconnectAsync removes it from the cache only when no subscriptions are active)
             }
         }
 
@@ -1452,15 +1458,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             finally
             {
-                if (session != null)
-                {
-                    if (session.Connected)
-                    {
-                        await session.CloseAsync().ConfigureAwait(false);
-                    }
-
-                    session.Dispose();
-                }
+                // session is cached in _sessions; do NOT dispose the shared session here
             }
         }
 

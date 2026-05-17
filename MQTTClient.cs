@@ -28,14 +28,19 @@
         private bool _isAltBroker = false;
 
         private readonly ILogger _logger;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ICommandProcessor _commandProcessor;
         private readonly IUAApplication _uAApplication;
+
+        private UAPubSubBinaryMessageDecoder _decoder = null;
+        private readonly object _decoderLock = new object();
 
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         public MQTTClient(ILoggerFactory loggerFactory, ICommandProcessor commandProcessor, IUAApplication uAApplication)
         {
             _logger = loggerFactory.CreateLogger("MQTTClient");
+            _loggerFactory = loggerFactory;
             _commandProcessor = commandProcessor;
             _uAApplication = uAApplication;
         }
@@ -55,11 +60,13 @@
                 if (Settings.Instance.UseCustomCertAuth)
                 {
                     string filePath = Path.Combine(Directory.GetCurrentDirectory(), "customclientcert");
-                    if (filePath.ToLower().EndsWith(".pfx"))
+
+                    // try PFX first, then fall back to a plain certificate file
+                    try
                     {
                         appCert = X509CertificateLoader.LoadPkcs12FromFile(filePath, string.Empty);
                     }
-                    else
+                    catch
                     {
                         appCert = X509CertificateLoader.LoadCertificateFromFile(filePath);
                     }
@@ -85,9 +92,13 @@
             try
             {
                 // disconnect if still connected
-                if ((_client != null) && _client.IsConnected)
+                if (_client != null)
                 {
-                    await _client.DisconnectAsync().ConfigureAwait(false);
+                    if (_client.IsConnected)
+                    {
+                        await _client.DisconnectAsync().ConfigureAwait(false);
+                    }
+
                     _client.Dispose();
                     _client = null;
 
@@ -194,10 +205,6 @@
 
                 try
                 {
-                    _cancellationTokenSource.Cancel();
-                    _cancellationTokenSource.Dispose();
-                    _cancellationTokenSource = new CancellationTokenSource();
-
                     MqttClientConnectResult connectResult = await _client.ConnectAsync(clientOptions.Build(), _cancellationTokenSource.Token).ConfigureAwait(false);
 
                     if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
@@ -246,6 +253,11 @@
 
         public async Task PublishAsync(byte[] payload)
         {
+            if (_client == null)
+            {
+                throw new InvalidOperationException("MQTT client is not connected.");
+            }
+
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                 .WithTopic(Settings.Instance.BrokerMessageTopic)
@@ -257,6 +269,11 @@
 
         public async Task PublishMetadataAsync(byte[] payload)
         {
+            if (_client == null)
+            {
+                throw new InvalidOperationException("MQTT client is not connected.");
+            }
+
             MqttApplicationMessage message = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                 .WithTopic(Settings.Instance.BrokerMetadataTopic)
@@ -309,15 +326,30 @@
                 // check if this should be a data message (and we are the alternative broker) or a command
                 if (_isAltBroker)
                 {
-                    using var loggerFactory = new LoggerFactory();
-                    new UAPubSubBinaryMessageDecoder(_uAApplication, loggerFactory).ProcessMessage(args.ApplicationMessage.Payload.ToArray(), DateTime.UtcNow, args.ApplicationMessage.ContentType);
+                    UAPubSubBinaryMessageDecoder decoder;
+                    lock (_decoderLock)
+                    {
+                        if (_decoder == null)
+                        {
+                            _decoder = new UAPubSubBinaryMessageDecoder(_uAApplication, _loggerFactory);
+                        }
+
+                        decoder = _decoder;
+                    }
+
+                    decoder.ProcessMessage(args.ApplicationMessage.Payload.ToArray(), DateTime.UtcNow, args.ApplicationMessage.ContentType);
                 }
                 else
                 {
                     _logger.LogInformation($"Received cloud command with topic: {args.ApplicationMessage.Topic} and payload: {args.ApplicationMessage.ConvertPayloadToString()}");
 
                     string requestTopic = Settings.Instance.BrokerCommandTopic;
-                    requestID = args.ApplicationMessage.Topic.Substring(args.ApplicationMessage.Topic.IndexOf("?"));
+                    int queryStart = args.ApplicationMessage.Topic.IndexOf('?');
+                    if (queryStart >= 0 && queryStart < args.ApplicationMessage.Topic.Length - 1)
+                    {
+                        // skip the leading '?' so the ID is usable on its own
+                        requestID = args.ApplicationMessage.Topic.Substring(queryStart + 1);
+                    }
 
                     string requestPayload = args.ApplicationMessage.ConvertPayloadToString();
 
@@ -376,7 +408,17 @@
                 response.Success = false;
 
                 // send error to MQTT broker
-                await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))), _cancellationTokenSource.Token).ConfigureAwait(false);
+                try
+                {
+                    if (_client != null)
+                    {
+                        await _client.PublishAsync(BuildResponse("500", requestID, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))), _cancellationTokenSource.Token).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception publishEx)
+                {
+                    _logger.LogError(publishEx, "Failed to publish error response");
+                }
             }
         }
     }

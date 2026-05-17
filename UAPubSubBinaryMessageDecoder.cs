@@ -1,6 +1,7 @@
 ﻿
 namespace Opc.Ua.Cloud.Dashboard
 {
+    using Extensions;
     using Microsoft.Extensions.Logging;
     using Newtonsoft.Json;
     using Opc.Ua;
@@ -161,8 +162,8 @@ namespace Opc.Ua.Cloud.Dashboard
                 encodedMessage.Decode(new ServiceMessageContext(_app.Telemetry), payload, _dataSetReaders.Values.ToArray());
 
                 // reset metadata fields on default dataset readers
-                _dataSetReaders["default_uadp:0"].DataSetMetaData.Fields.Clear();
-                _dataSetReaders["default_json:0"].DataSetMetaData.Fields.Clear();
+                _dataSetReaders["default_uadp:0"].DataSetMetaData?.Fields?.Clear();
+                _dataSetReaders["default_json:0"].DataSetMetaData?.Fields?.Clear();
 
                 string publisherID = string.Empty;
                 if (encodedMessage is Opc.Ua.PubSub.Encoding.JsonNetworkMessage)
@@ -182,14 +183,21 @@ namespace Opc.Ua.Cloud.Dashboard
 
                     if (_dataSetReaders.ContainsKey(publisherID + ":" + dataSetWriterId))
                     {
-                        string name = _dataSetReaders[publisherID + ":" + dataSetWriterId].DataSetMetaData.Name;
-                        if (name.IndexOf(";") != -1)
+                        string name = _dataSetReaders[publisherID + ":" + dataSetWriterId].DataSetMetaData?.Name;
+                        if (!string.IsNullOrEmpty(name))
                         {
-                            assetName = name.Substring(0, name.LastIndexOf(';'));
+                            if (name.IndexOf(";") != -1)
+                            {
+                                assetName = name.Substring(0, name.LastIndexOf(';'));
+                            }
+                            else
+                            {
+                                assetName = name;
+                            }
                         }
                         else
                         {
-                            assetName = name;
+                            assetName = publisherID;
                         }
                     }
                     else
@@ -263,7 +271,7 @@ namespace Opc.Ua.Cloud.Dashboard
             {
                 MessageProcessorModel messageData = new()
                 {
-                    ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;i=" + Math.Abs(item.Key.GetHashCode()),
+                    ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;i=" + (uint)item.Key.GetDeterministicHashCode(),
                     ApplicationUri = _app.UAApplicationInstance.ApplicationConfiguration.ApplicationUri,
                     MessageContext = new ServiceMessageContext(_app.Telemetry),
                     Name = item.Key,

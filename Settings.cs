@@ -52,19 +52,27 @@
 
             try
             {
-                byte[] settingsFile = File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json"));
-                if (settingsFile == null)
+                string settingsFilePath = Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json");
+                if (!File.Exists(settingsFilePath))
                 {
                     // no file persisted yet
-                    logger.LogError("Creating new settings file as none was persisted so far.");
+                    logger.LogInformation("Creating new settings file as none was persisted so far.");
                     Settings newInstance = new Settings();
                     newInstance.Save();
                     return newInstance;
                 }
-                else
+
+                byte[] settingsFile = File.ReadAllBytes(settingsFilePath);
+                Settings loaded = JsonConvert.DeserializeObject<Settings>(Encoding.UTF8.GetString(settingsFile));
+                if (loaded == null)
                 {
-                    return JsonConvert.DeserializeObject<Settings>(Encoding.UTF8.GetString(settingsFile));
+                    logger.LogError("Settings file was empty or invalid; using defaults.");
+                    Settings newInstance = new Settings();
+                    newInstance.Save();
+                    return newInstance;
                 }
+
+                return loaded;
             }
             catch (Exception ex)
             {
@@ -82,11 +90,17 @@
 
             try
             {
-                File.WriteAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "settings.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(this, Formatting.Indented)));
+                string settingsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "settings");
+                if (!Directory.Exists(settingsDirectory))
+                {
+                    Directory.CreateDirectory(settingsDirectory);
+                }
+
+                File.WriteAllBytes(Path.Combine(settingsDirectory, "settings.json"), Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(this, Formatting.Indented)));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                logger.LogError("Could not store settings file. Settings won't be persisted!");
+                logger.LogError(ex, "Could not store settings file. Settings won't be persisted!");
             }
         }
 

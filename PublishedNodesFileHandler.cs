@@ -36,6 +36,11 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
             if (!string.IsNullOrEmpty(encryptedString))
             {
                 X509Certificate2 cert = _uaApplication.IssuerCert;
+                if (cert == null)
+                {
+                    return encryptedString;
+                }
+
                 using RSA rsa = cert.GetRSAPrivateKey();
                 bool isBase64String = Convert.TryFromBase64String(encryptedString, new Span<byte>(new byte[encryptedString.Length]), out int bytesParsed);
                 if (isBase64String && (rsa != null))

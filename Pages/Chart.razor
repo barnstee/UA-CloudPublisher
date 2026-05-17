@@ -1,4 +1,5 @@
 ﻿@using System.Diagnostics
+@implements IDisposable
 
 <RadzenTheme Theme="material" @rendermode="InteractiveAuto" />
 <RadzenComponents @rendermode="InteractiveAuto" />
@@ -63,6 +64,8 @@
         public double value { get; set; }
     }
 
+    private const double SampleIntervalMs = 3000;
+
     private RadzenChart _chart0;
 
     private List<ChartDataItem> _chartData1 = new();
@@ -73,20 +76,33 @@
 
     private float _messagesPerSecond = 0f;
 
+    private System.Timers.Timer _timer;
+
     protected override void OnInitialized()
     {
-        System.Timers.Timer timer = new System.Timers.Timer();
-        timer.Interval = 3000;
-        timer.Elapsed += OnTimedEvent;
-        timer.AutoReset = true;
-        timer.Enabled = true;
+        _timer = new System.Timers.Timer();
+        _timer.Interval = SampleIntervalMs;
+        _timer.Elapsed += OnTimedEvent;
+        _timer.AutoReset = true;
+        _timer.Enabled = true;
+    }
+
+    public void Dispose()
+    {
+        if (_timer != null)
+        {
+            _timer.Enabled = false;
+            _timer.Elapsed -= OnTimedEvent;
+            _timer.Dispose();
+            _timer = null;
+        }
     }
 
     void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
     {
         InvokeAsync(async () =>
         {
-            _messagesPerSecond = ((float)(Diagnostics.Singleton.Info.SentMessages - _lastNumMessagesSent)) / Settings.Instance.DiagnosticsLoggingInterval;
+            _messagesPerSecond = (float)((Diagnostics.Singleton.Info.SentMessages - _lastNumMessagesSent) / (SampleIntervalMs / 1000.0));
             string now = DateTime.Now.ToLongTimeString();
 
             _chartData1.Add(new ChartDataItem() { stamp = now, value = Diagnostics.Singleton.Info.AverageMessageLatency });

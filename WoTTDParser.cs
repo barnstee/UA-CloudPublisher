@@ -41,17 +41,25 @@ namespace Opc.Ua.Cloud.Publisher
                 foreach (JProperty property in properties.Children<JProperty>())
                 {
                     string propertyName = property.Name;
-                    JObject propertyValue = (JObject)property.Value;
-                    JValue nodeId = (JValue)propertyValue["uav:mapToNodeId"];
+                    JObject propertyValue = property.Value as JObject;
+                    if (propertyValue == null)
+                    {
+                        continue;
+                    }
+
+                    JValue nodeId = propertyValue["uav:mapToNodeId"] as JValue;
+
+                    // safely extract the WoT TD name; fall back to "asset" when not present
+                    string thingName = (wotTD["name"] as JValue)?.Value?.ToString() ?? "asset";
 
                     string id;
                     if (nodeId != null)
                     {
-                        id = "nsu=http://opcfoundation.org/UA/" + ((JValue)wotTD["name"]).Value + "/;" + nodeId.Value.ToString();
+                        id = "nsu=http://opcfoundation.org/UA/" + thingName + "/;" + nodeId.Value.ToString();
                     }
                     else
                     {
-                        id = "nsu=http://opcfoundation.org/UA/" + ((JValue)wotTD["name"]).Value + "/;s=" + propertyName;
+                        id = "nsu=http://opcfoundation.org/UA/" + thingName + "/;s=" + propertyName;
                     }
 
                     VariableModel variable = new()

@@ -107,6 +107,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             Settings.Instance.UAIssuerCertThumbprint = IssuerCert.Thumbprint;
             Settings.Instance.UAIssuerCertExpiry = IssuerCert.NotAfter;
+            Settings.Instance.Save();
         }
     }
 }

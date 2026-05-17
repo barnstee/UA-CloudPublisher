@@ -30,6 +30,43 @@ public class KafkaClient : IBrokerClient
     {
         try
         {
+            if (altBroker)
+            {
+                // only (re)build the alt-broker producer; leave primary producer/consumer alone
+                if (_altProducer != null)
+                {
+                    _altProducer.Flush();
+                    _altProducer.Dispose();
+                    _altProducer = null;
+                }
+
+                if (string.IsNullOrEmpty(Settings.Instance.AltBrokerUrl))
+                {
+                    _logger.LogError("Alt broker URL not configured. Cannot connect to alt broker!");
+                    return;
+                }
+
+                var altConfig = new ProducerConfig
+                {
+                    BootstrapServers = Settings.Instance.AltBrokerUrl + ":" + Settings.Instance.AltBrokerPort,
+                    MessageTimeoutMs = 10000,
+                    SecurityProtocol = SecurityProtocol.SaslSsl,
+                    SaslMechanism = SaslMechanism.Plain,
+                    SaslUsername = Settings.Instance.AltBrokerUsername,
+                    SaslPassword = Settings.Instance.AltBrokerPassword,
+                    MessageSendMaxRetries = 2,
+                    RetryBackoffMs = 100,
+                    EnableIdempotence = true,
+                    MaxInFlight = 5
+                };
+
+                _altProducer = new ProducerBuilder<Null, string>(altConfig).Build();
+
+                _logger.LogInformation("Connected to alt Kafka broker.");
+                return;
+            }
+
+            // primary broker (re)connect: cancel any pending primary operations
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
             _cancellationTokenSource = new CancellationTokenSource();
@@ -134,6 +171,11 @@ public class KafkaClient : IBrokerClient
 
     public async Task PublishAsync(byte[] payload)
     {
+        if (_producer == null)
+        {
+            throw new InvalidOperationException("Kafka producer is not connected.");
+        }
+
         Message<Null, string> message = new()
         {
             Headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } },
@@ -153,16 +195,31 @@ public class KafkaClient : IBrokerClient
 
         if (Settings.Instance.UseAltBrokerForMetadata)
         {
+            if (_altProducer == null)
+            {
+                throw new InvalidOperationException("Alternate Kafka producer is not connected.");
+            }
+
             await _altProducer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
         else
         {
+            if (_producer == null)
+            {
+                throw new InvalidOperationException("Kafka producer is not connected.");
+            }
+
             await _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
     }
 
     public async Task PublishResponseAsync(byte[] payload)
     {
+        if (_producer == null)
+        {
+            throw new InvalidOperationException("Kafka producer is not connected.");
+        }
+
         Message<Null, string> message = new()
         {
             Headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } },
@@ -175,7 +232,7 @@ public class KafkaClient : IBrokerClient
     // handles all incoming commands form the cloud
     private async Task HandleCommandAsync()
     {
-        while (true)
+        while (!_cancellationTokenSource.IsCancellationRequested)
         {
             ResponseModel response = new()
             {
@@ -184,7 +241,7 @@ public class KafkaClient : IBrokerClient
 
             try
             {
-                ConsumeResult<Ignore, byte[]> result = _consumer.Consume();
+                ConsumeResult<Ignore, byte[]> result = _consumer.Consume(_cancellationTokenSource.Token);
 
                 string requestPayload = Encoding.UTF8.GetString(result.Message.Value);
                 _logger.LogInformation($"Received method call with topic: {result.Topic} and payload: {requestPayload}");
@@ -235,10 +292,15 @@ public class KafkaClient : IBrokerClient
                 }
 
                 // send response to Kafka broker
-                await PublishAsync(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))).ConfigureAwait(false);
+                await PublishResponseAsync(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
+                if (ex is OperationCanceledException)
+                {
+                    break;
+                }
+
                 _logger.LogError(ex, "HandleMessageAsync");
                 response.Status = ex.Message;
                 response.Success = false;
@@ -246,7 +308,7 @@ public class KafkaClient : IBrokerClient
                 // send error to Kafka broker
                 try
                 {
-                    await PublishAsync(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))).ConfigureAwait(false);
+                    await PublishResponseAsync(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response))).ConfigureAwait(false);
                 }
                 catch (Exception publishEx)
                 {

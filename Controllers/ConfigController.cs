@@ -73,7 +73,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 // update cert file hash and expiry
                 X509Certificate2 cert;
-                if (filePath.ToLower().EndsWith(".pfx"))
+                if (file.FileName.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase))
                 {
                     cert = X509CertificateLoader.LoadPkcs12FromFile(filePath, string.Empty);
                 }
@@ -84,6 +84,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 Settings.Instance.MQTTClientCertThumbprint = cert.Thumbprint;
                 Settings.Instance.MQTTClientCertExpiry = cert.NotAfter;
+                Settings.Instance.Save();
             }
             catch (Exception ex)
             {

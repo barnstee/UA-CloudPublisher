@@ -45,7 +45,19 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new ArgumentException("No file specified!");
                 }
 
-                if ((file.Length == 0) || (file.ContentType != "application/json"))
+                if (file.Length == 0)
+                {
+                    throw new ArgumentException("Invalid file specified!");
+                }
+
+                bool isJsonContentType = !string.IsNullOrEmpty(file.ContentType) &&
+                    (file.ContentType.Equals("application/json", StringComparison.OrdinalIgnoreCase) ||
+                     file.ContentType.Equals("text/json", StringComparison.OrdinalIgnoreCase));
+                
+                bool isJsonFileName = !string.IsNullOrEmpty(file.FileName) &&
+                    file.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+                
+                if (!isJsonContentType && !isJsonFileName)
                 {
                     throw new ArgumentException("Invalid file specified!");
                 }
@@ -87,16 +99,14 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             try
             {
-                byte[] persistencyFile = System.IO.File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json"));
-                if (persistencyFile == null)
+                string persistencyFilePath = Path.Combine(Directory.GetCurrentDirectory(), "settings", "persistency.json");
+                if (!System.IO.File.Exists(persistencyFilePath))
                 {
-                    // no file persisted yet
                     throw new Exception("Persistency file not found.");
                 }
-                else
-                {
-                    _ = Task.Run(async () => await _publishedNodesFileHandler.ParseFileAsync(persistencyFile).ConfigureAwait(false));
-                }
+
+                byte[] persistencyFile = await System.IO.File.ReadAllBytesAsync(persistencyFilePath).ConfigureAwait(false);
+                await _publishedNodesFileHandler.ParseFileAsync(persistencyFile).ConfigureAwait(false);
 
                 return View("Index", GeneratePublishedNodesArray());
             }
@@ -137,12 +147,31 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         string[] parts = key.Split(' ');
                         node.EndpointUrl = parts[1];
 
-                        // get the nodeId from the key
-                        string nodeId = key.Substring(key.IndexOf("Variable: ") + 10);
+                        // get the nodeId from the key (supports both Variable and Event entries)
+                        int variableIndex = key.IndexOf("Variable: ");
+                        int eventIndex = key.IndexOf("Event: ");
+                        string nodeId;
+                        if (variableIndex >= 0)
+                        {
+                            nodeId = key.Substring(variableIndex + "Variable: ".Length);
+                        }
+                        else if (eventIndex >= 0)
+                        {
+                            nodeId = key.Substring(eventIndex + "Event: ".Length);
+                        }
+                        else
+                        {
+                            continue;
+                        }
 
                         node.ExpandedNodeId = ExpandedNodeId.Parse(nodeId);
                         break;
                     }
+                }
+
+                if (node.ExpandedNodeId == null)
+                {
+                    throw new Exception("No node selected for deletion.");
                 }
 
                 await _uaclient.UnpublishNodeAsync(node).ConfigureAwait(false);

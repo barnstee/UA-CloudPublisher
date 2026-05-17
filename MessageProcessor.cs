@@ -277,17 +277,26 @@ namespace Opc.Ua.Cloud.Publisher
             // stop the timer while we're sending
             _statusTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
-            using (MemoryStream buffer = new MemoryStream())
+            try
             {
-                buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeStatus(_messageID++)));
-                if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
+                using (MemoryStream buffer = new MemoryStream())
                 {
-                    _logger.LogDebug($"Sent status message to broker!");
+                    buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeStatus(Interlocked.Increment(ref _messageID) - 1)));
+                    if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
+                    {
+                        _logger.LogDebug($"Sent status message to broker!");
+                    }
                 }
             }
-
-            // restart the timer
-            _statusTimer.Change((int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while sending status message.");
+            }
+            finally
+            {
+                // restart the timer
+                _statusTimer.Change((int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+            }
         }
 
         private async void SendMetadataOnTimerAsync(object state)
@@ -295,12 +304,15 @@ namespace Opc.Ua.Cloud.Publisher
             // stop the timer while we're sending
             _metadataTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
-            if (_metadataMessages.Count > 0)
+            try
             {
                 KeyValuePair<ushort, string>[] currentMessages = null;
                 lock (_metadataMessagesLock)
                 {
-                    currentMessages = _metadataMessages.ToArray();
+                    if (_metadataMessages.Count > 0)
+                    {
+                        currentMessages = _metadataMessages.ToArray();
+                    }
                 }
 
                 if (currentMessages != null)
@@ -309,21 +321,27 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         using (MemoryStream buffer = new MemoryStream())
                         {
-                            buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(_messageID++, true)));
+                            buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(Interlocked.Increment(ref _messageID) - 1, true)));
                             buffer.Write(Encoding.UTF8.GetBytes(","));
                             buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
 
                             if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
                             {
-                                _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                                _logger.LogDebug($"Sent {buffer.Length} metadata bytes to broker!");
                             }
                         }
                     }
                 }
             }
-
-            // restart the timer
-            _metadataTimer.Change((int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while sending metadata messages.");
+            }
+            finally
+            {
+                // restart the timer
+                _metadataTimer.Change((int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+            }
         }
 
         private async Task<string> JsonEncodeMessageAsync(MessageProcessorModel messageData)
@@ -334,22 +352,27 @@ namespace Opc.Ua.Cloud.Publisher
             if (Settings.Instance.SendUAMetadata)
             {
                 string metadataMessage = _encoder.EncodeMetadata(messageData);
-                if (!_metadataMessages.ContainsKey(hash))
+                bool isNewMetadata = false;
+                lock (_metadataMessagesLock)
                 {
-                    lock (_metadataMessagesLock)
+                    if (!_metadataMessages.ContainsKey(hash))
                     {
                         _metadataMessages.Add(hash, metadataMessage);
+                        isNewMetadata = true;
                     }
+                }
 
+                if (isNewMetadata)
+                {
                     using (MemoryStream buffer = new MemoryStream())
                     {
-                        buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(_messageID++, true)));
+                        buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(Interlocked.Increment(ref _messageID) - 1, true)));
                         buffer.Write(Encoding.UTF8.GetBytes(","));
                         buffer.Write(Encoding.UTF8.GetBytes(metadataMessage));
 
                         if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
                         {
-                            _logger.LogDebug($"Sent {_batchBuffer.Length} metadata bytes to broker!");
+                            _logger.LogDebug($"Sent {buffer.Length} metadata bytes to broker!");
                         }
                     }
                 }
@@ -402,7 +425,7 @@ namespace Opc.Ua.Cloud.Publisher
             _batchBuffer.SetLength(0);
             _notificationsInBatch = 0;
 
-            string pubSubJSONNetworkMessageHeader = _encoder.EncodeHeader(_messageID++);
+            string pubSubJSONNetworkMessageHeader = _encoder.EncodeHeader(Interlocked.Increment(ref _messageID) - 1);
 
             _batchBuffer.Write(Encoding.UTF8.GetBytes(pubSubJSONNetworkMessageHeader));
         }

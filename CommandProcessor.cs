@@ -24,18 +24,19 @@
 
         public async Task<byte[]> PublishNodesAsync(string payload)
         {
-            UserAuthModeEnum desiredAuthenticationMode = UserAuthModeEnum.Anonymous;
             List<string> statusResponse = new List<string>();
 
             PublishNodesInterfaceModel publishNodesMethodData = JsonConvert.DeserializeObject<PublishNodesInterfaceModel>(payload);
 
             if (publishNodesMethodData.OpcAuthenticationMode == UserAuthModeEnum.UsernamePassword)
             {
-                if (string.IsNullOrWhiteSpace(publishNodesMethodData.UserName) && string.IsNullOrWhiteSpace(publishNodesMethodData.Password))
+                if (string.IsNullOrWhiteSpace(publishNodesMethodData.UserName) || string.IsNullOrWhiteSpace(publishNodesMethodData.Password))
                 {
                     throw new ArgumentException($"If {nameof(publishNodesMethodData.OpcAuthenticationMode)} is set to '{UserAuthModeEnum.UsernamePassword}', you have to specify username and password.");
                 }
             }
+
+            UserAuthModeEnum desiredAuthenticationMode = publishNodesMethodData.OpcAuthenticationMode;
 
             // check for events
             if (publishNodesMethodData.OpcEvents != null)
@@ -158,12 +159,18 @@
         private byte[] BuildResponseAndCropStatus(List<string> statusResponse)
         {
             byte[] result;
-            int maxIndex = statusResponse.Count();
+            int maxIndex = statusResponse.Count;
             while (true)
             {
                 result = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(statusResponse.GetRange(0, maxIndex)));
                 if (result.Length > Settings.MaxResponsePayloadLength)
                 {
+                    if (maxIndex <= 1)
+                    {
+                        // single entry already exceeds the payload limit, nothing more we can crop
+                        break;
+                    }
+
                     maxIndex /= 2;
                     continue;
                 }
@@ -172,13 +179,13 @@
                     break;
                 }
             }
-            if (maxIndex != statusResponse.Count())
+            if (maxIndex != statusResponse.Count)
             {
-                statusResponse.RemoveRange(maxIndex, statusResponse.Count() - maxIndex);
+                statusResponse.RemoveRange(maxIndex, statusResponse.Count - maxIndex);
                 statusResponse.Add("Results have been cropped due to message size limitations!");
             }
 
-            return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(statusResponse.GetRange(0, maxIndex)));
+            return Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(statusResponse));
         }
 
         private byte[] BuildResponseAndTruncateResult(object result)

@@ -78,6 +78,9 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             _session.UserName = username;
             _session.Password = password;
 
+            HttpContext.Session.SetString("UserName", username ?? string.Empty);
+            HttpContext.Session.SetString("Password", password ?? string.Empty);
+
             return View("Browse", _session);
         }
 
@@ -92,6 +95,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
 
             HttpContext.Session.SetString("EndpointUrl", string.Empty);
+            HttpContext.Session.SetString("UserName", string.Empty);
+            HttpContext.Session.SetString("Password", string.Empty);
 
             return View("Index", _session);
         }
@@ -100,6 +105,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         public async Task<ActionResult> GeneratePNAsync()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+            _session.UserName = HttpContext.Session.GetString("UserName");
+            _session.Password = HttpContext.Session.GetString("Password");
 
             try
             {
@@ -143,37 +150,47 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         public async Task<ActionResult> GenerateCSVAsync()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+            _session.UserName = HttpContext.Session.GetString("UserName");
+            _session.Password = HttpContext.Session.GetString("Password");
 
             try
             {
                 List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(_session.EndpointUrl, _session.UserName, _session.Password, null).ConfigureAwait(false);
 
-                string content = "Endpoint,ApplicationUri,ExpandedNodeId,DisplayName,Type,VariableCurrentValue,VariableType,Parent,References\r\n";
+                StringBuilder content = new StringBuilder();
+                content.Append("Endpoint,ApplicationUri,ExpandedNodeId,DisplayName,Type,VariableCurrentValue,VariableType,Parent,References\r\n");
                 foreach (UANodeInformation nodeInfo in results)
                 {
                     string references = string.Empty;
-                    foreach (string reference in nodeInfo.References)
+                    if (nodeInfo.References != null)
                     {
-                        references += reference + " | ";
+                        StringBuilder referencesBuilder = new StringBuilder();
+                        foreach (string reference in nodeInfo.References)
+                        {
+                            referencesBuilder.Append(reference);
+                            referencesBuilder.Append(" | ");
+                        }
+
+                        if (referencesBuilder.Length > 0)
+                        {
+                            referencesBuilder.Length -= 3;
+                        }
+
+                        references = referencesBuilder.ToString();
                     }
 
-                    if (references.Length > 0)
-                    {
-                        references = references.Substring(0, references.Length - 3);
-                    }
-
-                    content += (nodeInfo.Endpoint + ","
-                              + nodeInfo.ApplicationUri + ","
-                              + nodeInfo.ExpandedNodeId + ","
-                              + nodeInfo.DisplayName + ","
-                              + nodeInfo.Type + ","
-                              + nodeInfo.VariableCurrentValue + ","
-                              + nodeInfo.VariableType + ","
-                              + nodeInfo.Parent + ","
-                              + references + "\r\n");
+                    content.Append(EscapeCsv(nodeInfo.Endpoint)).Append(',')
+                           .Append(EscapeCsv(nodeInfo.ApplicationUri)).Append(',')
+                           .Append(EscapeCsv(nodeInfo.ExpandedNodeId)).Append(',')
+                           .Append(EscapeCsv(nodeInfo.DisplayName)).Append(',')
+                           .Append(EscapeCsv(nodeInfo.Type)).Append(',')
+                           .Append(EscapeCsv(nodeInfo.VariableCurrentValue)).Append(',')
+                           .Append(EscapeCsv(nodeInfo.VariableType)).Append(',')
+                           .Append(EscapeCsv(nodeInfo.Parent)).Append(',')
+                           .Append(EscapeCsv(references)).Append("\r\n");
                 }
 
-                return File(Encoding.UTF8.GetBytes(content), "APPLICATION/octet-stream", "opcuaservernodes.csv");
+                return File(Encoding.UTF8.GetBytes(content.ToString()), "APPLICATION/octet-stream", "opcuaservernodes.csv");
             }
             catch (Exception ex)
             {
@@ -182,10 +199,27 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             }
         }
 
+        private static string EscapeCsv(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            if (value.IndexOfAny(new[] { ',', '"', '\r', '\n' }) >= 0)
+            {
+                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            }
+
+            return value;
+        }
+
         [HttpPost]
         public async Task<ActionResult> PushCertAsync()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
+            _session.UserName = HttpContext.Session.GetString("UserName");
+            _session.Password = HttpContext.Session.GetString("Password");
 
             try
             {

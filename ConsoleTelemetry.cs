@@ -58,7 +58,8 @@ namespace Opc.Ua.Cloud
 
         public void Dispose()
         {
-            CreateMeter().Dispose();
+            // Note: CreateMeter() is a factory that returns a new Meter on every call.
+            // Meters returned from it are owned by their callers and must be disposed by them.
             ActivitySource.Dispose();
             LoggerFactory?.Dispose();
 

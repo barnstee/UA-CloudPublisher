@@ -7,6 +7,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly ILogger _logger;
         private readonly ConditionalWeakTable<ISession, ComplexTypeSystem> _complexTypeSystems = new();
 
-        public Dictionary<string, bool> SkipFirst { get; set; } = new Dictionary<string, bool>();
+        public ConcurrentDictionary<string, bool> SkipFirst { get; set; } = new ConcurrentDictionary<string, bool>();
 
         private NodeId[] KnownEventTypes = new NodeId[]
 {
@@ -365,7 +366,7 @@ namespace Opc.Ua.Cloud.Publisher
                     };
 
                     // skip event if needed
-                    if (SkipFirst.ContainsKey(messageData.ExpandedNodeId) && SkipFirst[messageData.ExpandedNodeId])
+                    if (SkipFirst.TryGetValue(messageData.ExpandedNodeId, out bool skip) && skip)
                     {
                         _logger.LogInformation($"Skipping first telemetry event for node '{messageData.ExpandedNodeId}'.");
                         SkipFirst[messageData.ExpandedNodeId] = false;

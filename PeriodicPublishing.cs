@@ -44,12 +44,12 @@ namespace Opc.Ua.Cloud.Publisher
 
         public void Dispose()
         {
-            _timer.Dispose();
+            _timer?.Dispose();
         }
 
         public void Stop()
         {
-            _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            _timer?.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
         private async void HeartbeatSendAsync(object state)
@@ -65,10 +65,14 @@ namespace Opc.Ua.Cloud.Publisher
                 };
 
                 DataValue value = await HeartBeatSession.ReadValueAsync(HeartBeatNodeId).ConfigureAwait(false);
-                if (value != null)
+                if (value == null)
                 {
-                    messageData.Value = value;
+                    // can't enqueue a heartbeat without a value; the encoders dereference Value.WrappedValue
+                    _logger.LogWarning($"Heartbeat for node {HeartBeatNodeId} returned no value, skipping.");
+                    return;
                 }
+
+                messageData.Value = value;
 
                 // enqueue the message
                 MessageProcessor.Enqueue(messageData);

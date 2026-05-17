@@ -19,6 +19,7 @@
         private readonly ConcurrentQueue<long> _lastMessageLatencies = new();
         private int _latencyCount;
         private long _latencySum;
+        private int _forwardInProgress;
 
         public StoreForwardPublisher(ILoggerFactory loggerFactory, Settings.BrokerResolver brokerResolver)
         {
@@ -76,8 +77,7 @@
                 _logger.LogError(ex, "Error while sending metadata message.");
             }
 
-            long elapsed = Stopwatch.GetTimestamp() - startTime;
-            RecordLatency(Stopwatch.GetElapsedTime(0, elapsed).Milliseconds);
+            RecordLatency((long)Stopwatch.GetElapsedTime(startTime).TotalMilliseconds);
 
             return success;
         }
@@ -119,14 +119,19 @@
                 await File.WriteAllBytesAsync(Path.Combine(_pathToStore, Path.GetRandomFileName()), message).ConfigureAwait(false);
             }
 
-            long elapsed = Stopwatch.GetTimestamp() - startTime;
-            RecordLatency(Stopwatch.GetElapsedTime(0, elapsed).Milliseconds);
+            RecordLatency((long)Stopwatch.GetElapsedTime(startTime).TotalMilliseconds);
 
             return success;
         }
 
         private async Task ForwardStoredMessageAsync()
         {
+            // ensure only one forward task runs at a time to avoid duplicate sends/races on the same file
+            if (Interlocked.Exchange(ref _forwardInProgress, 1) == 1)
+            {
+                return;
+            }
+
             try
             {
                 string[] filePaths = Directory.GetFiles(_pathToStore);
@@ -151,6 +156,10 @@
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Sending stored message failed, will retry later.");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _forwardInProgress, 0);
             }
         }
 
