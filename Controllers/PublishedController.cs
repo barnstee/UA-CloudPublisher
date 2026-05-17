@@ -53,10 +53,10 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 bool isJsonContentType = !string.IsNullOrEmpty(file.ContentType) &&
                     (file.ContentType.Equals("application/json", StringComparison.OrdinalIgnoreCase) ||
                      file.ContentType.Equals("text/json", StringComparison.OrdinalIgnoreCase));
-                
+
                 bool isJsonFileName = !string.IsNullOrEmpty(file.FileName) &&
                     file.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
-                
+
                 if (!isJsonContentType && !isJsonFileName)
                 {
                     throw new ArgumentException("Invalid file specified!");
