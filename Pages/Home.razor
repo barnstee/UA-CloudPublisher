@@ -217,7 +217,7 @@
         if (brokerConnected && sessions > 0)
         {
             string brokerText = altbrokerConnected ? "broker" : "brokers";
-            return ("green", "Operational", $"Connected to broker{brokerText} and {sessions} OPC UA server(s).");
+            return ("green", "Operational", $"Connected to {brokerText} and {sessions} OPC UA server(s).");
         }
 
         if (brokerConnected && sessions == 0)
