@@ -70,6 +70,36 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
+        // Derives all three OPC UA topology counters (sessions, subscriptions, monitored items)
+        // from the live session state instead of tracking them via scattered increments/decrements.
+        // The previous counter-based approach drifted because keep-alive/reconnect paths removed
+        // and re-added sessions without adjusting child tallies (subscriptions survive a reconnect
+        // via TransferSubscriptionsOnReconnect = true), and partial failures in create/add paths
+        // could leave the counters under- or over-reporting.
+        private void RecomputeTopologyCounts()
+        {
+            int sessionCount = 0;
+            int subscriptionCount = 0;
+            int monitoredItemCount = 0;
+
+            lock (_sessionLock)
+            {
+                sessionCount = _sessions.Count;
+                foreach (ISession s in _sessions)
+                {
+                    subscriptionCount += s.SubscriptionCount;
+                    foreach (Subscription sub in s.Subscriptions)
+                    {
+                        monitoredItemCount += (int)sub.MonitoredItemCount;
+                    }
+                }
+            }
+
+            Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected = sessionCount;
+            Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected = subscriptionCount;
+            Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored = monitoredItemCount;
+        }
+
         private async Task<Session> FindSessionAsync(string endpointUrl)
         {
             EndpointDescription selectedEndpoint = null;
@@ -156,7 +186,7 @@ namespace Opc.Ua.Cloud.Publisher
                     _complexTypeList.Remove(existingSession);
                 }
 
-                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
+                RecomputeTopologyCounts();
 
                 existingSession = null;
             }
@@ -258,8 +288,9 @@ namespace Opc.Ua.Cloud.Publisher
             lock (_sessionLock)
             {
                 _sessions.Add(newSession);
-                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
             }
+
+            RecomputeTopologyCounts();
 
             // load complex type system
             try
@@ -309,11 +340,9 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         subscription.RemoveItem(subscription.MonitoredItems.First());
                         await subscription.ApplyChangesAsync().ConfigureAwait(false);
-                        Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
                     }
 
                     await session.RemoveSubscriptionAsync(subscription).ConfigureAwait(false);
-                    Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
                 }
 
                 string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
@@ -322,7 +351,6 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     _complexTypeList.Remove(session);
                 }
-                Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
 
                 _logger.LogInformation("Session to endpoint {endpoint} closed successfully.", endpoint);
             }
@@ -332,9 +360,7 @@ namespace Opc.Ua.Cloud.Publisher
                 PersistPublishedNodes();
             }
 
-            Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected = 0;
-            Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected = 0;
-            Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored = 0;
+            RecomputeTopologyCounts();
         }
 
         private async Task<Subscription> CreateSubscriptionAsync(ISession session, int publishingInterval)
@@ -349,7 +375,7 @@ namespace Opc.Ua.Cloud.Publisher
             session.AddSubscription(subscription);
             await subscription.CreateAsync().ConfigureAwait(false);
 
-            Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected++;
+            RecomputeTopologyCounts();
 
             _logger.LogInformation("Created subscription with id {id} on endpoint {endpointUrl}.",
                 subscription.Id,
@@ -376,6 +402,10 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 string endpoint = session.ConfiguredEndpoint.EndpointUrl.AbsoluteUri;
+
+                // refresh derived diagnostics so any server-side subscription churn
+                // (lifetime expiry, server-side deletion) is reflected promptly
+                RecomputeTopologyCounts();
 
                 if (ServiceResult.IsGood(eventArgs.Status))
                 {
@@ -465,8 +495,9 @@ namespace Opc.Ua.Cloud.Publisher
                 lock (_sessionLock)
                 {
                     _sessions.Remove(session);
-                    Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected--;
                 }
+
+                RecomputeTopologyCounts();
 
                 SessionReconnectHandler reconnectHandler = new SessionReconnectHandler(_app.Telemetry);
 
@@ -522,7 +553,8 @@ namespace Opc.Ua.Cloud.Publisher
                 _missedKeepAlives[endpoint] = 0;
             }
 
-            Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected++;
+            RecomputeTopologyCounts();
+
             lock (_reconnectHandlersLock)
             {
                 _reconnectHandlers.Remove(reconnectHandler);
@@ -663,7 +695,7 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         opcSubscription.RemoveItem(monitoredItem);
                         await opcSubscription.ApplyChangesAsync().ConfigureAwait(false);
-                        Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
+                        RecomputeTopologyCounts();
                     }
                 }
 
@@ -698,7 +730,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 opcSubscription.AddItem(newMonitoredItem);
                 await opcSubscription.ApplyChangesAsync().ConfigureAwait(false);
-                Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored++;
+                RecomputeTopologyCounts();
 
                 // create a heartbeat timer, if required
                 if (nodeToPublish.HeartbeatInterval > 0)
@@ -803,14 +835,14 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         subscription.RemoveItem(monitoredItem);
                         await subscription.ApplyChangesAsync().ConfigureAwait(false);
-                        Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored--;
 
                         // cleanup empty subscriptions and sessions
                         if (subscription.MonitoredItemCount == 0)
                         {
                             await session.RemoveSubscriptionAsync(subscription).ConfigureAwait(false);
-                            Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected--;
                         }
+
+                        RecomputeTopologyCounts();
 
                         // update our persistency
                         PersistPublishedNodes();
