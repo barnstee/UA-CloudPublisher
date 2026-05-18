@@ -106,7 +106,14 @@
                     _cancellationTokenSource.Dispose();
                     _cancellationTokenSource = new CancellationTokenSource();
 
-                    Diagnostics.Singleton.Info.ConnectedToBroker = false;
+                    if (altBroker)
+                    {
+                        Diagnostics.Singleton.Info.ConnectedToAltBroker = false;
+                    }
+                    else
+                    {
+                        Diagnostics.Singleton.Info.ConnectedToBroker = false;
+                    }
                 }
 
                 // read our settings
@@ -229,7 +236,14 @@
                         }
                     }
 
-                    Diagnostics.Singleton.Info.ConnectedToBroker = true;
+                    if (altBroker)
+                    {
+                        Diagnostics.Singleton.Info.ConnectedToAltBroker = true;
+                    }
+                    else
+                    {
+                        Diagnostics.Singleton.Info.ConnectedToBroker = true;
+                    }
 
                     _logger.LogInformation("Connected to MQTT broker.");
                 }

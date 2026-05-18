@@ -115,11 +115,6 @@
             Broker Command Response Topic
             @Html.TextBox("BrokerResponseTopic", @Model.BrokerResponseTopic, new { @class = "modern-input" })
         </p>
-    </div>
-
-    <div class="app-card">
-        <h3 class="card-title"><i class="fas fa-server"></i> Alternative Broker &amp; Metadata</h3>
-
         <p>
             <label>@Html.CheckBox("SendUAMetadata", @Model.SendUAMetadata) Send OPC UA Metadata Messages</label>
         </p>
@@ -128,11 +123,23 @@
             @Html.TextBox("BrokerMetadataTopic", @Model.BrokerMetadataTopic, new { @class = "modern-input" })
         </p>
         <p>
+            Metadata Send Interval in Seconds
+            @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { @class = "modern-input" })
+        </p>
+        <p>
             <label>@Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata) Use Alternative Broker For OPC UA Metadata Messages (must not be enabled in conjunction with Use Alt Broker For Receiving UA Over MQTT)</label>
         </p>
         <p>
             <label>@Html.CheckBox("UseAltBrokerForReceivingUAOverMQTT", @Model.UseAltBrokerForReceivingUAOverMQTT) Use Alternative Broker For Receiving OPC UA PubSub Over MQTT Messages (must not be enabled in conjunction with Use Alt Broker For Metadata)</label>
         </p>
+        <p>
+            <label>@Html.CheckBox("SendUAStatus", @Model.SendUAStatus) Send OPC UA Status Messages</label>
+        </p>
+    </div>
+
+    <div class="app-card">
+        <h3 class="card-title"><i class="fas fa-server"></i> Alternative Broker &amp; Metadata</h3>
+
         <p>
             Alternative Broker URL
             @Html.TextBox("AltBrokerUrl", @Model.AltBrokerUrl, new { @class = "modern-input" })
@@ -150,11 +157,7 @@
             @Html.Password("AltBrokerPassword", @Model.AltBrokerPassword, new { @class = "modern-input" })
         </p>
         <p>
-            <label>@Html.CheckBox("SendUAStatus", @Model.SendUAStatus) Send OPC UA Status Messages</label>
-        </p>
-        <p>
-            Metadata Send Interval in Seconds
-            @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { @class = "modern-input" })
+            <label>@Html.CheckBox("UseKafkaForAlt", @Model.UseKafkaForAlt) Use Kafka for Alternative Broker</label>
         </p>
     </div>
 

@@ -1,0 +1,271 @@
+@using Opc.Ua.Cloud.Publisher
+@using Opc.Ua.Cloud.Publisher.Interfaces
+@using Opc.Ua.Cloud.Publisher.Models
+@using System.Collections.Generic
+@using System.Linq
+@implements IDisposable
+@inject IUAClient _uaClient
+
+<RadzenTheme Theme="material" @rendermode="InteractiveAuto" />
+<RadzenComponents @rendermode="InteractiveAuto" />
+
+@{
+    var overall = GetOverallStatus();
+    var brokers = GetBrokers();
+    var servers = _publishedEndpoints ?? new List<PublishNodesInterfaceModel>();
+}
+
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-traffic-light"></i> Overall Publisher Status</h3>
+    <div class="uacp-status-overview">
+        <span class="uacp-light uacp-light--@overall.cssClass" title="@overall.title"></span>
+        <div class="uacp-status-overview__text">
+            <div class="uacp-status-overview__title">@overall.title</div>
+            <div class="uacp-status-overview__subtitle">@overall.subtitle</div>
+        </div>
+    </div>
+
+    <table class="metrics-table mt-3">
+        <thead>
+            <tr><th>Indicator</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>OPC UA sessions</td><td>@Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected</td></tr>
+            <tr><td>OPC UA subscriptions</td><td>@Diagnostics.Singleton.Info.NumberOfOpcSubscriptionsConnected</td></tr>
+            <tr><td>OPC UA monitored items</td><td>@Diagnostics.Singleton.Info.NumberOfOpcMonitoredItemsMonitored</td></tr>
+            <tr><td>Messages sent to broker</td><td>@Diagnostics.Singleton.Info.SentMessages</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-cloud"></i> Connected Brokers</h3>
+    @if (brokers.Count == 0)
+    {
+        <p class="text-muted mb-0">No broker is configured. Open the Configuration page to set up a broker connection.</p>
+    }
+    else
+    {
+        <ul class="uacp-overview-list">
+            @foreach (var broker in brokers)
+            {
+                <li>
+                    <span class="uacp-light uacp-light--@broker.cssClass" title="@broker.statusText"></span>
+                    <div class="uacp-overview-list__body">
+                        <div class="uacp-overview-list__title">
+                            <span class="uacp-overview-list__kind">@broker.kind</span>
+                            <span class="uacp-overview-list__name">@broker.url</span>
+                            @if (broker.isAlt)
+                            {
+                                <span class="uacp-badge">Alt</span>
+                            }
+                        </div>
+                        <div class="uacp-overview-list__meta">
+                            <span>Port: <b>@broker.port</b></span>
+                            <span>Status: <b>@broker.statusText</b></span>
+                            @if (!string.IsNullOrEmpty(broker.topic))
+                            {
+                                <span>Topic: <b>@broker.topic</b></span>
+                            }
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+<div class="app-card">
+    <h3 class="card-title"><i class="fas fa-server"></i> Connected OPC UA Servers</h3>
+    @if (servers.Count == 0)
+    {
+        <p class="text-muted mb-0">No OPC UA servers are currently publishing tags. Use the OPC UA Connect page to connect to a server and publish nodes.</p>
+    }
+    else
+    {
+        <ul class="uacp-overview-list">
+            @foreach (var server in servers)
+            {
+                var nodeCount = server.OpcNodes?.Count ?? 0;
+                var eventCount = server.OpcEvents?.Count ?? 0;
+                var totalCount = nodeCount + eventCount;
+                var status = GetServerStatus(totalCount);
+
+                <li>
+                    <span class="uacp-light uacp-light--@status.cssClass" title="@status.text"></span>
+                    <div class="uacp-overview-list__body">
+                        <div class="uacp-overview-list__title">
+                            <span class="uacp-overview-list__name">@server.EndpointUrl</span>
+                        </div>
+                        <div class="uacp-overview-list__meta">
+                            <span>Tags: <b>@nodeCount</b></span>
+                            <span>Events: <b>@eventCount</b></span>
+                            <span>Auth: <b>@server.OpcAuthenticationMode</b></span>
+                        </div>
+
+                        @if (nodeCount > 0 || eventCount > 0)
+                        {
+                            <details class="uacp-overview-list__details">
+                                <summary>Show published tags (@totalCount)</summary>
+                                <table class="metrics-table mt-2">
+                                    <thead>
+                                        <tr><th>Kind</th><th>Node Id</th><th>Sampling (ms)</th><th>Publishing (ms)</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (server.OpcNodes != null)
+                                        {
+                                            @foreach (var n in server.OpcNodes)
+                                            {
+                                                <tr>
+                                                    <td>Variable</td>
+                                                    <td>@n.Id</td>
+                                                    <td>@n.OpcSamplingInterval</td>
+                                                    <td>@n.OpcPublishingInterval</td>
+                                                </tr>
+                                            }
+                                        }
+                                        @if (server.OpcEvents != null)
+                                        {
+                                            @foreach (var e in server.OpcEvents)
+                                            {
+                                                <tr>
+                                                    <td>Event</td>
+                                                    <td>@e.ExpandedNodeId</td>
+                                                    <td>-</td>
+                                                    <td>-</td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </details>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+
+    private const double RefreshIntervalMs = 5000;
+
+    private System.Timers.Timer _timer;
+
+    private List<PublishNodesInterfaceModel> _publishedEndpoints = new();
+
+    protected override void OnInitialized()
+    {
+        RefreshPublishedNodes();
+
+        _timer = new System.Timers.Timer
+        {
+            Interval = RefreshIntervalMs,
+            AutoReset = true,
+            Enabled = true
+        };
+        _timer.Elapsed += OnTimedEvent;
+    }
+
+    public void Dispose()
+    {
+        if (_timer != null)
+        {
+            _timer.Enabled = false;
+            _timer.Elapsed -= OnTimedEvent;
+            _timer.Dispose();
+            _timer = null;
+        }
+    }
+
+    private void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
+    {
+        InvokeAsync(async () =>
+        {
+            RefreshPublishedNodes();
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+        });
+    }
+
+    private void RefreshPublishedNodes()
+    {
+        try
+        {
+            var nodes = _uaClient.GetPublishedNodes();
+            _publishedEndpoints = nodes != null ? nodes.ToList() : new List<PublishNodesInterfaceModel>();
+        }
+        catch
+        {
+            _publishedEndpoints = new List<PublishNodesInterfaceModel>();
+        }
+    }
+
+    private (string cssClass, string title, string subtitle) GetOverallStatus()
+    {
+        bool brokerConfigured = !string.IsNullOrEmpty(Settings.Instance.BrokerUrl);
+        bool brokerConnected = Diagnostics.Singleton.Info.ConnectedToBroker;
+        bool altbrokerConnected = Diagnostics.Singleton.Info.ConnectedToAltBroker;
+        int sessions = Diagnostics.Singleton.Info.NumberOfOpcSessionsConnected;
+
+        if (!brokerConfigured && sessions == 0)
+        {
+            return ("red", "Not configured", "No broker or OPC UA server connections have been configured yet.");
+        }
+
+        if (brokerConnected && sessions > 0)
+        {
+            string brokerText = altbrokerConnected ? "broker" : "brokers";
+            return ("green", "Operational", $"Connected to broker{brokerText} and {sessions} OPC UA server(s).");
+        }
+
+        if (brokerConnected && sessions == 0)
+        {
+            return ("yellow", "Broker only", "Connected to broker but no OPC UA server sessions are active.");
+        }
+
+        if (!brokerConnected && sessions > 0)
+        {
+            return ("yellow", "OPC UA only", "OPC UA sessions are active but the broker is not connected.");
+        }
+
+        return ("red", "Disconnected", "Neither the broker nor any OPC UA server is currently connected.");
+    }
+
+    private List<(string kind, string url, uint port, string topic, bool isAlt, string cssClass, string statusText)> GetBrokers()
+    {
+        var list = new List<(string, string, uint, string, bool, string, string)>();
+
+        string kind = Settings.Instance.UseKafka ? "Kafka" : "MQTT";
+        bool primaryConfigured = !string.IsNullOrEmpty(Settings.Instance.BrokerUrl);
+        if (primaryConfigured)
+        {
+            string css = Diagnostics.Singleton.Info.ConnectedToBroker ? "green" : "red";
+            string text = Diagnostics.Singleton.Info.ConnectedToBroker ? "Connected" : "Disconnected";
+            list.Add((kind, Settings.Instance.BrokerUrl, Settings.Instance.BrokerPort, Settings.Instance.BrokerMessageTopic, false, css, text));
+        }
+
+        string altkind = Settings.Instance.UseKafkaForAlt ? "Kafka" : "MQTT";
+        bool altUsed = Settings.Instance.UseAltBrokerForMetadata || Settings.Instance.UseAltBrokerForReceivingUAOverMQTT;
+        if (altUsed && !string.IsNullOrEmpty(Settings.Instance.AltBrokerUrl))
+        {
+            // we don't have a separate connected flag for alt broker; show as configured
+            string css = primaryConfigured && Diagnostics.Singleton.Info.ConnectedToAltBroker ? "green" : "red";
+            string text = Diagnostics.Singleton.Info.ConnectedToAltBroker ? "Connected" : "Disconnected";
+            string topic = Settings.Instance.UseAltBrokerForMetadata ? Settings.Instance.BrokerMetadataTopic : Settings.Instance.BrokerDataReceivedTopic;
+            list.Add((altkind, Settings.Instance.AltBrokerUrl, Settings.Instance.AltBrokerPort, topic, true, css, text));
+        }
+
+        return list;
+    }
+
+    private (string cssClass, string text) GetServerStatus(int tagCount)
+    {
+        if (tagCount == 0)
+        {
+            return ("yellow", "Connected (no tags published)");
+        }
+
+        return ("green", $"Publishing {tagCount} tag(s)");
+    }
+}

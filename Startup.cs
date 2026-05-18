@@ -77,6 +77,7 @@ namespace Opc.Ua.Cloud.Publisher
                               ILoggerFactory loggerFactory,
                               IUAApplication uaApp,
                               IMessageProcessor engine,
+                              IMessagePublisher messagePublisher,
                               Settings.BrokerResolver brokerResolver,
                               IPublishedNodesFileHandler publishedNodesFileHandler)
         {
@@ -104,7 +105,7 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 endpoints.MapControllerRoute(
                     name: "default",
-                    pattern: "{controller=Diag}/{action=Index}/{id?}");
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
                 endpoints.MapBlazorHub();
             });
 
@@ -133,11 +134,19 @@ namespace Opc.Ua.Cloud.Publisher
                     // connect to broker
                     await broker.ConnectAsync().ConfigureAwait(false);
 
-                    // check if we need a second broker
-                    if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
+                    // check if we need a second broker (for receiving UA over MQTT,
+                    // or for sending metadata via a different broker kind than the primary)
+                    bool altKindDiffersForMetadata = Settings.Instance.UseAltBrokerForMetadata
+                        && Settings.Instance.UseKafkaForAlt != Settings.Instance.UseKafka;
+                    if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT || altKindDiffersForMetadata)
                     {
-                        altBroker = brokerResolver("MQTT");
+                        altBroker = brokerResolver(Settings.Instance.UseKafkaForAlt ? "Kafka" : "MQTT");
                         await altBroker.ConnectAsync(true).ConfigureAwait(false);
+
+                        if (altKindDiffersForMetadata)
+                        {
+                            messagePublisher.ApplyAltClient(altBroker);
+                        }
                     }
 
                     // run the telemetry engine (fire-and-forget)

@@ -13,6 +13,9 @@ namespace Opc.Ua.Cloud.Publisher.Models
         public bool ConnectedToBroker { get; set; } = false;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+        public bool ConnectedToAltBroker { get; set; } = false;
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public bool ConnectedToCloudStorage { get; set; } = false;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Include)]

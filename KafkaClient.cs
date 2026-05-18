@@ -20,10 +20,198 @@ public class KafkaClient : IBrokerClient
 
     private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
+    // Periodic liveness probe: catches "broker came back" while we are idle.
+    private static readonly TimeSpan HealthCheckInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan HealthCheckTimeout = TimeSpan.FromSeconds(5);
+    private Timer _healthCheckTimer;
+    private int _healthCheckInFlight;
+
     public KafkaClient(ILoggerFactory loggerFactory, ICommandProcessor commandProcessor)
     {
         _logger = loggerFactory.CreateLogger("KafkaClient");
         _commandProcessor = commandProcessor;
+    }
+
+    // Updates the diagnostics flag for the given broker (primary vs alt) and logs transitions.
+    private void SetBrokerConnected(bool isAlt, bool connected, string reason)
+    {
+        bool previous = isAlt
+            ? Diagnostics.Singleton.Info.ConnectedToAltBroker
+            : Diagnostics.Singleton.Info.ConnectedToBroker;
+
+        if (isAlt)
+        {
+            Diagnostics.Singleton.Info.ConnectedToAltBroker = connected;
+        }
+        else
+        {
+            Diagnostics.Singleton.Info.ConnectedToBroker = connected;
+        }
+
+        if (previous != connected)
+        {
+            string label = isAlt ? "alt Kafka broker" : "Kafka broker";
+            if (connected)
+            {
+                _logger.LogInformation($"Connection to {label} restored ({reason}).");
+            }
+            else
+            {
+                _logger.LogWarning($"Connection to {label} lost ({reason}).");
+            }
+        }
+    }
+
+    // Builds the librdkafka asynchronous error handler. This fires on broker-down,
+    // all-brokers-down, transport errors and fatal errors, even when we are not
+    // actively producing - giving us a live signal to flip the diagnostics flag.
+    private Action<IProducer<Null, string>, Error> BuildProducerErrorHandler(bool isAlt)
+    {
+        return (producer, error) =>
+        {
+            if (error == null)
+            {
+                return;
+            }
+
+            // Treat fatal errors and known disconnect codes as "not connected".
+            bool isDisconnect =
+                error.IsFatal
+                || error.Code == ErrorCode.Local_AllBrokersDown
+                || error.Code == ErrorCode.Local_Transport
+                || error.Code == ErrorCode.Local_Authentication
+                || error.Code == ErrorCode.BrokerNotAvailable
+                || error.Code == ErrorCode.NetworkException;
+
+            if (isDisconnect)
+            {
+                SetBrokerConnected(isAlt, false, $"{error.Code}: {error.Reason}");
+            }
+            else
+            {
+                _logger.LogWarning($"Kafka producer error ({(isAlt ? "alt" : "primary")}): {error.Code} - {error.Reason}");
+            }
+        };
+    }
+
+    // Wraps ProduceAsync so we can flip the diagnostics flag on each outcome:
+    // success -> connected = true (recovery), ProduceException -> connected = false (e.g. Local_MsgTimedOut).
+    private async Task TryPublishAsync(IProducer<Null, string> producer, string topic, Message<Null, string> message, bool isAlt)
+    {
+        try
+        {
+            await producer.ProduceAsync(topic, message, _cancellationTokenSource.Token).ConfigureAwait(false);
+
+            SetBrokerConnected(isAlt, true, "publish succeeded");
+        }
+        catch (ProduceException<Null, string> ex)
+        {
+            SetBrokerConnected(isAlt, false, $"publish failed: {ex.Error.Code} - {ex.Error.Reason}");
+
+            throw;
+        }
+    }
+
+    // Lazily starts a background timer that periodically probes each producer with GetMetadata.
+    // This catches the "broker came back" case while we are idle (no publishes in flight).
+    private void EnsureHealthCheckTimerStarted()
+    {
+        if (_healthCheckTimer != null)
+        {
+            return;
+        }
+
+        _healthCheckTimer = new Timer(
+            HealthCheckCallback,
+            state: null,
+            dueTime: HealthCheckInterval,
+            period: HealthCheckInterval);
+    }
+
+    private void HealthCheckCallback(object _)
+    {
+        // Prevent overlapping probes if a previous one is still running.
+        if (Interlocked.Exchange(ref _healthCheckInFlight, 1) == 1)
+        {
+            return;
+        }
+
+        try
+        {
+            ProbeProducerHealth(_producer, isAlt: false);
+            ProbeProducerHealth(_altProducer, isAlt: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Kafka health check failed: {ex.Message}");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _healthCheckInFlight, 0);
+        }
+    }
+
+    private void ProbeProducerHealth(IProducer<Null, string> producer, bool isAlt)
+    {
+        if (producer == null)
+        {
+            return;
+        }
+
+        try
+        {
+            using var adminClient = new DependentAdminClientBuilder(producer.Handle).Build();
+            Metadata metadata = adminClient.GetMetadata(HealthCheckTimeout);
+
+            bool healthy = metadata?.Brokers != null && metadata.Brokers.Count > 0;
+
+            SetBrokerConnected(isAlt, healthy, healthy ? "health check ok" : "health check returned no brokers");
+        }
+        catch (KafkaException ex)
+        {
+            SetBrokerConnected(isAlt, false, $"health check failed: {ex.Error.Code} - {ex.Error.Reason}");
+        }
+        catch (Exception ex)
+        {
+            SetBrokerConnected(isAlt, false, $"health check failed: {ex.Message}");
+        }
+    }
+
+    // Verifies the broker is actually reachable by requesting cluster metadata.
+    // ProducerBuilder.Build() does not open a connection (it connects lazily on first use),
+    // so we piggy-back a dependent AdminClient on the producer's handle and call GetMetadata
+    // with a bounded timeout. Returns true if at least one broker responded, otherwise false.
+    private bool VerifyBrokerConnection(IProducer<Null, string> producer, string brokerLabel)
+    {
+        if (producer == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var adminClient = new DependentAdminClientBuilder(producer.Handle).Build();
+            Metadata metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(10));
+
+            if (metadata?.Brokers == null || metadata.Brokers.Count == 0)
+            {
+                _logger.LogError($"No brokers returned in metadata from {brokerLabel}.");
+                return false;
+            }
+
+            _logger.LogInformation($"Verified connection to {brokerLabel}: {metadata.Brokers.Count} broker(s) reachable.");
+            return true;
+        }
+        catch (KafkaException ex)
+        {
+            _logger.LogError($"Failed to verify connection to {brokerLabel}: {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Unexpected error while verifying connection to {brokerLabel}: {ex.Message}");
+            return false;
+        }
     }
 
     public async Task ConnectAsync(bool altBroker = false)
@@ -38,11 +226,14 @@ public class KafkaClient : IBrokerClient
                     _altProducer.Flush();
                     _altProducer.Dispose();
                     _altProducer = null;
+
+                    Diagnostics.Singleton.Info.ConnectedToAltBroker = false;
                 }
 
                 if (string.IsNullOrEmpty(Settings.Instance.AltBrokerUrl))
                 {
                     _logger.LogError("Alt broker URL not configured. Cannot connect to alt broker!");
+
                     return;
                 }
 
@@ -60,9 +251,28 @@ public class KafkaClient : IBrokerClient
                     MaxInFlight = 5
                 };
 
-                _altProducer = new ProducerBuilder<Null, string>(altConfig).Build();
+                _altProducer = new ProducerBuilder<Null, string>(altConfig)
+                    .SetErrorHandler(BuildProducerErrorHandler(isAlt: true))
+                    .Build();
 
-                _logger.LogInformation("Connected to alt Kafka broker.");
+                if (VerifyBrokerConnection(_altProducer, "alt Kafka broker"))
+                {
+                    Diagnostics.Singleton.Info.ConnectedToAltBroker = true;
+
+                    _logger.LogInformation("Connected to alt Kafka broker.");
+                }
+                else
+                {
+                    _altProducer.Dispose();
+                    _altProducer = null;
+
+                    Diagnostics.Singleton.Info.ConnectedToAltBroker = false;
+
+                    _logger.LogError("Could not verify connection to alt Kafka broker.");
+                }
+
+                EnsureHealthCheckTimerStarted();
+
                 return;
             }
 
@@ -86,6 +296,8 @@ public class KafkaClient : IBrokerClient
                 _altProducer.Flush();
                 _altProducer.Dispose();
                 _altProducer = null;
+
+                Diagnostics.Singleton.Info.ConnectedToAltBroker = false;
             }
 
             if (_consumer != null)
@@ -117,9 +329,26 @@ public class KafkaClient : IBrokerClient
                 MaxInFlight = 5 // Limit in-flight requests to prevent ordering issues during retries
             };
 
-            _producer = new ProducerBuilder<Null, string>(config).Build();
+            _producer = new ProducerBuilder<Null, string>(config)
+                .SetErrorHandler(BuildProducerErrorHandler(isAlt: false))
+                .Build();
 
-            if (Settings.Instance.UseAltBrokerForMetadata)
+            if (VerifyBrokerConnection(_producer, "Kafka broker"))
+            {
+                Diagnostics.Singleton.Info.ConnectedToBroker = true;
+            }
+            else
+            {
+                _producer.Dispose();
+                _producer = null;
+
+                Diagnostics.Singleton.Info.ConnectedToBroker = false;
+
+                _logger.LogError("Could not verify connection to Kafka broker.");
+                return;
+            }
+
+            if (Settings.Instance.UseAltBrokerForMetadata && Settings.Instance.UseKafkaForAlt)
             {
                 var altConfig = new ProducerConfig
                 {
@@ -135,7 +364,23 @@ public class KafkaClient : IBrokerClient
                     MaxInFlight = 5
                 };
 
-                _altProducer = new ProducerBuilder<Null, string>(altConfig).Build();
+                _altProducer = new ProducerBuilder<Null, string>(altConfig)
+                    .SetErrorHandler(BuildProducerErrorHandler(isAlt: true))
+                    .Build();
+
+                if (VerifyBrokerConnection(_altProducer, "alt Kafka broker"))
+                {
+                    Diagnostics.Singleton.Info.ConnectedToAltBroker = true;
+                }
+                else
+                {
+                    _altProducer.Dispose();
+                    _altProducer = null;
+
+                    Diagnostics.Singleton.Info.ConnectedToAltBroker = false;
+
+                    _logger.LogError("Could not verify connection to alt Kafka broker (metadata path).");
+                }
             }
 
             if (!string.IsNullOrEmpty(Settings.Instance.BrokerCommandTopic))
@@ -159,7 +404,7 @@ public class KafkaClient : IBrokerClient
                 _ = Task.Run(async () => await HandleCommandAsync().ConfigureAwait(false));
             }
 
-            Diagnostics.Singleton.Info.ConnectedToBroker = true;
+            EnsureHealthCheckTimerStarted();
 
             _logger.LogInformation("Connected to Kafka broker.");
         }
@@ -182,7 +427,7 @@ public class KafkaClient : IBrokerClient
             Value = Encoding.UTF8.GetString(payload)
         };
 
-        await _producer.ProduceAsync(Settings.Instance.BrokerMessageTopic, message, _cancellationTokenSource.Token).ConfigureAwait(false);
+        await TryPublishAsync(_producer, Settings.Instance.BrokerMessageTopic, message, isAlt: false).ConfigureAwait(false);
     }
 
     public async Task PublishMetadataAsync(byte[] payload)
@@ -193,14 +438,14 @@ public class KafkaClient : IBrokerClient
             Value = Encoding.UTF8.GetString(payload)
         };
 
-        if (Settings.Instance.UseAltBrokerForMetadata)
+        if (Settings.Instance.UseAltBrokerForMetadata && Settings.Instance.UseKafkaForAlt)
         {
             if (_altProducer == null)
             {
                 throw new InvalidOperationException("Alternate Kafka producer is not connected.");
             }
 
-            await _altProducer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message, _cancellationTokenSource.Token).ConfigureAwait(false);
+            await TryPublishAsync(_altProducer, Settings.Instance.BrokerMetadataTopic, message, isAlt: true).ConfigureAwait(false);
         }
         else
         {
@@ -209,7 +454,7 @@ public class KafkaClient : IBrokerClient
                 throw new InvalidOperationException("Kafka producer is not connected.");
             }
 
-            await _producer.ProduceAsync(Settings.Instance.BrokerMetadataTopic, message, _cancellationTokenSource.Token).ConfigureAwait(false);
+            await TryPublishAsync(_producer, Settings.Instance.BrokerMetadataTopic, message, isAlt: false).ConfigureAwait(false);
         }
     }
 
@@ -226,7 +471,7 @@ public class KafkaClient : IBrokerClient
             Value = Encoding.UTF8.GetString(payload)
         };
 
-        await _producer.ProduceAsync(Settings.Instance.BrokerResponseTopic, message, _cancellationTokenSource.Token).ConfigureAwait(false);
+        await TryPublishAsync(_producer, Settings.Instance.BrokerResponseTopic, message, isAlt: false).ConfigureAwait(false);
     }
 
     // handles all incoming commands form the cloud

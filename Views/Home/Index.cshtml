@@ -1,0 +1,15 @@
+@using Opc.Ua.Cloud.Publisher.Models
+@using Opc.Ua.Cloud.Publisher.Pages
+
+@{
+    ViewData["Title"] = "UA Cloud Publisher";
+}
+
+<div class="page-header">
+    <h1 class="page-title">@ViewData["Title"]</h1>
+    <div class="page-subtitle">Current publisher state, broker connections and OPC UA server tags.</div>
+</div>
+
+<component>@(await Html.RenderComponentAsync<Home>(
+    RenderMode.Server,
+    new { }).ConfigureAwait(false))</component>

@@ -12,6 +12,7 @@
     public class StoreForwardPublisher : IMessagePublisher
     {
         private IBrokerClient _client;
+        private IBrokerClient _altClient;
 
         private readonly ILogger _logger;
         private readonly string _pathToStore;
@@ -46,16 +47,23 @@
             _client = client;
         }
 
+        public void ApplyAltClient(IBrokerClient altClient)
+        {
+            _altClient = altClient;
+        }
+
         public async Task<bool> SendMetadataAsync(byte[] message)
         {
             bool success = false;
             long startTime = Stopwatch.GetTimestamp();
 
+            IBrokerClient client = _altClient ?? _client;
+
             try
             {
-                if (_client != null)
+                if (client != null)
                 {
-                    await _client.PublishMetadataAsync(message).ConfigureAwait(false);
+                    await client.PublishMetadataAsync(message).ConfigureAwait(false);
                     success = true;
 
                     Diagnostics.Singleton.Info.SentBytes += message.Length;

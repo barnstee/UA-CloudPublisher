@@ -48,6 +48,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             Info.PublisherStartTime = DateTime.UtcNow;
             Info.ConnectedToBroker = false;
+            Info.ConnectedToAltBroker = false;
             Info.NumberOfOpcSessionsConnected = 0;
             Info.NumberOfOpcSubscriptionsConnected = 0;
             Info.NumberOfOpcMonitoredItemsMonitored = 0;
@@ -83,6 +84,7 @@ namespace Opc.Ua.Cloud.Publisher
                     float messagesPerSecond = ((float)(Info.SentMessages - _lastNumMessagesSent)) / Settings.Instance.DiagnosticsLoggingInterval;
 
                     DiagnosticsSend("ConnectedToBroker", new DataValue(Info.ConnectedToBroker));
+                    DiagnosticsSend("ConnectedToAltBroker", new DataValue(Info.ConnectedToAltBroker));
                     DiagnosticsSend("NumOpcSessions", new DataValue(Info.NumberOfOpcSessionsConnected));
                     DiagnosticsSend("NumOpcSubscriptions", new DataValue(Info.NumberOfOpcSubscriptionsConnected));
                     DiagnosticsSend("NumOpcMonitoredItems", new DataValue(Info.NumberOfOpcMonitoredItemsMonitored));

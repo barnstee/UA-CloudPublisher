@@ -9,5 +9,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
         Task<bool> SendMetadataAsync(byte[] metadata);
 
         void ApplyNewClient(IBrokerClient client);
+
+        void ApplyAltClient(IBrokerClient altClient);
     }
 }

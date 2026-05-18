@@ -115,14 +115,28 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 // reconnect to broker with new settings
                 await _brokerClient.ConnectAsync().ConfigureAwait(false);
 
-                // check if we need a second broker
-                if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT)
+                // check if we need a second broker (for receiving UA over MQTT,
+                // or for sending metadata via a different broker kind than the primary)
+                bool altKindDiffersForMetadata = Settings.Instance.UseAltBrokerForMetadata
+                    && Settings.Instance.UseKafkaForAlt != Settings.Instance.UseKafka;
+                if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT || altKindDiffersForMetadata)
                 {
-                    _alternativeBrokerClient = _brokerResolver("MQTT");
+                    _alternativeBrokerClient = _brokerResolver(Settings.Instance.UseKafkaForAlt ? "Kafka" : "MQTT");
                     await _alternativeBrokerClient.ConnectAsync(true).ConfigureAwait(false);
+
+                    if (altKindDiffersForMetadata)
+                    {
+                        _messagePublisher.ApplyAltClient(_alternativeBrokerClient);
+                    }
                 }
 
                 _messagePublisher.ApplyNewClient(_brokerClient);
+
+                // when the alt broker is no longer used for metadata, drop any prior alt client routing
+                if (!altKindDiffersForMetadata)
+                {
+                    _messagePublisher.ApplyAltClient(null);
+                }
 
                 // clear metadata message cache
                 _messageProcessor.ClearMetadataMessageCache();

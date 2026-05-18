@@ -158,6 +158,8 @@
 
         public bool UseKafka { get; set; } = false;
 
+        public bool UseKafkaForAlt { get; set; } = false;
+
         public bool CreateBrokerSASToken { get; set; } = false;
 
         public bool UseTLS { get; set; } = true;
