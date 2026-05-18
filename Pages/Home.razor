@@ -222,7 +222,8 @@
 
         if (brokerConnected && sessions == 0)
         {
-            return ("yellow", "Broker only", "Connected to broker but no OPC UA server sessions are active.");
+            string brokerText = altbrokerConnected ? "brokers" : "broker";
+            return ("yellow", "Broker only", $"Connected to {brokerText} but no OPC UA server sessions are active.");
         }
 
         if (!brokerConnected && sessions > 0)
