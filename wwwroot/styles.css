@@ -361,19 +361,22 @@ input[type="file"].modern-input {
     color: var(--uacp-text-muted);
 }
 input[type="file"].modern-input::file-selector-button {
-    background: var(--uacp-surface-2);
-    color: var(--uacp-text);
-    border: 1px solid var(--uacp-border-strong);
+    background: var(--uacp-primary);
+    color: #fff;
+    border: 1px solid var(--uacp-primary);
     border-radius: 6px;
     padding: .35rem .75rem;
     margin-right: .75rem;
     cursor: pointer;
-    transition: background-color .15s ease;
+    font-weight: 600;
+    box-shadow: var(--uacp-shadow-sm);
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 input[type="file"].modern-input::file-selector-button:hover {
-    background: var(--uacp-primary);
-    border-color: var(--uacp-primary);
+    background: var(--uacp-primary-600);
+    border-color: var(--uacp-primary-600);
     color: #fff;
+    box-shadow: var(--uacp-shadow-md);
 }
 
 /* Bootstrap's .form-control inside our app cards */
@@ -426,13 +429,32 @@ form > p > b { color: var(--uacp-text); }
     letter-spacing: .01em;
     border: 1px solid transparent;
     transition: transform .05s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
+    /* Buttons should size to their content, not stretch with their parent */
+    width: auto;
+    display: inline-block;
 }
 
 .btn:focus { box-shadow: 0 0 0 3px rgba(74,109,167,.35); }
 
+/* Prevent buttons from being stretched full-width by their flex/row parents
+   (e.g. form > p { display:flex; flex-direction:column } or Bootstrap .row) */
+form > p > .btn,
+form > p > input[type="submit"],
+form > p > input[type="button"],
+.row > .btn,
+.row > input[type="submit"],
+.row > input[type="button"] {
+    align-self: flex-start;
+    width: auto;
+}
+
 .btn-primary,
+.btn-secondary,
+.btn-ghost,
 input.btn-primary[type="submit"],
-input.btn-primary[type="button"] {
+input.btn-primary[type="button"],
+input.btn-secondary[type="submit"],
+input.btn-secondary[type="button"] {
     background: var(--uacp-primary) !important;
     border-color: var(--uacp-primary) !important;
     color: #fff !important;
@@ -440,38 +462,33 @@ input.btn-primary[type="button"] {
 }
 .btn-primary:hover,
 .btn-primary:focus,
+.btn-secondary:hover,
+.btn-secondary:focus,
+.btn-ghost:hover,
+.btn-ghost:focus,
 input.btn-primary[type="submit"]:hover,
-input.btn-primary[type="submit"]:focus {
+input.btn-primary[type="submit"]:focus,
+input.btn-secondary[type="submit"]:hover,
+input.btn-secondary[type="submit"]:focus {
     background: var(--uacp-primary-600) !important;
     border-color: var(--uacp-primary-600) !important;
     color: #fff !important;
     box-shadow: var(--uacp-shadow-md);
 }
-.btn-primary:active { background: var(--uacp-primary-700) !important; transform: translateY(1px); }
-
-.btn-secondary {
-    background: var(--uacp-surface-2) !important;
-    border-color: var(--uacp-border-strong) !important;
-    color: var(--uacp-text) !important;
-}
-.btn-secondary:hover {
-    background: var(--uacp-border-strong) !important;
-    color: var(--uacp-text) !important;
+.btn-primary:active,
+.btn-secondary:active,
+.btn-ghost:active {
+    background: var(--uacp-primary-700) !important;
+    border-color: var(--uacp-primary-700) !important;
+    color: #fff !important;
+    transform: translateY(1px);
 }
 
-.btn-ghost {
-    background: transparent !important;
-    color: var(--uacp-text) !important;
-    border-color: var(--uacp-border-strong) !important;
-}
-.btn-ghost:hover {
-    background: var(--uacp-row-hover) !important;
-}
-
-/* File-input buttons (legacy) — soften when adjacent to submit */
+/* File-input buttons (legacy) — keep a softer look so they don't compete with submit buttons */
 input[type="file"].btn-primary {
-    background: var(--uacp-surface-2) !important;
+    background: transparent !important;
     color: var(--uacp-text-muted) !important;
+    border-color: var(--uacp-border-strong) !important;
     box-shadow: none;
     padding: .4rem .75rem;
 }
