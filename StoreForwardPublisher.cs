@@ -32,6 +32,8 @@
                 Directory.CreateDirectory(_pathToStore);
             }
 
+            Diagnostics.Singleton.Info.StoredMessagesCount = Directory.GetFiles(_pathToStore).Length;
+
             if (Settings.Instance.UseKafka)
             {
                 _client = brokerResolver("Kafka");
@@ -125,6 +127,7 @@
                 Diagnostics.Singleton.Info.FailedMessages++;
 
                 await File.WriteAllBytesAsync(Path.Combine(_pathToStore, Path.GetRandomFileName()), message).ConfigureAwait(false);
+                Diagnostics.Singleton.Info.StoredMessagesCount = Directory.GetFiles(_pathToStore).Length;
             }
 
             RecordLatency((long)Stopwatch.GetElapsedTime(startTime).TotalMilliseconds);
@@ -158,6 +161,7 @@
                 Diagnostics.Singleton.Info.SentMessages++;
                 Diagnostics.Singleton.Info.FailedMessages = Math.Max(0, Diagnostics.Singleton.Info.FailedMessages - 1);
                 Diagnostics.Singleton.Info.SentLastTime = DateTime.UtcNow;
+                Diagnostics.Singleton.Info.StoredMessagesCount = Math.Max(0, filePaths.Length - 1);
 
                 _logger.LogInformation("There are {Count} stored messages left to send.", filePaths.Length - 1);
             }

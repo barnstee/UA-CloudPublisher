@@ -48,6 +48,7 @@
         <tr><td>Average OPC UA monitored items batched in broker message</td><td>@Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage</td></tr>
         <tr><td>Average OPC UA monitored items/second sent</td><td>@(_messagesPerSecond * Diagnostics.Singleton.Info.AverageNotificationsInBrokerMessage)</td></tr>
         <tr><td>Broker message send failures</td><td>@Diagnostics.Singleton.Info.FailedMessages</td></tr>
+        <tr><td>Stored messages left to send</td><td>@Diagnostics.Singleton.Info.StoredMessagesCount</td></tr>
         <tr><td>Broker messages too large to send</td><td>@Diagnostics.Singleton.Info.TooLargeCount</td></tr>
         <tr><td>Missed broker message send intervals</td><td>@Diagnostics.Singleton.Info.MissedSendIntervalCount</td></tr>
         <tr><td>Number of OPC UA monitored items encoded</td><td>@Diagnostics.Singleton.Info.NumberOfEvents</td></tr>

@@ -63,6 +63,7 @@ namespace Opc.Ua.Cloud.Publisher
             Info.SentLastTime = DateTime.UtcNow;
             Info.FailedMessages = 0;
             Info.AverageNotificationsInBrokerMessage = 0;
+            Info.StoredMessagesCount = 0;
         }
 
         public async Task RunAsync(CancellationToken cancellationToken = default)
@@ -97,6 +98,7 @@ namespace Opc.Ua.Cloud.Publisher
                     DiagnosticsSend("BrokerMessagesSecond", new DataValue(messagesPerSecond));
                     DiagnosticsSend("NumOpcMonitoredItemsSecond", new DataValue(messagesPerSecond * Info.AverageNotificationsInBrokerMessage));
                     DiagnosticsSend("BrokerMessageSendFailures", new DataValue(Info.FailedMessages));
+                    DiagnosticsSend("StoredMessagesLeftToSend", new DataValue(Info.StoredMessagesCount));
                     using (Process currentProcess = Process.GetCurrentProcess())
                     {
                         DiagnosticsSend("CurrentWorkingSetMBs", new DataValue(currentProcess.WorkingSet64 / (1024 * 1024)));

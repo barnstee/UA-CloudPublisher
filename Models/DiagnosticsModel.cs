@@ -62,5 +62,8 @@ namespace Opc.Ua.Cloud.Publisher.Models
 
         [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public long AverageNotificationsInBrokerMessage { get; set; } = 0;
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+        public long StoredMessagesCount { get; set; } = 0;
     }
 }
