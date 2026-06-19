@@ -71,8 +71,6 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - Support for uploading OPC UA Information Models to UA Edge Translator
 - Support for issuing a new X509 certificate and trust list to connected OPC UA servers (GDS Server Push functionality)
 
-
-
 ## Screenshots
 
 ### Browser
