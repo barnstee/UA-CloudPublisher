@@ -2,6 +2,31 @@
 
 A cross-platform OPC UA cloud publisher reference implementation leveraging OPC UA PubSub over MQTT and Kafka. It runs in a container image on standard Docker hosts or on Kubernetes and comes with an easy-to-use web user interface.
 
+## Build Status
+
+[![Docker](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml)
+
+## Table of Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+  - [Browser](#browser)
+  - [Published Nodes Management](#published-nodes-management)
+  - [Diagnostics](#diagnostics)
+  - [Configuration](#configuration)
+  - [UA Edge Translator Integration](#ua-edge-translator-integration)
+- [Usage](#usage)
+  - [Persisting Logs, Settings, Published Nodes and OPC UA Certificates](#persisting-logs-settings-published-nodes-and-opc-ua-certificates)
+- [Using the Alternative Broker](#using-the-alternative-broker)
+- [Optional Environment Variables](#optional-environment-variables)
+- [PublishedNodes.json File Format](#publishednodesjson-file-format)
+- [Sub-topics for Configuration from the Cloud](#sub-topics-for-configuration-from-the-cloud)
+  - [PublishNodes](#publishnodes)
+  - [UnpublishNodes](#unpublishnodes)
+  - [UnpublishAllNodes](#unpublishallnodes)
+  - [GetPublishedNodes](#getpublishednodes)
+  - [GetInfo](#getinfo)
+
 ## Features
 
 - Cross-plattform - Runs natively on Windows and Linux
@@ -46,9 +71,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - Support for uploading OPC UA Information Models to UA Edge Translator
 - Support for issuing a new X509 certificate and trust list to connected OPC UA servers (GDS Server Push functionality)
 
-## Build Status
 
-[![Docker](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/barnstee/UA-CloudPublisher/actions/workflows/docker-publish.yml)
 
 ## Screenshots
 
