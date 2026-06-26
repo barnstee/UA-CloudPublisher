@@ -121,7 +121,7 @@ And then point your browser to `http://yourIPAddress`.
 
 ## Using the Alternative Broker
 
-UA Cloud Publisher contains a second broker client that can be used either to **send** OPC UA PubSub metadata to a second broker (via MQTT or Kafka) **or** it can be used to **receive** OPC UA PubSub data via MQTT. However, both features together can't be used right now.
+UA Cloud Publisher contains a second broker client that can be used to send OPC UA PubSub metadata to a second broker (via MQTT or Kafka).
 
 ## CloudEvents Metadata Messages
 
