@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
@@ -6,7 +7,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
     {
         Task<bool> SendMessageAsync(byte[] message);
 
-        Task<bool> SendMetadataAsync(byte[] metadata);
+        Task<bool> SendMetadataAsync(byte[] metadata, IReadOnlyDictionary<string, string> cloudEventAttributes = null);
 
         void ApplyNewClient(IBrokerClient client);
 

@@ -4,6 +4,7 @@
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using System;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
     using System.Threading;
@@ -54,7 +55,7 @@
             _altClient = altClient;
         }
 
-        public async Task<bool> SendMetadataAsync(byte[] message)
+        public async Task<bool> SendMetadataAsync(byte[] message, IReadOnlyDictionary<string, string> cloudEventAttributes = null)
         {
             bool success = false;
             long startTime = Stopwatch.GetTimestamp();
@@ -65,7 +66,7 @@
             {
                 if (client != null)
                 {
-                    await client.PublishMetadataAsync(message).ConfigureAwait(false);
+                    await client.PublishMetadataAsync(message, cloudEventAttributes).ConfigureAwait(false);
                     success = true;
 
                     Diagnostics.Singleton.Info.SentBytes += message.Length;

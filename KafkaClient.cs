@@ -5,6 +5,7 @@ using Opc.Ua.Cloud.Publisher;
 using Opc.Ua.Cloud.Publisher.Interfaces;
 using Opc.Ua.Cloud.Publisher.Models;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -430,11 +431,28 @@ public class KafkaClient : IBrokerClient
         await TryPublishAsync(_producer, Settings.Instance.BrokerMessageTopic, message, isAlt: false).ConfigureAwait(false);
     }
 
-    public async Task PublishMetadataAsync(byte[] payload)
+    public async Task PublishMetadataAsync(byte[] payload, IReadOnlyDictionary<string, string> cloudEventAttributes = null)
     {
+        Headers headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } };
+
+        if (cloudEventAttributes != null)
+        {
+            // CloudEvents binary content mode for Kafka: each attribute is carried as a "ce_"-prefixed header
+            // ('datacontenttype' is conveyed by the Content-Type header above).
+            foreach (KeyValuePair<string, string> attribute in cloudEventAttributes)
+            {
+                if (string.Equals(attribute.Key, "datacontenttype", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                headers.Add("ce_" + attribute.Key, Encoding.UTF8.GetBytes(attribute.Value));
+            }
+        }
+
         Message<Null, string> message = new()
         {
-            Headers = new Headers() { { "Content-Type", Encoding.UTF8.GetBytes("application/json") } },
+            Headers = headers,
             Value = Encoding.UTF8.GetString(payload)
         };
 

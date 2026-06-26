@@ -7,6 +7,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
+    using System.Collections.Generic;
 
     public class PubSubTelemetryEncoder : IMessageEncoder
     {
@@ -64,52 +65,7 @@ namespace Opc.Ua.Cloud.Publisher
                 ushort hash = (ushort)(messageData.ApplicationUri.GetDeterministicHashCode() ^ messageData.ExpandedNodeId.GetDeterministicHashCode());
                 encoder.WriteUInt16("DataSetWriterId", hash);
 
-                DataSetMetaDataType dataSetMetaData = new()
-                {
-                    Name = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId,
-                    Fields = new FieldMetaDataCollection()
-                };
-
-                if (messageData.EventValues != null && messageData.EventValues.Count > 0)
-                {
-                    // process events
-                    foreach (EventValueModel eventValue in messageData.EventValues)
-                    {
-                        FieldMetaData fieldData = new()
-                        {
-                            Name = eventValue.Name,
-                            DataSetFieldId = new Uuid(Guid.NewGuid()),
-                            BuiltInType = (byte)eventValue.Value.WrappedValue.TypeInfo.BuiltInType,
-                            DataType = TypeInfo.GetDataTypeId(eventValue.Value.WrappedValue),
-                            ValueRank = eventValue.Value.WrappedValue.TypeInfo.ValueRank,
-                            Description = LocalizedText.Null
-                        };
-
-                        dataSetMetaData.Fields.Add(fieldData);
-                    }
-                }
-                else
-                {
-                    FieldMetaData fieldData = new()
-                    {
-                        Name = messageData.Name,
-                        DataSetFieldId = new Uuid(Guid.NewGuid()),
-                        BuiltInType = (byte)messageData.Value.WrappedValue.TypeInfo.BuiltInType,
-                        DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
-                        ValueRank = messageData.Value.WrappedValue.TypeInfo.ValueRank,
-                        Description = new LocalizedText(messageData.DataType)
-                    };
-
-                    dataSetMetaData.Fields.Add(fieldData);
-                }
-
-                dataSetMetaData.ConfigurationVersion = new ConfigurationVersionDataType()
-                {
-                    MinorVersion = 1,
-                    MajorVersion = 1
-                };
-
-                dataSetMetaData.Description = LocalizedText.Null;
+                DataSetMetaDataType dataSetMetaData = BuildDataSetMetaData(messageData);
 
                 encoder.WriteDateTime("Timestamp", DateTime.UtcNow);
 
@@ -123,6 +79,124 @@ namespace Opc.Ua.Cloud.Publisher
                 _logger.LogError(e, "Generation of JSON PubSub metadata message failed.");
                 return string.Empty;
             }
+        }
+
+        // Builds the DataSetMetaData (field type information) for the given message. Shared by the
+        // OPC UA PubSub metadata message and the CloudEvents metadata message.
+        private DataSetMetaDataType BuildDataSetMetaData(MessageProcessorModel messageData)
+        {
+            DataSetMetaDataType dataSetMetaData = new()
+            {
+                Name = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId,
+                Fields = new FieldMetaDataCollection()
+            };
+
+            if (messageData.EventValues != null && messageData.EventValues.Count > 0)
+            {
+                // process events
+                foreach (EventValueModel eventValue in messageData.EventValues)
+                {
+                    FieldMetaData fieldData = new()
+                    {
+                        Name = eventValue.Name,
+                        DataSetFieldId = new Uuid(Guid.NewGuid()),
+                        BuiltInType = (byte)eventValue.Value.WrappedValue.TypeInfo.BuiltInType,
+                        DataType = TypeInfo.GetDataTypeId(eventValue.Value.WrappedValue),
+                        ValueRank = eventValue.Value.WrappedValue.TypeInfo.ValueRank,
+                        Description = LocalizedText.Null
+                    };
+
+                    dataSetMetaData.Fields.Add(fieldData);
+                }
+            }
+            else
+            {
+                FieldMetaData fieldData = new()
+                {
+                    Name = messageData.Name,
+                    DataSetFieldId = new Uuid(Guid.NewGuid()),
+                    BuiltInType = (byte)messageData.Value.WrappedValue.TypeInfo.BuiltInType,
+                    DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
+                    ValueRank = messageData.Value.WrappedValue.TypeInfo.ValueRank,
+                    Description = new LocalizedText(messageData.DataType)
+                };
+
+                dataSetMetaData.Fields.Add(fieldData);
+            }
+
+            dataSetMetaData.ConfigurationVersion = new ConfigurationVersionDataType()
+            {
+                MinorVersion = 1,
+                MajorVersion = 1
+            };
+
+            dataSetMetaData.Description = LocalizedText.Null;
+
+            // Populate the schema header namespaces with the distinct namespace URIs referenced by the field
+            // data types, resolved from the local (session) namespace table - no server round-trips. The
+            // structure/enum/simple type descriptions are intentionally left empty: built-in types don't need
+            // them, and describing custom types would require reading their definitions from the server.
+            foreach (FieldMetaData field in dataSetMetaData.Fields)
+            {
+                if (field.DataType == null)
+                {
+                    continue;
+                }
+
+                string namespaceUri = messageData.MessageContext.NamespaceUris.GetString(field.DataType.NamespaceIndex);
+                if (!string.IsNullOrEmpty(namespaceUri) && !dataSetMetaData.Namespaces.Contains(namespaceUri))
+                {
+                    dataSetMetaData.Namespaces.Add(namespaceUri);
+                }
+            }
+
+            return dataSetMetaData;
+        }
+
+        public string EncodeCloudEventMetadata(MessageProcessorModel messageData)
+        {
+            try
+            {
+                // CloudEvents binary mode: the OPC UA NetworkMessage and DataSet headers are mapped to CloudEvents
+                // attributes (carried as transport headers), so the payload contains only the DataSetMetaData object,
+                // encoded non-reversibly. See https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/opcua.md
+                JsonEncoder encoder = new(messageData.MessageContext, false);
+
+                DataSetMetaDataType dataSetMetaData = BuildDataSetMetaData(messageData);
+
+                encoder.WriteEncodeable("MetaData", dataSetMetaData, typeof(DataSetMetaDataType));
+
+                // the encoder wraps the value as {"MetaData":{...}}; return just the inner DataSetMetaData object
+                string wrapped = encoder.CloseAndReturnText();
+                const string metaDataPrefix = "{\"MetaData\":";
+                if (wrapped.StartsWith(metaDataPrefix, StringComparison.Ordinal) && wrapped.EndsWith("}", StringComparison.Ordinal))
+                {
+                    return wrapped.Substring(metaDataPrefix.Length, wrapped.Length - metaDataPrefix.Length - 1);
+                }
+
+                return wrapped;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Generation of CloudEvents PubSub metadata message failed.");
+                return string.Empty;
+            }
+        }
+
+        // Builds the CloudEvents context attributes for an OPC UA PubSub metadata message (binary content mode).
+        // See https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/opcua.md
+        public IReadOnlyDictionary<string, string> BuildCloudEventMetadataAttributes(ulong messageId, ushort dataSetWriterId)
+        {
+            return new Dictionary<string, string>
+            {
+                ["specversion"] = "1.0",
+                ["type"] = "ua-metadata",
+                ["id"] = messageId.ToString(),
+                ["source"] = Settings.Instance.PublisherName,
+                ["subject"] = dataSetWriterId.ToString(),
+                ["time"] = DateTime.UtcNow.ToString("o"),
+                ["datacontenttype"] = "application/json"
+            };
         }
 
         public string EncodePayload(MessageProcessorModel messageData, out ushort hash)

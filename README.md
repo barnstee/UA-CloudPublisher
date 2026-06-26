@@ -10,6 +10,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 - [Features](#features)
 - [Screenshots](#screenshots)
+  - [Overview](#overview)
   - [Browser](#browser)
   - [Published Nodes Management](#published-nodes-management)
   - [Diagnostics](#diagnostics)
@@ -18,6 +19,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - [Usage](#usage)
   - [Persisting Logs, Settings, Published Nodes and OPC UA Certificates](#persisting-logs-settings-published-nodes-and-opc-ua-certificates)
 - [Using the Alternative Broker](#using-the-alternative-broker)
+- [CloudEvents Metadata Messages](#cloudevents-metadata-messages)
 - [Optional Environment Variables](#optional-environment-variables)
 - [PublishedNodes.json File Format](#publishednodesjson-file-format)
 - [Sub-topics for Configuration from the Cloud](#sub-topics-for-configuration-from-the-cloud)
@@ -51,6 +53,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - OPC UA Event filtering
 - OPC UA Complex Types publishing
 - OPC UA metadata messages publishing
+- Support for encoding OPC UA metadata messages as CloudEvents (an alternative to the PubSub NetworkMessage header)
 - OPC UA status messages publishing
 - Diagnostics info publishing
 - UI for displaying the list of publishes nodes
@@ -71,6 +74,10 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - Support for issuing a new X509 certificate and trust list to connected OPC UA servers (GDS Server Push functionality)
 
 ## Screenshots
+
+### Overview
+
+![Overview](screenshots/overview.png)
 
 ### Browser
 
@@ -115,6 +122,22 @@ And then point your browser to `http://yourIPAddress`.
 ## Using the Alternative Broker
 
 UA Cloud Publisher contains a second broker client that can be used either to **send** OPC UA PubSub metadata to a second broker (via MQTT or Kafka) **or** it can be used to **receive** OPC UA PubSub data via MQTT. However, both features together can't be used right now.
+
+## CloudEvents Metadata Messages
+
+By default, OPC UA metadata messages (`ua-metadata`) are published with the standard OPC UA PubSub JSON NetworkMessage header. Alternatively, you can enable the **Use CloudEvents header for metadata messages** option on the configuration page to publish metadata messages as [CloudEvents](https://cloudevents.io/) instead, following the [CloudEvents OPC UA extension](https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/opcua.md).
+
+When enabled, metadata messages use the CloudEvents binary content mode: the message payload contains only the OPC UA `DataSetMetaData`, and the header information is mapped to CloudEvents context attributes that are carried as transport headers (MQTT user properties, or Kafka `ce_`-prefixed headers):
+
+| CloudEvents attribute | Value |
+| --- | --- |
+| `specversion` | `1.0` |
+| `type` | `ua-metadata` |
+| `id` | the message ID |
+| `source` | the configured Publisher ID |
+| `subject` | the DataSetWriterId |
+| `time` | the message timestamp (RFC 3339) |
+| `datacontenttype` | `application/json` |
 
 ## Optional Environment Variables
 

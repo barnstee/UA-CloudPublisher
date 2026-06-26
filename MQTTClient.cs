@@ -442,7 +442,7 @@
             await _client.PublishAsync(message, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
 
-        public async Task PublishMetadataAsync(byte[] payload)
+        public async Task PublishMetadataAsync(byte[] payload, IReadOnlyDictionary<string, string> cloudEventAttributes = null)
         {
             // when the alt broker is used for metadata and is the same kind (MQTT) as the primary broker, the
             // primary instance routes metadata to its dedicated alt client (mirrors the Kafka client). A separate
@@ -454,13 +454,7 @@
                     throw new InvalidOperationException("Alternate MQTT client is not connected.");
                 }
 
-                MqttApplicationMessage altMessage = new MqttApplicationMessageBuilder()
-                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                    .WithTopic(Settings.Instance.BrokerMetadataTopic)
-                    .WithPayload(payload)
-                    .Build();
-
-                await _altClient.PublishAsync(altMessage, _cancellationTokenSource.Token).ConfigureAwait(false);
+                await _altClient.PublishAsync(BuildMetadataMessage(payload, cloudEventAttributes), _cancellationTokenSource.Token).ConfigureAwait(false);
 
                 return;
             }
@@ -470,13 +464,32 @@
                 throw new InvalidOperationException("MQTT client is not connected.");
             }
 
-            MqttApplicationMessage message = new MqttApplicationMessageBuilder()
+            await _client.PublishAsync(BuildMetadataMessage(payload, cloudEventAttributes), _cancellationTokenSource.Token).ConfigureAwait(false);
+        }
+
+        // Builds the metadata MQTT message. When CloudEvents attributes are supplied (CloudEvents binary content mode)
+        // they are added as MQTT user properties and the content type is taken from the 'datacontenttype' attribute.
+        private MqttApplicationMessage BuildMetadataMessage(byte[] payload, IReadOnlyDictionary<string, string> cloudEventAttributes)
+        {
+            MqttApplicationMessageBuilder builder = new MqttApplicationMessageBuilder()
                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                 .WithTopic(Settings.Instance.BrokerMetadataTopic)
-                .WithPayload(payload)
-                .Build();
+                .WithPayload(payload);
 
-            await _client.PublishAsync(message, _cancellationTokenSource.Token).ConfigureAwait(false);
+            if (cloudEventAttributes != null)
+            {
+                foreach (KeyValuePair<string, string> attribute in cloudEventAttributes)
+                {
+                    builder = builder.WithUserProperty(attribute.Key, Encoding.UTF8.GetBytes(attribute.Value));
+                }
+
+                if (cloudEventAttributes.TryGetValue("datacontenttype", out string contentType))
+                {
+                    builder = builder.WithContentType(contentType);
+                }
+            }
+
+            return builder.Build();
         }
 
         private MqttApplicationMessage BuildResponse(string status, string id, byte[] payload)

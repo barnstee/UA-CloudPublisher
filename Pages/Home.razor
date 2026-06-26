@@ -238,7 +238,18 @@
         {
             string css = Diagnostics.Singleton.Info.ConnectedToBroker ? "green" : "red";
             string text = Diagnostics.Singleton.Info.ConnectedToBroker ? "Connected" : "Disconnected";
-            list.Add((kind, Settings.Instance.BrokerUrl, Settings.Instance.BrokerPort, Settings.Instance.BrokerMessageTopic, false, css, text));
+
+            // the primary broker always carries the data messages; when no alt broker is used for metadata,
+            // it also carries the metadata messages, so show both topics
+            string primaryTopic = Settings.Instance.BrokerMessageTopic;
+            if (!Settings.Instance.UseAltBrokerForMetadata && !string.IsNullOrEmpty(Settings.Instance.BrokerMetadataTopic))
+            {
+                primaryTopic = string.IsNullOrEmpty(primaryTopic)
+                    ? Settings.Instance.BrokerMetadataTopic
+                    : $"{primaryTopic}, {Settings.Instance.BrokerMetadataTopic}";
+            }
+
+            list.Add((kind, Settings.Instance.BrokerUrl, Settings.Instance.BrokerPort, primaryTopic, false, css, text));
         }
 
         string altkind = Settings.Instance.UseKafkaForAlt ? "Kafka" : "MQTT";

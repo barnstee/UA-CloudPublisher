@@ -321,17 +321,7 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     foreach (KeyValuePair<ushort, string> metadataMessage in currentMessages)
                     {
-                        using (MemoryStream buffer = new MemoryStream())
-                        {
-                            buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(Interlocked.Increment(ref _messageID) - 1, true)));
-                            buffer.Write(Encoding.UTF8.GetBytes(","));
-                            buffer.Write(Encoding.UTF8.GetBytes(metadataMessage.Value));
-
-                            if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
-                            {
-                                _logger.LogDebug($"Sent {buffer.Length} metadata bytes to broker!");
-                            }
-                        }
+                        await SendMetadataMessageAsync(metadataMessage.Value, metadataMessage.Key).ConfigureAwait(false);
                     }
                 }
             }
@@ -353,7 +343,10 @@ namespace Opc.Ua.Cloud.Publisher
 
             if (Settings.Instance.SendUAMetadata)
             {
-                string metadataMessage = _encoder.EncodeMetadata(messageData);
+                string metadataMessage = Settings.Instance.UseCloudEventsMetadataHeader
+                    ? _encoder.EncodeCloudEventMetadata(messageData)
+                    : _encoder.EncodeMetadata(messageData);
+
                 bool isNewMetadata = false;
                 lock (_metadataMessagesLock)
                 {
@@ -366,23 +359,45 @@ namespace Opc.Ua.Cloud.Publisher
 
                 if (isNewMetadata)
                 {
-                    using (MemoryStream buffer = new MemoryStream())
-                    {
-                        buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(Interlocked.Increment(ref _messageID) - 1, true)));
-                        buffer.Write(Encoding.UTF8.GetBytes(","));
-                        buffer.Write(Encoding.UTF8.GetBytes(metadataMessage));
-
-                        if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
-                        {
-                            _logger.LogDebug($"Sent {buffer.Length} metadata bytes to broker!");
-                        }
-                    }
+                    await SendMetadataMessageAsync(metadataMessage, hash).ConfigureAwait(false);
                 }
             }
 
             Diagnostics.Singleton.Info.NumberOfEvents++;
 
             return jsonMessage;
+        }
+
+        // Sends a single metadata message, either as an OPC UA PubSub NetworkMessage (the network message header is
+        // stitched in front of the payload) or as a CloudEvents message (payload-only, with the header information
+        // carried in CloudEvents attributes / transport headers), depending on the UseCloudEventsMetadataHeader setting.
+        private async Task SendMetadataMessageAsync(string metadataPayload, ushort dataSetWriterId)
+        {
+            ulong messageId = Interlocked.Increment(ref _messageID) - 1;
+
+            byte[] bytesToSend;
+            IReadOnlyDictionary<string, string> cloudEventAttributes = null;
+
+            if (Settings.Instance.UseCloudEventsMetadataHeader)
+            {
+                bytesToSend = Encoding.UTF8.GetBytes(metadataPayload);
+                cloudEventAttributes = _encoder.BuildCloudEventMetadataAttributes(messageId, dataSetWriterId);
+            }
+            else
+            {
+                using (MemoryStream buffer = new MemoryStream())
+                {
+                    buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeHeader(messageId, true)));
+                    buffer.Write(Encoding.UTF8.GetBytes(","));
+                    buffer.Write(Encoding.UTF8.GetBytes(metadataPayload));
+                    bytesToSend = buffer.ToArray();
+                }
+            }
+
+            if (await _sink.SendMetadataAsync(bytesToSend, cloudEventAttributes).ConfigureAwait(false))
+            {
+                _logger.LogDebug($"Sent {bytesToSend.Length} metadata bytes to broker!");
+            }
         }
 
         private int CalculateBatchTimeout(CancellationToken cancellationToken = default)

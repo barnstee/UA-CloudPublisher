@@ -127,6 +127,9 @@
             @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { @class = "modern-input" })
         </p>
         <p>
+            <label>@Html.CheckBox("UseCloudEventsMetadataHeader", @Model.UseCloudEventsMetadataHeader) Use CloudEvents header for metadata messages (instead of OPC UA PubSub NetworkMessage header, see <a href="https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/opcua.md" target="_blank" rel="noopener">here</a>)</label>
+        </p>
+        <p>
             <label>@Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata) Use Alternative Broker For OPC UA Metadata Messages</label>
         </p>
         <p>

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
@@ -8,6 +9,6 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         Task PublishAsync(byte[] payload);
 
-        Task PublishMetadataAsync(byte[] metadata);
+        Task PublishMetadataAsync(byte[] metadata, IReadOnlyDictionary<string, string> cloudEventAttributes = null);
     }
 }

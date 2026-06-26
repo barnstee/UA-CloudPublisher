@@ -188,6 +188,8 @@
 
         public bool OmitNetworkMessageHeader { get; set; } = false;
 
+        public bool UseCloudEventsMetadataHeader { get; set; } = false;
+
         public bool AutoLoadPersistedNodes { get; set; } = false;
 
         public string AzureOpenAIAPIEndpoint { get; set; } = string.Empty;
