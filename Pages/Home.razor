@@ -242,7 +242,7 @@
         }
 
         string altkind = Settings.Instance.UseKafkaForAlt ? "Kafka" : "MQTT";
-        bool altUsed = Settings.Instance.UseAltBrokerForMetadata || Settings.Instance.UseAltBrokerForReceivingUAOverMQTT;
+        bool altUsed = Settings.Instance.UseAltBrokerForMetadata;
         if (altUsed && !string.IsNullOrEmpty(Settings.Instance.AltBrokerUrl))
         {
             // we don't have a separate connected flag for alt broker; show as configured

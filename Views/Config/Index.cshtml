@@ -127,10 +127,7 @@
             @Html.TextBox("MetadataSendInterval", @Model.MetadataSendInterval, new { @class = "modern-input" })
         </p>
         <p>
-            <label>@Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata) Use Alternative Broker For OPC UA Metadata Messages (must not be enabled in conjunction with Use Alt Broker For Receiving UA Over MQTT)</label>
-        </p>
-        <p>
-            <label>@Html.CheckBox("UseAltBrokerForReceivingUAOverMQTT", @Model.UseAltBrokerForReceivingUAOverMQTT) Use Alternative Broker For Receiving OPC UA PubSub Over MQTT Messages (must not be enabled in conjunction with Use Alt Broker For Metadata)</label>
+            <label>@Html.CheckBox("UseAltBrokerForMetadata", @Model.UseAltBrokerForMetadata) Use Alternative Broker For OPC UA Metadata Messages</label>
         </p>
         <p>
             <label>@Html.CheckBox("SendUAStatus", @Model.SendUAStatus) Send OPC UA Status Messages</label>
@@ -175,6 +172,9 @@
         </p>
         <p>
             <label>@Html.CheckBox("ReversiblePubSubEncoding", @Model.ReversiblePubSubEncoding) Use Reversible PubSub Encoding</label>
+        </p>
+        <p>
+            <label>@Html.CheckBox("OmitNetworkMessageHeader", @Model.OmitNetworkMessageHeader) Omit PubSub NetworkMessage Header (when checked, telemetry is sent as a bare JSON array of DataSetMessages)</label>
         </p>
         <p>
             <label>@Html.CheckBox("AutoLoadPersistedNodes", @Model.AutoLoadPersistedNodes) Auto-Load Previously Published Nodes on Startup</label>

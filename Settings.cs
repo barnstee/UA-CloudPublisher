@@ -128,8 +128,6 @@
 
         public bool UseAltBrokerForMetadata { get; set; } = false;
 
-        public bool UseAltBrokerForReceivingUAOverMQTT { get; set; } = false;
-
         public string AltBrokerUrl { get; set; } = string.Empty;
 
         public uint AltBrokerPort { get; set; } = 8883;
@@ -187,6 +185,8 @@
         public int UAStackTraceMask { get; set; } = 645; // Error, Trace, StartStop, Security
 
         public bool ReversiblePubSubEncoding { get; set; } = false;
+
+        public bool OmitNetworkMessageHeader { get; set; } = false;
 
         public bool AutoLoadPersistedNodes { get; set; } = false;
 

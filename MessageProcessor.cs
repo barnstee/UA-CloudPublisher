@@ -237,7 +237,9 @@ namespace Opc.Ua.Cloud.Publisher
             // remove the trailing comma and finish the JSON message
             _batchBuffer.Position -= 1;
 
-            _batchBuffer.Write(Encoding.UTF8.GetBytes("]}"));
+            // when the NetworkMessage header is omitted, the message is just the JSON array of DataSetMessages,
+            // so we only close the array; otherwise we also close the surrounding NetworkMessage object
+            _batchBuffer.Write(Encoding.UTF8.GetBytes(Settings.Instance.OmitNetworkMessageHeader ? "]" : "]}"));
 
             _lastNotificationInBatch.Enqueue(_notificationsInBatch);
 

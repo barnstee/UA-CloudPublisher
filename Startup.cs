@@ -136,9 +136,8 @@ namespace Opc.Ua.Cloud.Publisher
 
                     // check if we need a second broker (for receiving UA over MQTT,
                     // or for sending metadata via a different broker kind than the primary)
-                    bool altKindDiffersForMetadata = Settings.Instance.UseAltBrokerForMetadata
-                        && Settings.Instance.UseKafkaForAlt != Settings.Instance.UseKafka;
-                    if (Settings.Instance.UseAltBrokerForReceivingUAOverMQTT || altKindDiffersForMetadata)
+                    bool altKindDiffersForMetadata = Settings.Instance.UseAltBrokerForMetadata && (Settings.Instance.UseKafkaForAlt != Settings.Instance.UseKafka);
+                    if (altKindDiffersForMetadata)
                     {
                         altBroker = brokerResolver(Settings.Instance.UseKafkaForAlt ? "Kafka" : "MQTT");
                         await altBroker.ConnectAsync(true).ConfigureAwait(false);

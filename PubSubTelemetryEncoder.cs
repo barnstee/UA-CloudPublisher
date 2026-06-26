@@ -21,8 +21,16 @@ namespace Opc.Ua.Cloud.Publisher
 
         public string EncodeHeader(ulong messageID, bool isMetaData = false)
         {
+            // The OPC UA PubSub JSON NetworkMessage header is optional (see OPC UA Part 14 JSON message mapping).
+            // When it is omitted for data messages, the NetworkMessage is simply the JSON array of DataSetMessages,
+            // so we only emit the opening bracket of that array here (the closing bracket is added when the batch is finished).
+            if (!isMetaData && Settings.Instance.OmitNetworkMessageHeader)
+            {
+                return "[";
+            }
+
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
-            // see https://reference.opcfoundation.org/v104/Core/docs/Part14/7.2.3/#7.2.3.2
+            // see https://reference.opcfoundation.org/v105/Core/docs/Part14/7.2.5/#7.2.5.4
             JsonEncoder encoder = new(new ServiceMessageContext(_app.Telemetry), Settings.Instance.ReversiblePubSubEncoding);
 
             encoder.WriteString("MessageId", messageID.ToString());
