@@ -129,15 +129,15 @@ By default, OPC UA metadata messages (`ua-metadata`) are published with the stan
 
 When enabled, metadata messages use the CloudEvents binary content mode: the message payload contains only the OPC UA `DataSetMetaData`, and the header information is mapped to CloudEvents context attributes that are carried as transport headers (MQTT user properties, or Kafka `ce_`-prefixed headers):
 
-| CloudEvents attribute | Value |
-| --- | --- |
-| `specversion` | `1.0` |
-| `type` | `ua-metadata` |
-| `id` | the message ID |
-| `source` | the configured Publisher ID |
-| `subject` | the DataSetWriterId |
-| `time` | the message timestamp (RFC 3339) |
-| `datacontenttype` | `application/json` |
+| CloudEvents attribute | Value                            |
+| --------------------- | -------------------------------- |
+| `specversion`         | `1.0`                            |
+| `type`                | `ua-metadata`                    |
+| `id`                  | the message ID                   |
+| `source`              | the configured Publisher ID      |
+| `subject`             | the DataSetWriterId              |
+| `time`                | the message timestamp (RFC 3339) |
+| `datacontenttype`     | `application/json`               |
 
 ## Optional Environment Variables
 
