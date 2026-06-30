@@ -1222,6 +1222,14 @@ namespace Opc.Ua.Cloud.Publisher
                     null,
                     certificateRequest);
 
+                // Push our trust list (including the issuer CA that signed the new certificate) to the
+                // server BEFORE updating its certificate. The server performs a trust check on the new
+                // certificate during UpdateCertificate; if it does not yet trust our issuer CA it rejects
+                // the update with BadSecurityChecksFailed.
+                TrustListDataType trustList = await GetTrustListsAsync().ConfigureAwait(false);
+
+                await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
+
                 byte[][] issuerCertificates = [_app.IssuerCert.Export(X509ContentType.Cert)];
                 await serverPushClient.UpdateCertificateAsync(
                     NodeId.Null,
@@ -1231,13 +1239,8 @@ namespace Opc.Ua.Cloud.Publisher
                     Array.Empty<byte>(),
                     issuerCertificates).ConfigureAwait(false);
 
-                // store in our own trust list
+                // store the new server certificate in our own trust list so we keep trusting the server
                 await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
-
-                // update trust list on server
-                TrustListDataType trustList = await GetTrustListsAsync().ConfigureAwait(false);
-
-                await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
 
                 await serverPushClient.ApplyChangesAsync().ConfigureAwait(false);
 

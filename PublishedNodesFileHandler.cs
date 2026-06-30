@@ -105,7 +105,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError("Cannot push new certificates to server " + server.EndpointUrl + "due to " + ex.Message);
+                            _logger.LogError("Cannot push new certificates to server " + server.EndpointUrl + " due to " + ex.Message);
                         }
 
                         currentpublishedNodeCount++;

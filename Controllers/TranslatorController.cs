@@ -195,7 +195,7 @@
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Cannot push new certificates to server " + endpointUrl + "due to " + ex.Message);
+                    _logger.LogError("Cannot push new certificates to server " + endpointUrl + " due to " + ex.Message);
                 }
             }
 
