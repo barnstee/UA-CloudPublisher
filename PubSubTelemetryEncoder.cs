@@ -96,13 +96,14 @@ namespace Opc.Ua.Cloud.Publisher
                 // process events
                 foreach (EventValueModel eventValue in messageData.EventValues)
                 {
+                    TypeInfo eventTypeInfo = eventValue.Value?.WrappedValue.TypeInfo;
                     FieldMetaData fieldData = new()
                     {
                         Name = eventValue.Name,
                         DataSetFieldId = new Uuid(Guid.NewGuid()),
-                        BuiltInType = (byte)eventValue.Value.WrappedValue.TypeInfo.BuiltInType,
-                        DataType = TypeInfo.GetDataTypeId(eventValue.Value.WrappedValue),
-                        ValueRank = eventValue.Value.WrappedValue.TypeInfo.ValueRank,
+                        BuiltInType = (byte)(eventTypeInfo?.BuiltInType ?? BuiltInType.Null),
+                        DataType = eventValue.Value != null ? TypeInfo.GetDataTypeId(eventValue.Value.WrappedValue) : null,
+                        ValueRank = eventTypeInfo?.ValueRank ?? ValueRanks.Scalar,
                         Description = LocalizedText.Null
                     };
 
@@ -111,13 +112,14 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
+                TypeInfo typeInfo = messageData.Value?.WrappedValue.TypeInfo;
                 FieldMetaData fieldData = new()
                 {
                     Name = messageData.Name,
                     DataSetFieldId = new Uuid(Guid.NewGuid()),
-                    BuiltInType = (byte)messageData.Value.WrappedValue.TypeInfo.BuiltInType,
-                    DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
-                    ValueRank = messageData.Value.WrappedValue.TypeInfo.ValueRank,
+                    BuiltInType = (byte)(typeInfo?.BuiltInType ?? BuiltInType.Null),
+                    DataType = messageData.Value != null ? TypeInfo.GetDataTypeId(messageData.Value.WrappedValue) : null,
+                    ValueRank = typeInfo?.ValueRank ?? ValueRanks.Scalar,
                     Description = new LocalizedText(messageData.DataType)
                 };
 
