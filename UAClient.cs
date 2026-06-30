@@ -1210,25 +1210,22 @@ namespace Opc.Ua.Cloud.Publisher
                 await serverPushClient.ConnectAsync(endpointURL).ConfigureAwait(false);
 
                 byte[] unusedNonce = Array.Empty<byte>();
+
+                // Ask the server to regenerate its private key (true) instead of reusing the existing one.
+                // Reusing an existing sub-2048-bit server key produces a re-issued certificate that modern
+                // OPC UA servers reject during UpdateCertificate with BadCertificatePolicyCheckFailed
+                // ("doesn't meet minimum key length requirement"); regenerating yields a compliant key size.
                 byte[] certificateRequest = await serverPushClient.CreateSigningRequestAsync(
                     NodeId.Null,
                     serverPushClient.ApplicationCertificateType,
                     string.Empty,
-                    false,
+                    true,
                     unusedNonce).ConfigureAwait(false);
 
                 X509Certificate2 certificate = ProcessSigningRequest(
                     serverPushClient.Session.ServerUris.ToArray()[0],
                     null,
                     certificateRequest);
-
-                // Push our trust list (including the issuer CA that signed the new certificate) to the
-                // server BEFORE updating its certificate. The server performs a trust check on the new
-                // certificate during UpdateCertificate; if it does not yet trust our issuer CA it rejects
-                // the update with BadSecurityChecksFailed.
-                TrustListDataType trustList = await GetTrustListsAsync().ConfigureAwait(false);
-
-                await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
 
                 byte[][] issuerCertificates = [_app.IssuerCert.Export(X509ContentType.Cert)];
                 await serverPushClient.UpdateCertificateAsync(
@@ -1241,6 +1238,11 @@ namespace Opc.Ua.Cloud.Publisher
 
                 // store the new server certificate in our own trust list so we keep trusting the server
                 await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
+
+                // update trust list on server
+                TrustListDataType trustList = await GetTrustListsAsync().ConfigureAwait(false);
+
+                await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
 
                 await serverPushClient.ApplyChangesAsync().ConfigureAwait(false);
 
