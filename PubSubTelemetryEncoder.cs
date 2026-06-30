@@ -136,17 +136,21 @@ namespace Opc.Ua.Cloud.Publisher
             // data types, resolved from the local (session) namespace table - no server round-trips. The
             // structure/enum/simple type descriptions are intentionally left empty: built-in types don't need
             // them, and describing custom types would require reading their definitions from the server.
-            foreach (FieldMetaData field in dataSetMetaData.Fields)
+            NamespaceTable namespaceUris = messageData.MessageContext?.NamespaceUris;
+            if (namespaceUris != null)
             {
-                if (field.DataType == null)
+                foreach (FieldMetaData field in dataSetMetaData.Fields)
                 {
-                    continue;
-                }
+                    if (field.DataType == null)
+                    {
+                        continue;
+                    }
 
-                string namespaceUri = messageData.MessageContext.NamespaceUris.GetString(field.DataType.NamespaceIndex);
-                if (!string.IsNullOrEmpty(namespaceUri) && !dataSetMetaData.Namespaces.Contains(namespaceUri))
-                {
-                    dataSetMetaData.Namespaces.Add(namespaceUri);
+                    string namespaceUri = namespaceUris.GetString(field.DataType.NamespaceIndex);
+                    if (!string.IsNullOrEmpty(namespaceUri) && !dataSetMetaData.Namespaces.Contains(namespaceUri))
+                    {
+                        dataSetMetaData.Namespaces.Add(namespaceUri);
+                    }
                 }
             }
 
