@@ -17,7 +17,9 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
   - [Configuration](#configuration)
   - [UA Edge Translator Integration](#ua-edge-translator-integration)
 - [Usage](#usage)
-  - [Persisting Logs, Settings, Published Nodes and OPC UA Certificates](#persisting-logs-settings-published-nodes-and-opc-ua-certificates)
+  - [Running on Docker](#running-on-docker)
+    - [Persisting Logs, Settings, Published Nodes and OPC UA Certificates](#persisting-logs-settings-published-nodes-and-opc-ua-certificates)
+  - [Running on Kubernetes](#running-on-kubernetes)
 - [Using the Alternative Broker](#using-the-alternative-broker)
 - [CloudEvents Metadata Messages](#cloudevents-metadata-messages)
 - [Optional Environment Variables](#optional-environment-variables)
@@ -101,15 +103,19 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 
 ## Usage
 
+UA Cloud Publisher is distributed as a pre-built, multi-architecture (`x64` and `arm64`) container image published to GitHub Container Registry. It can be run on any Docker host or on a Kubernetes cluster.
+
+Note: We have also provided a [test environment](./TestEnvironment/readme.md) to get you started.
+
+### Running on Docker
+
 Docker containers are automatically built and published. Simply run the UA Cloud Publisher on a Docker-enabled computer via:
 
 `docker run -itd -p 80:8080 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 And then point your browser to <http://yourIPAddress>.
 
-Note: We have also provided a [test environment](./TestEnvironment/readme.md) to get you started.
-
-### Persisting Logs, Settings, Published Nodes and OPC UA Certificates
+#### Persisting Logs, Settings, Published Nodes and OPC UA Certificates
 
 UA Cloud Publisher logs, settings, published nodes and OPC UA certificates can be persisted locally across Docker container restarts by running:
 
@@ -118,6 +124,25 @@ UA Cloud Publisher logs, settings, published nodes and OPC UA certificates can b
 For Linux hosts, remove the `c:` instances from the command above.
 
 And then point your browser to `http://yourIPAddress`.
+
+### Running on Kubernetes
+
+A ready-to-use Kubernetes deployment manifest is provided in [`UA-CloudPublisher.yaml`](./UA-CloudPublisher.yaml). Applying it creates:
+
+- a dedicated `ua-cloudpublisher-namespace` namespace,
+- a single-replica `Deployment` running the `ghcr.io/barnstee/ua-cloudpublisher:main` image on a Linux node, and
+- a `LoadBalancer` `Service` that exposes the web UI on port `8080`.
+
+Deploy it with:
+
+`kubectl apply -f UA-CloudPublisher.yaml`
+
+Once the service has been assigned an external IP (check with `kubectl get service ua-cloudpublisher -n ua-cloudpublisher-namespace`), point your browser to `http://<externalIP>:8080`.
+
+Before deploying, review and adjust the following in the manifest to match your environment:
+
+- **OPC UA credentials**: the `OPCUA_USERNAME` and `OPCUA_PASSWORD` environment variables (used when connecting to OPC UA servers and for GDS Server Push). See [Optional Environment Variables](#optional-environment-variables) for the full list of variables you can add here.
+- **Persistent storage**: the `settings`, `pki` and `logs` volumes persist configuration, OPC UA certificates and logs across pod restarts. The sample uses `hostPath` volumes pointing at `/mnt/c/K3s/PublisherConfig/...` (a K3s-on-Windows layout); change these paths — or replace them with `PersistentVolumeClaim`s — to suit your cluster.
 
 ## Using the Alternative Broker
 
