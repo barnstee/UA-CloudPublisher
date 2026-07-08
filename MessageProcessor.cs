@@ -30,6 +30,9 @@ namespace Opc.Ua.Cloud.Publisher
         private Dictionary<ushort, string> _metadataMessages = new Dictionary<ushort, string>();
         private object _metadataMessagesLock = new object();
 
+        private Dictionary<ushort, string> _dataSetWriters = new Dictionary<ushort, string>();
+        private object _dataSetWritersLock = new object();
+
         private Timer _metadataTimer;
         private Timer _statusTimer;
         private bool _isRunning = false;
@@ -53,6 +56,11 @@ namespace Opc.Ua.Cloud.Publisher
             lock (_metadataMessagesLock)
             {
                 _metadataMessages.Clear();
+            }
+
+            lock (_dataSetWritersLock)
+            {
+                _dataSetWriters.Clear();
             }
         }
 
@@ -301,6 +309,34 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
+        // Sends an OPC UA PubSub connection (discovery) message describing all DataSets currently being published.
+        // It is sent whenever the set of DataSets changes (which also covers the initial publish), together with the
+        // metadata messages - not on a periodic timer.
+        private async Task SendConnectionMessageAsync()
+        {
+            try
+            {
+                Dictionary<ushort, string> dataSetWriters;
+                lock (_dataSetWritersLock)
+                {
+                    dataSetWriters = new Dictionary<ushort, string>(_dataSetWriters);
+                }
+
+                using (MemoryStream buffer = new MemoryStream())
+                {
+                    buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeConnection(Interlocked.Increment(ref _messageID) - 1, dataSetWriters)));
+                    if (await _sink.SendMetadataAsync(buffer.ToArray()).ConfigureAwait(false))
+                    {
+                        _logger.LogDebug($"Sent connection message to broker!");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while sending connection message.");
+            }
+        }
+
         private async void SendMetadataOnTimerAsync(object state)
         {
             // stop the timer while we're sending
@@ -340,6 +376,28 @@ namespace Opc.Ua.Cloud.Publisher
         {
             ushort hash;
             string jsonMessage = _encoder.EncodePayload(messageData, out hash);
+
+            if (Settings.Instance.SendUAConnection)
+            {
+                // remember the DataSetWriter (keyed by its DataSetWriterId) so the connection message can
+                // advertise every DataSet this Publisher writes
+                bool isNewDataSetWriter = false;
+                lock (_dataSetWritersLock)
+                {
+                    if (!_dataSetWriters.ContainsKey(hash))
+                    {
+                        _dataSetWriters[hash] = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId;
+                        isNewDataSetWriter = true;
+                    }
+                }
+
+                // send a connection (discovery) message whenever the set of DataSets changes, i.e. when a new
+                // DataSet is published for the first time (this also covers the initial publish at the beginning)
+                if (isNewDataSetWriter)
+                {
+                    await SendConnectionMessageAsync().ConfigureAwait(false);
+                }
+            }
 
             if (Settings.Instance.SendUAMetadata)
             {

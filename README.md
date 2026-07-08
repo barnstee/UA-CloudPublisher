@@ -54,9 +54,11 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - OPC UA Alarms, Conditions & other events publishing
 - OPC UA Event filtering
 - OPC UA Complex Types publishing
-- OPC UA metadata messages publishing
+- OPC UA DataSet message publishing
+- OPC UA PubSub metadata messages publishing
 - Support for encoding OPC UA metadata messages as CloudEvents (an alternative to the PubSub NetworkMessage header)
-- OPC UA status messages publishing
+- OPC UA PubSub status messages publishing
+- OPC UA PubSub connection messages publishing
 - Diagnostics info publishing
 - UI for displaying the list of publishes nodes
 - UI for displaying diagnostic information

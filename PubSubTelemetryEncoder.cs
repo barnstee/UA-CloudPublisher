@@ -11,6 +11,10 @@ namespace Opc.Ua.Cloud.Publisher
 
     public class PubSubTelemetryEncoder : IMessageEncoder
     {
+        // OPC UA PubSub JSON-over-MQTT transport profile URI (see OPC 10000-7). The connection message
+        // uses the OPC UA JSON message mapping, so we advertise the JSON MQTT profile rather than the UADP one.
+        private const string PubSubJsonTransportProfileUri = "http://opcfoundation.org/UA-Profile/Transport/pubsub-mqtt-json";
+
         private readonly IUAApplication _app;
         private readonly ILogger _logger;
 
@@ -294,6 +298,106 @@ namespace Opc.Ua.Cloud.Publisher
                 _logger.LogError(e, "Generation of JSON PubSub status message failed.");
                 return string.Empty;
             }
+        }
+
+        public string EncodeConnection(ulong messageID, IReadOnlyDictionary<ushort, string> dataSetWriters)
+        {
+            try
+            {
+                // encode a PubSub JSON connection (discovery) message, describing this Publisher's PubSubConnection.
+                // See the JSON PubSubConnection definition (Table 192) in OPC UA Part 14 JSON message mapping:
+                // https://reference.opcfoundation.org/v105/Core/docs/Part14/7.2.5.5.6
+                JsonEncoder encoder = new(new ServiceMessageContext(_app.Telemetry), Settings.Instance.ReversiblePubSubEncoding);
+
+                encoder.WriteString("MessageId", messageID.ToString());
+                encoder.WriteString("MessageType", "ua-connection");
+                encoder.WriteString("PublisherId", Settings.Instance.PublisherName);
+                encoder.WriteDateTime("Timestamp", DateTime.UtcNow);
+
+                encoder.WriteEncodeable("Connection", BuildPubSubConnection(dataSetWriters), typeof(PubSubConnectionDataType));
+
+                return encoder.CloseAndReturnText();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Generation of JSON PubSub connection message failed.");
+                return string.Empty;
+            }
+        }
+
+        // Builds the PubSubConnectionDataType advertised in the OPC UA PubSub connection (discovery) message.
+        // Per OPC UA Part 14 (Table 192) the Address and ReaderGroup lists shall be empty and no configuration
+        // properties are included in the PubSubConnection, WriterGroup or DataSetWriter.
+        private static PubSubConnectionDataType BuildPubSubConnection(IReadOnlyDictionary<ushort, string> dataSetWriters)
+        {
+            WriterGroupDataType writerGroup = new()
+            {
+                Name = Settings.Instance.PublisherName,
+                Enabled = true,
+                WriterGroupId = 1,
+                PublishingInterval = Settings.Instance.DefaultSendIntervalSeconds * 1000.0,
+                DataSetWriters = new DataSetWriterDataTypeCollection(),
+                // advertise the JSON network message layout produced by this WriterGroup
+                MessageSettings = new ExtensionObject(new JsonWriterGroupMessageDataType()
+                {
+                    NetworkMessageContentMask = (uint)(JsonNetworkMessageContentMask.NetworkMessageHeader
+                        | JsonNetworkMessageContentMask.DataSetMessageHeader
+                        | JsonNetworkMessageContentMask.PublisherId
+                        | JsonNetworkMessageContentMask.DataSetClassId)
+                }),
+                // advertise the MQTT topic this WriterGroup publishes to
+                TransportSettings = new ExtensionObject(new BrokerWriterGroupTransportDataType()
+                {
+                    QueueName = Settings.Instance.BrokerMessageTopic
+                })
+            };
+
+            if (dataSetWriters != null)
+            {
+                foreach (KeyValuePair<ushort, string> dataSetWriter in dataSetWriters)
+                {
+                    writerGroup.DataSetWriters.Add(new DataSetWriterDataType()
+                    {
+                        Name = dataSetWriter.Value,
+                        Enabled = true,
+                        DataSetWriterId = dataSetWriter.Key,
+                        DataSetName = dataSetWriter.Value,
+                        // advertise the JSON DataSetMessage layout for this DataSetWriter
+                        MessageSettings = new ExtensionObject(new JsonDataSetWriterMessageDataType()
+                        {
+                            DataSetMessageContentMask = (uint)(JsonDataSetMessageContentMask.DataSetWriterId
+                                | JsonDataSetMessageContentMask.MetaDataVersion
+                                | JsonDataSetMessageContentMask.SequenceNumber
+                                | JsonDataSetMessageContentMask.Timestamp
+                                | JsonDataSetMessageContentMask.Status
+                                | JsonDataSetMessageContentMask.MessageType
+                                | JsonDataSetMessageContentMask.DataSetWriterName)
+                        }),
+                        // advertise the MQTT data and metadata topics for this DataSetWriter
+                        TransportSettings = new ExtensionObject(new BrokerDataSetWriterTransportDataType()
+                        {
+                            QueueName = Settings.Instance.BrokerMessageTopic,
+                            MetaDataQueueName = Settings.Instance.BrokerMetadataTopic
+                        })
+                    });
+                }
+            }
+
+            return new PubSubConnectionDataType()
+            {
+                Name = Settings.Instance.PublisherName,
+                Enabled = true,
+                PublisherId = new Variant(Settings.Instance.PublisherName),
+                TransportProfileUri = PubSubJsonTransportProfileUri,
+                // advertise the MQTT broker address this Publisher connects to
+                Address = new ExtensionObject(new NetworkAddressUrlDataType()
+                {
+                    NetworkInterface = string.Empty,
+                    Url = Settings.Instance.BrokerUrl
+                }),
+                TransportSettings = new ExtensionObject(new BrokerConnectionTransportDataType()),
+                WriterGroups = new WriterGroupDataTypeCollection() { writerGroup }
+            };
         }
     }
 }

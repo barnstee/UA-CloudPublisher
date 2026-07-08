@@ -17,5 +17,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
         IReadOnlyDictionary<string, string> BuildCloudEventMetadataAttributes(ulong messageId, ushort dataSetWriterId);
 
         string EncodeStatus(ulong messageID);
+
+        string EncodeConnection(ulong messageID, IReadOnlyDictionary<ushort, string> dataSetWriters);
     }
 }
