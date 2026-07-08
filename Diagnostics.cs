@@ -121,23 +121,26 @@ namespace Opc.Ua.Cloud.Publisher
         {
             value.ServerTimestamp = DateTime.UtcNow;
 
-            try
+            if (Settings.Instance.SendDiagnosticsMessages)
             {
-                MessageProcessorModel messageData = new()
+                try
                 {
-                    ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;s=" + displayName,
-                    ApplicationUri = "urn:" + Settings.Instance.PublisherName,
-                    MessageContext = new ServiceMessageContext(null),
-                    Name = displayName,
-                    Value = value
-                };
+                    MessageProcessorModel messageData = new()
+                    {
+                        ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;s=" + displayName,
+                        ApplicationUri = "urn:" + Settings.Instance.PublisherName,
+                        MessageContext = new ServiceMessageContext(null),
+                        Name = displayName,
+                        Value = value
+                    };
 
-                // enqueue the message
-                MessageProcessor.Enqueue(messageData);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Message for diagnostics failed with {ex.Message}'.");
+                    // enqueue the message
+                    MessageProcessor.Enqueue(messageData);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Message for diagnostics failed with {ex.Message}'.");
+                }
             }
         }
     }
