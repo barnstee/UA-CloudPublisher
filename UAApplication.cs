@@ -69,11 +69,26 @@ namespace Opc.Ua.Cloud.Publisher
 
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
 
+            // create OPC UA cert validator
+            UAApplicationInstance.ApplicationConfiguration.CertificateValidator = new CertificateValidator(Telemetry);
+            UAApplicationInstance.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAServerCertificateValidationCallback);
+            await UAApplicationInstance.ApplicationConfiguration.CertificateValidator.UpdateAsync(UAApplicationInstance.ApplicationConfiguration).ConfigureAwait(false);
+
             await CreateIssuerCertAsync().ConfigureAwait(false);
 
             _logger.LogInformation("Creating reverse connection endpoint on local port 50000.");
             ReverseConnectManager.AddEndpoint(new Uri("opc.tcp://localhost:50000"));
             ReverseConnectManager.StartService(UAApplicationInstance.ApplicationConfiguration);
+        }
+
+        private void OPCUAServerCertificateValidationCallback(CertificateValidator validator, CertificateValidationEventArgs e)
+        {
+            // always trust the OPC UA server certificate
+            if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
+            {
+                _logger.LogInformation($"Auto-accepting untrusted OPC UA server certificate {e.Certificate.Subject}");
+                e.Accept = true;
+            }
         }
 
         private async Task CreateIssuerCertAsync()

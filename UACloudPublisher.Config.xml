@@ -30,9 +30,9 @@
       <StoreType>Directory</StoreType>
       <StorePath>./pki/rejected</StorePath>
     </RejectedCertificateStore>
-    <AutoAcceptUntrustedCertificates>true</AutoAcceptUntrustedCertificates>
-    <RejectSHA1SignedCertificates>false</RejectSHA1SignedCertificates>
-    <MinimumCertificateKeySize>1024</MinimumCertificateKeySize>
+    <AutoAcceptUntrustedCertificates>false</AutoAcceptUntrustedCertificates>
+    <RejectSHA1SignedCertificates>true</RejectSHA1SignedCertificates>
+    <MinimumCertificateKeySize>2048</MinimumCertificateKeySize>
     <SendCertificateChain>false</SendCertificateChain>
     <!-- Where the User issers list is stored-->
     <UserIssuerCertificates>
