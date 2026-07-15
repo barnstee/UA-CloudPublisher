@@ -13,6 +13,10 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId nodeId);
 
+        Task<ISystemContext> GetSystemContextAsync(string endpointUrl, string username, string password);
+
+        Task<List<NodeState>> CollectDataTypeDefinitionsAsync(string endpointUrl, string username, string password, IEnumerable<NodeId> dataTypeIds);
+
         Task<string> ReadNodeAsync(string endpointUrl, string username, string password, string nodeId);
 
         Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);

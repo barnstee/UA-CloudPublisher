@@ -40,6 +40,12 @@
             <input class="btn btn-primary" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
         }
     </div>
+    <div class="row browser_browse_generate_nodeset_button">
+        @using (Html.BeginForm("GenerateNodeSet", "Browser"))
+        {
+            <input class="btn btn-primary" type="submit" value="Generate Nodeset2.xml file from all OPC UA variables in the server" />
+        }
+    </div>
     <div class="row browser_browse_gds_push_button">
         @using (Html.BeginForm("PushCert", "Browser"))
         {

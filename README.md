@@ -38,6 +38,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - UI for connecting to, browsing of, reading nodes from and publishing nodes from an OPC UA server
 - Generates a CSV file containing all OPC UA nodes from a connected server
 - Generates a `publishednodes.json` file containing all OPC UA variable nodes from a connected server
+- Generates a Nodeset2.xml file containing all OPC UA variable nodes from a connected server
 - Uses OPC UA PubSub JSON encoding
 - Uses MQTT broker as publishing endpoint
 - Uses Kafka broker as publishing endpoint

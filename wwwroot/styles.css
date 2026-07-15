@@ -579,6 +579,7 @@ table {
 .browser_browse_connect_button,
 .browser_browse_generate_pn_button,
 .browser_browse_generate_csv_button,
+.browser_browse_generate_nodeset_button,
 .browser_browse_gds_push_button,
 .browser_browse_disconnect_button {
     margin-top: .5rem;

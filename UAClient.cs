@@ -1150,13 +1150,51 @@ namespace Opc.Ua.Cloud.Publisher
 
                     if (nodeReference.NodeClass == NodeClass.Variable)
                     {
+                        NodeId resolvedNodeId = ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris);
+                        nodeInfo.NodeId = resolvedNodeId;
+
                         try
                         {
-                            DataValue value = await session.ReadValueAsync(ExpandedNodeId.ToNodeId(nodeReference.NodeId, session.NamespaceUris)).ConfigureAwait(false);
+                            nodeInfo.VariableNode = (VariableNode)await session.ReadNodeAsync(resolvedNodeId).ConfigureAwait(false);
+
+                            // resolve the DataType to its built-in base type via the type tree; this stays resolvable even
+                            // for newer/unknown standard DataTypes and does not require the value to be readable
+                            if ((nodeInfo.VariableNode != null) && !NodeId.IsNull(nodeInfo.VariableNode.DataType))
+                            {
+                                BuiltInType baseType = TypeInfo.GetBuiltInType(nodeInfo.VariableNode.DataType, session.TypeTree);
+                                if ((baseType != BuiltInType.Null) && (baseType != BuiltInType.Variant))
+                                {
+                                    nodeInfo.VariableDataTypeId = new NodeId((uint)baseType);
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // do nothing
+                        }
+
+                        try
+                        {
+                            DataValue value = await session.ReadValueAsync(resolvedNodeId).ConfigureAwait(false);
                             if ((value != null) && (value.WrappedValue != Variant.Null))
                             {
                                 nodeInfo.VariableCurrentValue = value.ToString();
                                 nodeInfo.VariableType = value.WrappedValue.TypeInfo.ToString();
+
+                                // fall back to the value's built-in type if the DataType could not be resolved above
+                                if (NodeId.IsNull(nodeInfo.VariableDataTypeId))
+                                {
+                                    BuiltInType builtInType = value.WrappedValue.TypeInfo.BuiltInType;
+                                    if ((builtInType != BuiltInType.Null) && (builtInType != BuiltInType.Variant))
+                                    {
+                                        nodeInfo.VariableDataTypeId = new NodeId((uint)builtInType);
+                                    }
+                                }
+
+                                if (StatusCode.IsGood(value.StatusCode))
+                                {
+                                    nodeInfo.VariableValue = value.Value;
+                                }
                             }
                         }
                         catch (Exception)
@@ -1186,6 +1224,182 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             return results;
+        }
+
+        public async Task<ISystemContext> GetSystemContextAsync(string endpointUrl, string username, string password)
+        {
+            ISession session = await ConnectSessionAsync(endpointUrl, username, password).ConfigureAwait(false);
+            if (session == null)
+            {
+                throw new Exception($"Could not create session for endpoint {endpointUrl}!");
+            }
+
+            // build a context that carries the session's live namespace table so the namespace indices used by the
+            // exported NodeIds (resolved against session.NamespaceUris) map to the correct namespace URIs on export,
+            // keeping the custom DataType namespaces intact
+            return new SystemContext(null)
+            {
+                NamespaceUris = session.NamespaceUris,
+                ServerUris = session.ServerUris,
+                EncodeableFactory = session.Factory,
+                TypeTable = session.TypeTree
+            };
+        }
+
+        public async Task<List<NodeState>> CollectDataTypeDefinitionsAsync(string endpointUrl, string username, string password, IEnumerable<NodeId> dataTypeIds)
+        {
+            ISession session = await ConnectSessionAsync(endpointUrl, username, password).ConfigureAwait(false);
+            if (session == null)
+            {
+                throw new Exception($"Could not create session for endpoint {endpointUrl}!");
+            }
+
+            Dictionary<NodeId, NodeState> collected = new();
+
+            foreach (NodeId dataTypeId in dataTypeIds)
+            {
+                await CollectDataTypeAsync(session, dataTypeId, collected).ConfigureAwait(false);
+            }
+
+            return collected.Values.ToList();
+        }
+
+        private async Task CollectDataTypeAsync(ISession session, NodeId dataTypeId, Dictionary<NodeId, NodeState> collected)
+        {
+            // standard OPC UA DataTypes (namespace 0) are already known to importers and must not be redefined
+            if (NodeId.IsNull(dataTypeId) || (dataTypeId.NamespaceIndex == 0) || collected.ContainsKey(dataTypeId))
+            {
+                return;
+            }
+
+            DataTypeNode node;
+            try
+            {
+                node = (DataTypeNode)await session.ReadNodeAsync(dataTypeId).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            if (node == null)
+            {
+                return;
+            }
+
+            DataTypeState state = new()
+            {
+                NodeId = dataTypeId,
+                BrowseName = node.BrowseName,
+                DisplayName = node.DisplayName,
+                Description = node.Description,
+                IsAbstract = node.IsAbstract,
+                WriteMask = (AttributeWriteMask)node.WriteMask,
+                UserWriteMask = (AttributeWriteMask)node.UserWriteMask
+            };
+
+            DataTypeDefinition definition = node.DataTypeDefinition?.Body as DataTypeDefinition;
+            if (definition != null)
+            {
+                state.DataTypeDefinition = node.DataTypeDefinition;
+            }
+
+            collected.Add(dataTypeId, state);
+
+            // include the supertype chain so the DataType hierarchy remains intact
+            NodeId superTypeId = await GetSuperTypeAsync(session, dataTypeId).ConfigureAwait(false);
+            if (!NodeId.IsNull(superTypeId))
+            {
+                state.SuperTypeId = superTypeId;
+                await CollectDataTypeAsync(session, superTypeId, collected).ConfigureAwait(false);
+            }
+
+            // include any custom DataTypes referenced by structure fields
+            if ((definition is StructureDefinition structureDefinition) && (structureDefinition.Fields != null))
+            {
+                foreach (StructureField field in structureDefinition.Fields)
+                {
+                    await CollectDataTypeAsync(session, field.DataType, collected).ConfigureAwait(false);
+                }
+            }
+
+            // include the DataType's encoding nodes (e.g. Default Binary) so structures can be decoded by importers
+            await CollectDataTypeEncodingsAsync(session, dataTypeId, state, collected).ConfigureAwait(false);
+        }
+
+        private static async Task CollectDataTypeEncodingsAsync(ISession session, NodeId dataTypeId, DataTypeState dataTypeState, Dictionary<NodeId, NodeState> collected)
+        {
+            try
+            {
+                (_, _, ReferenceDescriptionCollection encodings) = await session.BrowseAsync(
+                    null,
+                    null,
+                    dataTypeId,
+                    0,
+                    BrowseDirection.Forward,
+                    ReferenceTypeIds.HasEncoding,
+                    true,
+                    (uint)NodeClass.Object).ConfigureAwait(false);
+
+                if (encodings == null)
+                {
+                    return;
+                }
+
+                foreach (ReferenceDescription encoding in encodings)
+                {
+                    NodeId encodingNodeId = ExpandedNodeId.ToNodeId(encoding.NodeId, session.NamespaceUris);
+                    if (NodeId.IsNull(encodingNodeId) || (encodingNodeId.NamespaceIndex == 0) || collected.ContainsKey(encodingNodeId))
+                    {
+                        continue;
+                    }
+
+                    BaseObjectState encodingState = new(null)
+                    {
+                        NodeId = encodingNodeId,
+                        BrowseName = encoding.BrowseName,
+                        DisplayName = encoding.DisplayName,
+                        TypeDefinitionId = ObjectTypeIds.DataTypeEncodingType
+                    };
+
+                    // keep the HasEncoding relationship intact in both directions
+                    encodingState.AddReference(ReferenceTypeIds.HasEncoding, true, new ExpandedNodeId(dataTypeId));
+                    dataTypeState.AddReference(ReferenceTypeIds.HasEncoding, false, new ExpandedNodeId(encodingNodeId));
+
+                    collected.Add(encodingNodeId, encodingState);
+                }
+            }
+            catch (Exception)
+            {
+                // no encodings available
+            }
+        }
+
+        private static async Task<NodeId> GetSuperTypeAsync(ISession session, NodeId typeId)
+        {
+            try
+            {
+                (_, _, ReferenceDescriptionCollection references) = await session.BrowseAsync(
+                    null,
+                    null,
+                    typeId,
+                    1,
+                    BrowseDirection.Inverse,
+                    ReferenceTypeIds.HasSubtype,
+                    true,
+                    (uint)NodeClass.DataType).ConfigureAwait(false);
+
+                if ((references != null) && (references.Count > 0))
+                {
+                    return ExpandedNodeId.ToNodeId(references[0].NodeId, session.NamespaceUris);
+                }
+            }
+            catch (Exception)
+            {
+                // no supertype available
+            }
+
+            return null;
         }
 
         public async Task GDSServerPushAsync(string endpointURL, string adminUsername, string adminPassword)
