@@ -28,34 +28,49 @@
 <div class="app-card">
     <h3 class="card-title"><i class="fas fa-tools"></i> Session Actions</h3>
 
-    <div class="row browser_browse_generate_pn_button">
-        @using (Html.BeginForm("GeneratePN", "Browser"))
-        {
-            <input class="btn btn-primary" type="submit" value="Generate publishednodes.json file from all OPC UA variables in the server" />
-        }
+    <div class="action-group export-group">
+        <h4 class="action-group-title">Export</h4>
+        <div class="row browser_browse_generate_pn_button">
+            @using (Html.BeginForm("GeneratePN", "Browser"))
+            {
+                <input class="btn btn-primary" type="submit" value="Generate publishednodes.json file from all OPC UA variables in the server" />
+            }
+        </div>
+        <div class="row browser_browse_generate_csv_button">
+            @using (Html.BeginForm("GenerateCSV", "Browser"))
+            {
+                <input class="btn btn-primary" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
+            }
+        </div>
+        <div class="row browser_browse_generate_nodeset_button">
+            @using (Html.BeginForm("GenerateNodeSet", "Browser"))
+            {
+                <div class="nodeset-export-controls">
+                    <input class="btn btn-primary" type="submit" value="Generate Nodeset2.xml file from all OPC UA variables in the selected namespace:" />
+                    <select id="namespaceUri" name="namespaceUri" class="form-control">
+                        @foreach (string ns in Model.Namespaces)
+                        {
+                            <option value="@ns">@ns</option>
+                        }
+                    </select>
+                </div>
+            }
+        </div>
     </div>
-    <div class="row browser_browse_generate_csv_button">
-        @using (Html.BeginForm("GenerateCSV", "Browser"))
-        {
-            <input class="btn btn-primary" type="submit" value="Generate CSV file from all OPC UA variables in the server" />
-        }
-    </div>
-    <div class="row browser_browse_generate_nodeset_button">
-        @using (Html.BeginForm("GenerateNodeSet", "Browser"))
-        {
-            <input class="btn btn-primary" type="submit" value="Generate Nodeset2.xml file from all OPC UA variables in the server" />
-        }
-    </div>
-    <div class="row browser_browse_gds_push_button">
-        @using (Html.BeginForm("PushCert", "Browser"))
-        {
-            <input class="btn btn-primary" type="submit" value="Send new certificate and trust list to the server (GDS Server Push)" />
-        }
-    </div>
-    <div class="row browser_browse_disconnect_button">
-        @using (Html.BeginForm("Disconnect", "Browser"))
-        {
-            <input id="disconnectButton" class="btn btn-secondary" type="submit" value="Disconnect" />
-        }
+
+    <div class="action-group server-group">
+        <h4 class="action-group-title">Server</h4>
+        <div class="row browser_browse_gds_push_button">
+            @using (Html.BeginForm("PushCert", "Browser"))
+            {
+                <input class="btn btn-primary" type="submit" value="Send new certificate and trust list to the server (GDS Server Push)" />
+            }
+        </div>
+        <div class="row browser_browse_disconnect_button">
+            @using (Html.BeginForm("Disconnect", "Browser"))
+            {
+                <input id="disconnectButton" class="btn btn-secondary" type="submit" value="Disconnect" />
+            }
+        </div>
     </div>
 </div>

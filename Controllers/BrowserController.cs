@@ -45,12 +45,15 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpGet]
-        public ActionResult Index()
+        public async Task<ActionResult> Index()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             if (!string.IsNullOrEmpty(_session.EndpointUrl))
             {
+                _session.UserName = HttpContext.Session.GetString("UserName");
+                _session.Password = HttpContext.Session.GetString("Password");
+                await PopulateNamespacesAsync().ConfigureAwait(false);
                 return View("Browse", _session);
             }
 
@@ -60,21 +63,30 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         [HttpPost]
         public ActionResult UserPassword(string endpointUrl)
         {
-            if (string.IsNullOrEmpty(endpointUrl) || !endpointUrl.StartsWith("opc.tcp://"))
+            string address = endpointUrl?.Trim();
+
+            // strip any scheme the user may have typed so we can normalize to a single opc.tcp:// prefix
+            if (!string.IsNullOrEmpty(address) && address.StartsWith("opc.tcp://", StringComparison.OrdinalIgnoreCase))
             {
-                _session.StatusMessage = "Please provide a valid OPC UA endpoint URL in the address format opc.tcp://ipaddress:port";
+                address = address.Substring("opc.tcp://".Length);
+            }
+
+            if (string.IsNullOrEmpty(address))
+            {
+                _session.StatusMessage = "Please provide the OPC UA server's address in the format ipaddress:port";
                 return View("Index", _session);
             }
 
-            _session.EndpointUrl = endpointUrl;
+            // the opc.tcp:// scheme is implied by the label in the UI, so prepend it to what the user entered
+            _session.EndpointUrl = "opc.tcp://" + address;
 
-            HttpContext.Session.SetString("EndpointUrl", endpointUrl);
+            HttpContext.Session.SetString("EndpointUrl", _session.EndpointUrl);
 
             return View("User", _session);
         }
 
         [HttpPost]
-        public ActionResult Connect(string username, string password)
+        public async Task<ActionResult> Connect(string username, string password)
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
             _session.UserName = username;
@@ -83,7 +95,22 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
             HttpContext.Session.SetString("UserName", username ?? string.Empty);
             HttpContext.Session.SetString("Password", password ?? string.Empty);
 
+            await PopulateNamespacesAsync().ConfigureAwait(false);
+
             return View("Browse", _session);
+        }
+
+        private async Task PopulateNamespacesAsync()
+        {
+            try
+            {
+                string[] namespaces = await _client.GetNamespaceUrisAsync(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+                _session.Namespaces = new List<string>(namespaces);
+            }
+            catch (Exception)
+            {
+                _session.Namespaces = new List<string>();
+            }
         }
 
         [HttpPost]
@@ -217,7 +244,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GenerateNodeSetAsync()
+        public async Task<ActionResult> GenerateNodeSetAsync(string namespaceUri)
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
             _session.UserName = HttpContext.Session.GetString("UserName");
@@ -228,9 +255,37 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 List<UANodeInformation> results = await _client.BrowseVariableNodesResursivelyAsync(_session.EndpointUrl, _session.UserName, _session.Password, null).ConfigureAwait(false);
                 ISystemContext context = await _client.GetSystemContextAsync(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
 
+                // the selected namespace becomes the exported model; only variables from this namespace are exported
+                string modelUri = namespaceUri?.Trim();
+                if (string.IsNullOrEmpty(modelUri))
+                {
+                    _session.StatusMessage = "Please select a namespace to export.";
+                    await PopulateNamespacesAsync().ConfigureAwait(false);
+                    return View("Browse", _session);
+                }
+
+                int modelNamespaceIndex = -1;
+                for (int i = 0; i < context.NamespaceUris.Count; i++)
+                {
+                    if (string.Equals(context.NamespaceUris.GetString((uint)i), modelUri, StringComparison.Ordinal))
+                    {
+                        modelNamespaceIndex = i;
+                        break;
+                    }
+                }
+
+                if (modelNamespaceIndex <= 0)
+                {
+                    _session.StatusMessage = $"The selected namespace '{modelUri}' is not available on the server.";
+                    await PopulateNamespacesAsync().ConfigureAwait(false);
+                    return View("Browse", _session);
+                }
+
                 NodeStateCollection nodeStateCollection = new();
                 HashSet<NodeId> addedNodes = new();
-                HashSet<NodeId> customDataTypeIds = new();
+
+                // namespaces (other than the exported model's own) that exported nodes depend on, declared as required models
+                HashSet<string> requiredNamespaceUris = new(StringComparer.Ordinal) { Namespaces.OpcUa };
 
                 // create a single Folder object named after the UA server and organize it under the standard Objects folder
                 string serverName = results.Find(r => !string.IsNullOrEmpty(r.ApplicationUri))?.ApplicationUri;
@@ -239,10 +294,11 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     serverName = _session.EndpointUrl;
                 }
 
+                // the anchor folder belongs to the exported model's namespace so a strict importer instantiates it
                 FolderState serverFolder = new(null)
                 {
-                    NodeId = new NodeId(Guid.NewGuid(), 1),
-                    BrowseName = new QualifiedName(serverName, 1),
+                    NodeId = new NodeId(Guid.NewGuid(), (ushort)modelNamespaceIndex),
+                    BrowseName = new QualifiedName(serverName, (ushort)modelNamespaceIndex),
                     DisplayName = new LocalizedText(serverName),
                     TypeDefinitionId = ObjectTypeIds.FolderType
                 };
@@ -255,14 +311,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         continue;
                     }
 
-                    // omit standard namespace-0 nodes: they already exist (with their own type definition) in the base UA model
-                    if (nodeInfo.NodeId.NamespaceIndex == 0)
-                    {
-                        continue;
-                    }
-
-                    // omit nodes from the standard OPC UA Diagnostics namespace
-                    if (string.Equals(context.NamespaceUris.GetString(nodeInfo.NodeId.NamespaceIndex), "http://opcfoundation.org/UA/Diagnostics/", StringComparison.Ordinal))
+                    // export only variables that belong to the selected namespace
+                    if (nodeInfo.NodeId.NamespaceIndex != modelNamespaceIndex)
                     {
                         continue;
                     }
@@ -277,9 +327,16 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     NodeId dataType;
                     if (!NodeId.IsNull(variableNode.DataType) && (variableNode.DataType.NamespaceIndex != 0))
                     {
-                        // custom DataType: reference it directly and export its definition so the nodeset is self-contained
+                        // custom DataType: reference it directly (its defining namespace becomes a required model)
                         dataType = variableNode.DataType;
-                        customDataTypeIds.Add(variableNode.DataType);
+                        if (variableNode.DataType.NamespaceIndex != modelNamespaceIndex)
+                        {
+                            string dataTypeNamespaceUri = context.NamespaceUris.GetString(variableNode.DataType.NamespaceIndex);
+                            if (!string.IsNullOrEmpty(dataTypeNamespaceUri))
+                            {
+                                requiredNamespaceUris.Add(dataTypeNamespaceUri);
+                            }
+                        }
                     }
                     else
                     {
@@ -328,26 +385,72 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 nodeStateCollection.Add(serverFolder);
 
-                // export the definitions of all referenced custom DataTypes (including their supertypes and nested field types)
-                if (customDataTypeIds.Count > 0)
-                {
-                    List<NodeState> dataTypeStates = await _client.CollectDataTypeDefinitionsAsync(_session.EndpointUrl, _session.UserName, _session.Password, customDataTypeIds).ConfigureAwait(false);
-                    foreach (NodeState dataTypeState in dataTypeStates)
-                    {
-                        nodeStateCollection.Add(dataTypeState);
-                    }
-                }
-
                 using MemoryStream stream = new();
                 nodeStateCollection.SaveAsNodeSet2(context, stream);
 
-                return File(stream.ToArray(), "APPLICATION/octet-stream", "opcuaserver.nodeset2.xml");
+                // SaveAsNodeSet2 does not emit a <Models> entry; add one with the model URI, publication date and dependencies
+                stream.Position = 0;
+                Opc.Ua.Export.UANodeSet nodeSet = Opc.Ua.Export.UANodeSet.Read(stream);
+
+                // read the publication dates the server advertises for its namespaces (Server.Namespaces metadata)
+                Dictionary<string, DateTime> serverPublicationDates = await _client.GetNamespacePublicationDatesAsync(_session.EndpointUrl, _session.UserName, _session.Password).ConfigureAwait(false);
+
+                DateTime publicationDate = DateTime.UtcNow.Date;
+                if (serverPublicationDates.TryGetValue(modelUri, out DateTime modelPublicationDate))
+                {
+                    publicationDate = modelPublicationDate;
+                }
+
+                // every namespace the exported nodes depend on becomes a required model
+                List<Opc.Ua.Export.ModelTableEntry> requiredModels = new();
+                foreach (string requiredNamespaceUri in requiredNamespaceUris)
+                {
+                    if (string.Equals(requiredNamespaceUri, modelUri, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    requiredModels.Add(CreateRequiredModel(requiredNamespaceUri, serverPublicationDates));
+                }
+
+                nodeSet.Models = new[]
+                {
+                    new Opc.Ua.Export.ModelTableEntry
+                    {
+                        ModelUri = modelUri,
+                        PublicationDate = publicationDate,
+                        PublicationDateSpecified = true,
+                        Version = "1.0.0",
+                        RequiredModel = requiredModels.Count > 0 ? requiredModels.ToArray() : null
+                    }
+                };
+                nodeSet.LastModified = publicationDate;
+                nodeSet.LastModifiedSpecified = true;
+
+                using MemoryStream output = new();
+                nodeSet.Write(output);
+
+                return File(output.ToArray(), "APPLICATION/octet-stream", "opcuaserver.nodeset2.xml");
             }
             catch (Exception ex)
             {
                 _session.StatusMessage = ex.Message;
+                await PopulateNamespacesAsync().ConfigureAwait(false);
                 return View("Browse", _session);
             }
+        }
+
+        private static Opc.Ua.Export.ModelTableEntry CreateRequiredModel(string modelUri, Dictionary<string, DateTime> serverPublicationDates)
+        {
+            Opc.Ua.Export.ModelTableEntry model = new() { ModelUri = modelUri };
+
+            if (serverPublicationDates.TryGetValue(modelUri, out DateTime publicationDate))
+            {
+                model.PublicationDate = publicationDate;
+                model.PublicationDateSpecified = true;
+            }
+
+            return model;
         }
 
         [HttpPost]

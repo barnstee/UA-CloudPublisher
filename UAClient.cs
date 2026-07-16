@@ -1246,6 +1246,126 @@ namespace Opc.Ua.Cloud.Publisher
             };
         }
 
+        public async Task<string[]> GetNamespaceUrisAsync(string endpointUrl, string username, string password)
+        {
+            ISession session = await ConnectSessionAsync(endpointUrl, username, password).ConfigureAwait(false);
+            if (session == null)
+            {
+                throw new Exception($"Could not create session for endpoint {endpointUrl}!");
+            }
+
+            List<string> namespaceUris = new();
+
+            // skip index 0 (the base OPC UA namespace); expose the server's own and companion namespaces for selection
+            for (int i = 1; i < session.NamespaceUris.Count; i++)
+            {
+                string namespaceUri = session.NamespaceUris.GetString((uint)i);
+                if (!string.IsNullOrEmpty(namespaceUri) && !namespaceUris.Contains(namespaceUri))
+                {
+                    namespaceUris.Add(namespaceUri);
+                }
+            }
+
+            return namespaceUris.ToArray();
+        }
+
+        public async Task<Dictionary<string, DateTime>> GetNamespacePublicationDatesAsync(string endpointUrl, string username, string password)
+        {
+            ISession session = await ConnectSessionAsync(endpointUrl, username, password).ConfigureAwait(false);
+            if (session == null)
+            {
+                throw new Exception($"Could not create session for endpoint {endpointUrl}!");
+            }
+
+            Dictionary<string, DateTime> publicationDates = new();
+
+            try
+            {
+                // the Server.Namespaces object holds one NamespaceMetadataType object per namespace
+                (_, _, ReferenceDescriptionCollection metadataObjects) = await session.BrowseAsync(
+                    null,
+                    null,
+                    ObjectIds.Server_Namespaces,
+                    0,
+                    BrowseDirection.Forward,
+                    ReferenceTypeIds.HasComponent,
+                    true,
+                    (uint)NodeClass.Object).ConfigureAwait(false);
+
+                if (metadataObjects == null)
+                {
+                    return publicationDates;
+                }
+
+                foreach (ReferenceDescription metadataObject in metadataObjects)
+                {
+                    NodeId metadataNodeId = ExpandedNodeId.ToNodeId(metadataObject.NodeId, session.NamespaceUris);
+                    if (NodeId.IsNull(metadataNodeId))
+                    {
+                        continue;
+                    }
+
+                    // read the NamespaceUri and NamespacePublicationDate properties of this metadata object
+                    (_, _, ReferenceDescriptionCollection properties) = await session.BrowseAsync(
+                        null,
+                        null,
+                        metadataNodeId,
+                        0,
+                        BrowseDirection.Forward,
+                        ReferenceTypeIds.HasProperty,
+                        true,
+                        (uint)NodeClass.Variable).ConfigureAwait(false);
+
+                    if (properties == null)
+                    {
+                        continue;
+                    }
+
+                    NodeId uriPropertyId = null;
+                    NodeId datePropertyId = null;
+
+                    foreach (ReferenceDescription property in properties)
+                    {
+                        if (property.BrowseName?.Name == BrowseNames.NamespaceUri)
+                        {
+                            uriPropertyId = ExpandedNodeId.ToNodeId(property.NodeId, session.NamespaceUris);
+                        }
+                        else if (property.BrowseName?.Name == BrowseNames.NamespacePublicationDate)
+                        {
+                            datePropertyId = ExpandedNodeId.ToNodeId(property.NodeId, session.NamespaceUris);
+                        }
+                    }
+
+                    if (NodeId.IsNull(uriPropertyId) || NodeId.IsNull(datePropertyId))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        DataValue uriValue = await session.ReadValueAsync(uriPropertyId).ConfigureAwait(false);
+                        DataValue dateValue = await session.ReadValueAsync(datePropertyId).ConfigureAwait(false);
+
+                        if ((uriValue?.Value is string namespaceUri) && !string.IsNullOrEmpty(namespaceUri)
+                            && (dateValue?.Value is DateTime publicationDate))
+                        {
+                            publicationDates[namespaceUri] = publicationDate;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // skip this namespace if its metadata cannot be read
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // the server does not expose namespace metadata
+            }
+
+            return publicationDates;
+        }
+
         public async Task<List<NodeState>> CollectDataTypeDefinitionsAsync(string endpointUrl, string username, string password, IEnumerable<NodeId> dataTypeIds)
         {
             ISession session = await ConnectSessionAsync(endpointUrl, username, password).ConfigureAwait(false);

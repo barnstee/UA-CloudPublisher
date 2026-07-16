@@ -15,6 +15,10 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         Task<ISystemContext> GetSystemContextAsync(string endpointUrl, string username, string password);
 
+        Task<string[]> GetNamespaceUrisAsync(string endpointUrl, string username, string password);
+
+        Task<Dictionary<string, DateTime>> GetNamespacePublicationDatesAsync(string endpointUrl, string username, string password);
+
         Task<List<NodeState>> CollectDataTypeDefinitionsAsync(string endpointUrl, string username, string password, IEnumerable<NodeId> dataTypeIds);
 
         Task<string> ReadNodeAsync(string endpointUrl, string username, string password, string nodeId);

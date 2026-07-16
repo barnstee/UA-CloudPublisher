@@ -14,11 +14,14 @@
 <div class="app-card">
     <h3 class="card-title"><i class="fas fa-plug"></i> Endpoint</h3>
     <p class="card-subtitle">
-        Enter an OPC UA Server's URL to connect to.
+        Enter an OPC UA Server's address (IP address or hostname and port) to connect to.
     </p>
     <form method="post" enctype="multipart/form-data" asp-controller="Browser" asp-action="UserPassword">
         <p>
-            @Html.TextBox("endpointUrl", null, new { @class = "modern-input", placeholder = "opc.tcp://ipaddress:port" })
+            <span class="endpoint-input-group">
+                <span class="endpoint-scheme-label">opc.tcp://</span>
+                @Html.TextBox("endpointUrl", null, new { @class = "modern-input", placeholder = "ipaddress:port" })
+            </span>
         </p>
         <p>
             <input id="connectButton" class="btn btn-primary" type="submit" value="Connect">
