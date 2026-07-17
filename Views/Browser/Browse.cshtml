@@ -43,7 +43,7 @@
             }
         </div>
         <div class="row browser_browse_generate_nodeset_button">
-            @using (Html.BeginForm("GenerateNodeSet", "Browser"))
+            @using (Html.BeginForm("GenerateNodeSet", "Browser", FormMethod.Post, new { @class = "nodeset-export-form" }))
             {
                 <div class="nodeset-export-controls">
                     <input class="btn btn-primary" type="submit" value="Generate Nodeset2.xml file from all OPC UA variables in the selected namespace:" />
@@ -74,3 +74,58 @@
         </div>
     </div>
 </div>
+
+<div id="nodesetSpinnerOverlay" class="spinner-overlay" hidden>
+    <div class="spinner-box">
+        <i class="fas fa-spinner fa-spin spinner-icon"></i>
+        <div class="spinner-text">Generating nodeset, please wait&hellip;</div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.querySelector('.nodeset-export-form');
+            var overlay = document.getElementById('nodesetSpinnerOverlay');
+            if (!form || !overlay) {
+                return;
+            }
+
+            function readCookie(name) {
+                var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+                return match ? decodeURIComponent(match[1]) : null;
+            }
+
+            form.addEventListener('submit', function () {
+                // the server echoes this token as a cookie once the file response is ready; poll for it to hide the spinner
+                var token = 'nodeset-' + Date.now();
+                var field = document.createElement('input');
+                field.type = 'hidden';
+                field.name = 'downloadToken';
+                field.value = token;
+                form.appendChild(field);
+
+                overlay.hidden = false;
+
+                var poll = setInterval(function () {
+                    if (readCookie('nodesetDownloadToken') === token) {
+                        clearInterval(poll);
+                        overlay.hidden = true;
+                        // clear the token cookie so it does not affect the next download
+                        document.cookie = 'nodesetDownloadToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                        field.remove();
+                    }
+                }, 500);
+
+                // safety net: never leave the spinner up indefinitely
+                setTimeout(function () {
+                    clearInterval(poll);
+                    overlay.hidden = true;
+                    if (field.parentNode) {
+                        field.remove();
+                    }
+                }, 300000);
+            });
+        })();
+    </script>
+}

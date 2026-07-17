@@ -244,7 +244,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> GenerateNodeSetAsync(string namespaceUri)
+        public async Task<ActionResult> GenerateNodeSetAsync(string namespaceUri, string downloadToken)
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
             _session.UserName = HttpContext.Session.GetString("UserName");
@@ -429,6 +429,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 using MemoryStream output = new();
                 nodeSet.Write(output);
+
+                // echo the client's token as a cookie so the browser can detect the download completed and hide its spinner
+                if (!string.IsNullOrEmpty(downloadToken))
+                {
+                    Response.Cookies.Append("nodesetDownloadToken", downloadToken, new CookieOptions { HttpOnly = false, Path = "/" });
+                }
 
                 return File(output.ToArray(), "APPLICATION/octet-stream", "opcuaserver.nodeset2.xml");
             }
