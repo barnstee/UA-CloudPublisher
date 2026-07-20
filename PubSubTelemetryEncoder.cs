@@ -220,7 +220,20 @@ namespace Opc.Ua.Cloud.Publisher
 
                 if ((messageData.EventValues == null) || (messageData.EventValues.Count == 0))
                 {
-                    encoder.WriteDateTime("Timestamp", messageData.Value.ServerTimestamp);
+                    // use the server timestamp for the DataSetMessage timestamp; fall back to the source
+                    // timestamp and finally to the current time, since many servers don't populate the
+                    // server timestamp (which would otherwise serialize as 0001-01-01T00:00:00Z)
+                    DateTime dataSetTimestamp = messageData.Value.ServerTimestamp;
+                    if (dataSetTimestamp == DateTime.MinValue)
+                    {
+                        dataSetTimestamp = messageData.Value.SourceTimestamp;
+                    }
+                    if (dataSetTimestamp == DateTime.MinValue)
+                    {
+                        dataSetTimestamp = DateTime.UtcNow;
+                    }
+
+                    encoder.WriteDateTime("Timestamp", dataSetTimestamp);
                 }
 
                 if (messageData.Value.StatusCode != StatusCodes.Good)
