@@ -897,7 +897,7 @@ namespace Opc.Ua.Cloud.Publisher
                                     // event
                                     EventModel publishedEvent = new EventModel()
                                     {
-                                        ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                                        ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, session.NamespaceUris).ToString(),
                                         Filter = new List<FilterModel>()
                                     };
 
@@ -914,7 +914,7 @@ namespace Opc.Ua.Cloud.Publisher
                                                     {
                                                         FilterModel filter = new FilterModel()
                                                         {
-                                                            OfType = NodeId.ToExpandedNodeId(new NodeId(operand.ToString()), monitoredItem.Subscription.Session.NamespaceUris).ToString()
+                                                            OfType = NodeId.ToExpandedNodeId(new NodeId(operand.ToString()), session.NamespaceUris).ToString()
                                                         };
 
                                                         publishedEvent.Filter.Add(filter);
@@ -931,7 +931,7 @@ namespace Opc.Ua.Cloud.Publisher
                                     // variable
                                     VariableModel publishedVariable = new VariableModel()
                                     {
-                                        Id = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
+                                        Id = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, session.NamespaceUris).ToString(),
                                         OpcSamplingInterval = monitoredItem.SamplingInterval,
                                         OpcPublishingInterval = subscription.PublishingInterval,
                                         HeartbeatInterval = 0,

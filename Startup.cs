@@ -1,6 +1,7 @@
 namespace Opc.Ua.Cloud.Publisher
 {
     using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.DataProtection;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,14 @@ namespace Opc.Ua.Cloud.Publisher
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // persist the Data Protection key ring to a stable location so session cookies remain
+            // decryptable across app/container restarts
+            string keyRingPath = Path.Combine(Directory.GetCurrentDirectory(), "settings", "dataprotection-keys");
+            Directory.CreateDirectory(keyRingPath);
+            services.AddDataProtection()
+                .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
+                .SetApplicationName("UACloudPublisher");
+
             services.AddSession(options =>
             {
                 options.IdleTimeout = TimeSpan.FromMinutes(5);
