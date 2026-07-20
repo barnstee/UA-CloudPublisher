@@ -70,6 +70,19 @@ namespace Opc.Ua.Cloud.Publisher
 
             if (_monitoredItemsDataQueue != null)
             {
+                // stop the processing loop and any producers cleanly before disposing the queue to avoid
+                // ObjectDisposedException races in RunAsync (TryTake) and Enqueue (TryAdd) during shutdown
+                _isRunning = false;
+
+                try
+                {
+                    _monitoredItemsDataQueue.CompleteAdding();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // already disposed; nothing to do
+                }
+
                 _monitoredItemsDataQueue.Dispose();
             }
 
@@ -79,23 +92,38 @@ namespace Opc.Ua.Cloud.Publisher
 
         public static void Enqueue(MessageProcessorModel json)
         {
-            if (_monitoredItemsDataQueue != null)
+            // capture the reference locally as the static queue can be disposed/recreated concurrently during shutdown or reconfiguration
+            BlockingCollection<MessageProcessorModel> queue = _monitoredItemsDataQueue;
+            if (queue == null || queue.IsAddingCompleted)
             {
-                if (_monitoredItemsDataQueue.TryAdd(json) == false)
+                return;
+            }
+
+            try
+            {
+                if (queue.TryAdd(json) == false)
                 {
                     Diagnostics.Singleton.Info.EnqueueFailureCount++;
 
                     // log an error message for every 10K messages lost
                     if (Diagnostics.Singleton.Info.EnqueueFailureCount % 10000 == 0)
                     {
-                        _logger.LogError($"The internal monitored item message queue is above its capacity of {_monitoredItemsDataQueue.BoundedCapacity}. We have lost {Diagnostics.Singleton.Info.EnqueueFailureCount} monitored item notifications so far.");
+                        _logger.LogError($"The internal monitored item message queue is above its capacity of {queue.BoundedCapacity}. We have lost {Diagnostics.Singleton.Info.EnqueueFailureCount} monitored item notifications so far.");
                     }
                 }
                 else
                 {
                     Diagnostics.Singleton.Info.EnqueueCount++;
-                    Diagnostics.Singleton.Info.MonitoredItemsQueueCount = _monitoredItemsDataQueue.Count;
+                    Diagnostics.Singleton.Info.MonitoredItemsQueueCount = queue.Count;
                 }
+            }
+            catch (ObjectDisposedException)
+            {
+                // the queue was disposed between the null/completed check and the add; drop the notification silently
+            }
+            catch (InvalidOperationException)
+            {
+                // adding was marked complete concurrently; drop the notification silently
             }
         }
 
