@@ -189,6 +189,9 @@
             <label>@Html.CheckBox("AutoLoadPersistedNodes", @Model.AutoLoadPersistedNodes) Auto-Load Previously Published Nodes on Startup</label>
         </p>
         <p>
+            <label>@Html.CheckBox("AddBrowsePathToName", @Model.AddBrowsePathToName) Add the full OPC UA browse path to the telemetry/event name</label>
+        </p>
+        <p>
             Internal Queue Capacity
             @Html.TextBox("InternalQueueCapacity", @Model.InternalQueueCapacity, new { @class = "modern-input" })
         </p>

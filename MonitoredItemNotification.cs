@@ -17,6 +17,9 @@ namespace Opc.Ua.Cloud.Publisher
         private readonly ILogger _logger;
         private readonly ConditionalWeakTable<ISession, ComplexTypeSystem> _complexTypeSystems = new();
 
+        // caches the resolved browse path per node so that not every notification triggers a browse session
+        private readonly ConcurrentDictionary<string, string> _browsePathCache = new();
+
         public ConcurrentDictionary<string, bool> SkipFirst { get; set; } = new ConcurrentDictionary<string, bool>();
 
         private NodeId[] KnownEventTypes = new NodeId[]
@@ -78,6 +81,11 @@ namespace Opc.Ua.Cloud.Publisher
                     ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                     MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext
                 };
+
+                if (Settings.Instance.AddBrowsePathToName)
+                {
+                    messageData.Name = await GetNameWithBrowsePathAsync(monitoredItem.Subscription.Session, monitoredItem.ResolvedNodeId, monitoredItem.DisplayName).ConfigureAwait(false);
+                }
 
                 // Source
                 if (condition.SourceName != null)
@@ -196,6 +204,77 @@ namespace Opc.Ua.Cloud.Publisher
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing monitored item notification");
+            }
+        }
+
+        private async Task<string> GetNameWithBrowsePathAsync(ISession session, NodeId nodeId, string displayName)
+        {
+            if (session == null || nodeId == null || NodeId.IsNull(nodeId))
+            {
+                return displayName;
+            }
+
+            // nodeIds are not unique across OPC UA servers, so combine the session id with the expanded node id
+            string cacheKey = session.SessionId + "|" + NodeId.ToExpandedNodeId(nodeId, session.NamespaceUris)?.ToString();
+
+            // only browse the first time we see a node; every subsequent notification uses the cached path
+            if (_browsePathCache.TryGetValue(cacheKey, out string cachedPath))
+            {
+                return cachedPath;
+            }
+
+            try
+            {
+                List<string> segments = new List<string>();
+                NodeId currentNodeId = nodeId;
+
+                // walk up the hierarchy towards the Objects/Root folder, collecting browse names
+                while (currentNodeId != null
+                    && !NodeId.IsNull(currentNodeId)
+                    && currentNodeId != ObjectIds.ObjectsFolder
+                    && currentNodeId != ObjectIds.RootFolder)
+                {
+                    INode node = await session.NodeCache.FindAsync(currentNodeId).ConfigureAwait(false);
+                    if (node == null)
+                    {
+                        break;
+                    }
+
+                    string segment = (node.BrowseName != null && !string.IsNullOrEmpty(node.BrowseName.Name))
+                        ? node.BrowseName.Name
+                        : node.DisplayName?.Text;
+                    segments.Insert(0, segment);
+
+                    // browse the parent via inverse hierarchical references
+                    (_, _, ReferenceDescriptionCollection parents) = await session.BrowseAsync(
+                        null,
+                        null,
+                        currentNodeId,
+                        1,
+                        BrowseDirection.Inverse,
+                        ReferenceTypeIds.HierarchicalReferences,
+                        true,
+                        0).ConfigureAwait(false);
+
+                    if (parents == null || parents.Count == 0 || parents[0].NodeId == null || parents[0].NodeId.IsAbsolute)
+                    {
+                        break;
+                    }
+
+                    currentNodeId = (NodeId)parents[0].NodeId;
+                }
+
+                string browsePath = (segments.Count > 0) ? string.Join("/", segments) : displayName;
+                _browsePathCache[cacheKey] = browsePath;
+                return browsePath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error building browse path for node; falling back to display name.");
+
+                // cache the fallback so we don't repeatedly browse a node that fails
+                _browsePathCache[cacheKey] = displayName;
+                return displayName;
             }
         }
 
@@ -355,12 +434,18 @@ namespace Opc.Ua.Cloud.Publisher
 
                 if (monitoredItem.Subscription != null)
                 {
+                    string name = monitoredItem.DisplayName;
+                    if (Settings.Instance.AddBrowsePathToName)
+                    {
+                        name = await GetNameWithBrowsePathAsync(monitoredItem.Subscription.Session, monitoredItem.ResolvedNodeId, monitoredItem.DisplayName).ConfigureAwait(false);
+                    }
+
                     MessageProcessorModel messageData = new MessageProcessorModel
                     {
                         ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
                         ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
                         MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
-                        Name = monitoredItem.DisplayName,
+                        Name = name,
                         Value = value,
                         DataType = dataType
                     };

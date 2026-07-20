@@ -48,6 +48,7 @@ A cross-platform OPC UA cloud publisher reference implementation leveraging OPC 
 - Support for username/password authentication for MQTT broker
 - Support for certificate authentication for MQTT broker
 - Support for sending OPC UA metadata to an alternative broker
+- Support for sending the full OPC UA server's browse path of a published node to the broker
 - Support for reverse connects from OPC UA servers
 - Support for subscriptions transfer when server connections are temporarily interrupted
 - Support for auto-publishing of all WoT properties found in a WoT file sent to UA Edge Translator
