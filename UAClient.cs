@@ -614,7 +614,7 @@ namespace Opc.Ua.Cloud.Publisher
             return string.Empty;
         }
 
-        public async Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default)
+        public async Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, bool applyChanges = true, CancellationToken cancellationToken = default)
         {
             // find or create the session we need to monitor the node
             ISession session = await ConnectSessionAsync(
@@ -695,7 +695,10 @@ namespace Opc.Ua.Cloud.Publisher
                     if (monitoredItem.ResolvedNodeId == resolvedNodeId)
                     {
                         opcSubscription.RemoveItem(monitoredItem);
-                        await opcSubscription.ApplyChangesAsync().ConfigureAwait(false);
+                        if (applyChanges)
+                        {
+                            await opcSubscription.ApplyChangesAsync().ConfigureAwait(false);
+                        }
                         RecomputeTopologyCounts();
                     }
                 }
@@ -730,7 +733,10 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 opcSubscription.AddItem(newMonitoredItem);
-                await opcSubscription.ApplyChangesAsync().ConfigureAwait(false);
+                if (applyChanges)
+                {
+                    await opcSubscription.ApplyChangesAsync().ConfigureAwait(false);
+                }
                 RecomputeTopologyCounts();
 
                 // create a heartbeat timer, if required
@@ -804,6 +810,35 @@ namespace Opc.Ua.Cloud.Publisher
                 _logger.LogError(e, "PublishNode: Exception while trying to add node {expandedNodeId} for monitoring.", nodeToPublish.ExpandedNodeId);
                 return e.Message;
             }
+        }
+
+        public async Task ApplyPendingSubscriptionChangesAsync()
+        {
+            // apply all deferred monitored item changes in a single batch per subscription; this avoids the
+            // per-item ApplyChanges churn during bulk publishing that leads to "Publish response contains
+            // invalid MonitoredItem" warnings and dropped notifications while the client-side handle map is rebuilt
+            List<ISession> sessions;
+            lock (_sessionLock)
+            {
+                sessions = _sessions.ToList();
+            }
+
+            foreach (ISession session in sessions)
+            {
+                foreach (Subscription subscription in session.Subscriptions.ToList())
+                {
+                    try
+                    {
+                        await subscription.ApplyChangesAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to apply pending changes for subscription {subscriptionId}.", subscription.Id);
+                    }
+                }
+            }
+
+            RecomputeTopologyCounts();
         }
 
         public async Task UnpublishNodeAsync(NodePublishingModel nodeToUnpublish)

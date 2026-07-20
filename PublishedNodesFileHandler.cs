@@ -153,7 +153,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                             try
                             {
-                                await _uaClient.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
+                                // defer applying the subscription changes; they are flushed once after all nodes are added
+                                await _uaClient.PublishNodeAsync(publishingInfo, applyChanges: false).ConfigureAwait(false);
                             }
                             catch (Exception ex)
                             {
@@ -186,7 +187,8 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
 
                             try
                             {
-                                await _uaClient.PublishNodeAsync(publishingInfo).ConfigureAwait(false);
+                                // defer applying the subscription changes; they are flushed once after all nodes are added
+                                await _uaClient.PublishNodeAsync(publishingInfo, applyChanges: false).ConfigureAwait(false);
                             }
                             catch (Exception ex)
                             {
@@ -199,6 +201,9 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
                         }
                     }
                 }
+
+                // flush all deferred monitored item additions in a single batch per subscription
+                await _uaClient.ApplyPendingSubscriptionChangesAsync().ConfigureAwait(false);
 
                 _logger.LogInformation("Publishednodes.json/persistency file processed successfully.");
             }

@@ -23,7 +23,9 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
 
         Task<string> ReadNodeAsync(string endpointUrl, string username, string password, string nodeId);
 
-        Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, CancellationToken cancellationToken = default);
+        Task<string> PublishNodeAsync(NodePublishingModel nodeToPublish, bool applyChanges = true, CancellationToken cancellationToken = default);
+
+        Task ApplyPendingSubscriptionChangesAsync();
 
         Task UnpublishNodeAsync(NodePublishingModel nodeToUnpublish);
 

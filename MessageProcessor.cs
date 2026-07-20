@@ -195,12 +195,21 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         throw;
                     }
+                    else if (ex is ObjectDisposedException || ex is InvalidOperationException)
+                    {
+                        // the queue has been disposed or marked as completed (e.g. during shutdown or
+                        // reconfiguration); stop the loop instead of spinning and logging endlessly
+                        _logger.LogInformation("Message queue is no longer available; stopping message processing loop.");
+                        break;
+                    }
                     else
                     {
                         _logger.LogError(ex, "Error while processing messages!");
                     }
                 }
             }
+
+            _isRunning = false;
         }
 
         private void Init()
