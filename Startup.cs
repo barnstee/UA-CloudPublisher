@@ -37,6 +37,13 @@ namespace Opc.Ua.Cloud.Publisher
             services.AddSession(options =>
             {
                 options.IdleTimeout = TimeSpan.FromMinutes(5);
+
+                // use a distinct cookie name so stale cookies issued before Data Protection key persistence
+                // was configured are ignored (rather than failing to unprotect and logging warnings), and
+                // set standard hardening flags
+                options.Cookie.Name = ".UACloudPublisher.Session";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
             });
 
             services.AddControllersWithViews();
