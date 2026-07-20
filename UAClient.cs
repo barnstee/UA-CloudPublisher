@@ -368,7 +368,8 @@ namespace Opc.Ua.Cloud.Publisher
             Subscription subscription = new Subscription(session.DefaultSubscription)
             {
                 PublishingInterval = publishingInterval,
-                MinLifetimeInterval = (uint)(session.SessionTimeout * 2) // set lifetime to 2x session timeout to avoid unintentional deletion of subscriptions in case of transient session disconnects
+                MinLifetimeInterval = (uint)(session.SessionTimeout * 2), // set lifetime to 2x session timeout to avoid unintentional deletion of subscriptions in case of transient session disconnects
+                SequentialPublishing = true // process incoming notifications in order to avoid races with monitored item add/remove ("Publish response contains invalid MonitoredItem" warnings)
             };
 
             // add needs to happen before create to set the Session property

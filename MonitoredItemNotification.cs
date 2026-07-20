@@ -434,17 +434,24 @@ namespace Opc.Ua.Cloud.Publisher
 
                 if (monitoredItem.Subscription != null)
                 {
+                    // capture the session locally; it can be torn down concurrently while notifications are still in flight
+                    ISession session = monitoredItem.Subscription.Session;
+                    if (session == null || session.Endpoint == null || session.Endpoint.Server == null)
+                    {
+                        return;
+                    }
+
                     string name = monitoredItem.DisplayName;
                     if (Settings.Instance.AddBrowsePathToName)
                     {
-                        name = await GetNameWithBrowsePathAsync(monitoredItem.Subscription.Session, monitoredItem.ResolvedNodeId, monitoredItem.DisplayName).ConfigureAwait(false);
+                        name = await GetNameWithBrowsePathAsync(session, monitoredItem.ResolvedNodeId, monitoredItem.DisplayName).ConfigureAwait(false);
                     }
 
                     MessageProcessorModel messageData = new MessageProcessorModel
                     {
-                        ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, monitoredItem.Subscription.Session.NamespaceUris).ToString(),
-                        ApplicationUri = monitoredItem.Subscription.Session.Endpoint.Server.ApplicationUri,
-                        MessageContext = (ServiceMessageContext)monitoredItem.Subscription.Session.MessageContext,
+                        ExpandedNodeId = NodeId.ToExpandedNodeId(monitoredItem.ResolvedNodeId, session.NamespaceUris).ToString(),
+                        ApplicationUri = session.Endpoint.Server.ApplicationUri,
+                        MessageContext = (ServiceMessageContext)session.MessageContext,
                         Name = name,
                         Value = value,
                         DataType = dataType
