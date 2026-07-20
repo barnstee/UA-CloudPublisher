@@ -20,6 +20,10 @@ namespace Opc.Ua.Cloud.Publisher
         // caches the resolved browse path per node so that not every notification triggers a browse session
         private readonly ConcurrentDictionary<string, string> _browsePathCache = new();
 
+        // tracks which complex data types have already been (attempted to be) loaded per session so we don't
+        // re-issue a LoadType request on every single notification (which floods BadRequestTimeout errors)
+        private readonly ConcurrentDictionary<string, bool> _loadedComplexTypes = new();
+
         public ConcurrentDictionary<string, bool> SkipFirst { get; set; } = new ConcurrentDictionary<string, bool>();
 
         private NodeId[] KnownEventTypes = new NodeId[]
@@ -270,7 +274,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error building browse path for node; falling back to display name.");
+                _logger.LogWarning("Could not build browse path for node {nodeId}; falling back to display name. {message}", nodeId, ex.Message);
 
                 // cache the fallback so we don't repeatedly browse a node that fails
                 _browsePathCache[cacheKey] = displayName;
@@ -423,11 +427,29 @@ namespace Opc.Ua.Cloud.Publisher
                 VariableNode variable = (VariableNode)await monitoredItem.Subscription.Session.NodeCache.FindAsync(monitoredItem.StartNodeId).ConfigureAwait(false);
                 if (variable != null)
                 {
-                    // handle complex types using a per-session cached type system
                     ISession session = monitoredItem.Subscription.Session;
-                    ComplexTypeSystem complexTypeSystem = _complexTypeSystems.GetValue(session, s => new ComplexTypeSystem(s));
                     ExpandedNodeId nodeTypeId = variable.DataType;
-                    await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
+
+                    // only custom/complex types (defined in a server-specific namespace) need to be loaded via the
+                    // complex type system; built-in base types (namespace 0, e.g. i=11 Double) never do, and attempting
+                    // to load them just times out. Also only attempt each type once per session.
+                    if (nodeTypeId != null && nodeTypeId.NamespaceIndex != 0)
+                    {
+                        string typeCacheKey = session.SessionId + "|" + nodeTypeId.ToString();
+                        if (_loadedComplexTypes.TryAdd(typeCacheKey, true))
+                        {
+                            try
+                            {
+                                // handle complex types using a per-session cached type system
+                                ComplexTypeSystem complexTypeSystem = _complexTypeSystems.GetValue(session, s => new ComplexTypeSystem(s));
+                                await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning("Could not load complex type {typeId}: {message}", nodeTypeId, ex.Message);
+                            }
+                        }
+                    }
 
                     dataType = NodeId.ToExpandedNodeId(variable.DataType, monitoredItem.Subscription?.Session?.NamespaceUris).ToString();
                 }

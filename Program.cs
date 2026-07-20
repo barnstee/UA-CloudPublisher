@@ -28,6 +28,7 @@ namespace Opc.Ua.Cloud.Publisher
                         .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
                         .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
                         .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
+                        .MinimumLevel.Override("Microsoft.AspNetCore.StaticFiles", LogEventLevel.Warning)
                         .WriteTo.Console()
                         .WriteTo.File("logs/uacloudpublisher-.log", rollingInterval: RollingInterval.Day))
                     .ConfigureWebHostDefaults(webBuilder =>
