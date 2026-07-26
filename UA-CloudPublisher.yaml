@@ -29,6 +29,10 @@ spec:
           image: ghcr.io/barnstee/ua-cloudpublisher:main
           imagePullPolicy: Always
           env:
+            - name: PUBLISHER_USERNAME
+              value: "myUsername"
+            - name: PUBLISHER_PASSWORD
+              value: "myPassword"
             - name: OPCUA_USERNAME
               value: "myUsername"
             - name: OPCUA_PASSWORD

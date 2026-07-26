@@ -111,11 +111,20 @@ UA Cloud Publisher is distributed as a pre-built, multi-architecture (`x64` and 
 
 Note: We have also provided a [test environment](./TestEnvironment/readme.md) to get you started.
 
+### Authentication
+
+Access to the UA Cloud Publisher web UI is protected with mandatory HTTP Basic authentication. You **must** provide a username and password via the following environment variables, otherwise the application will refuse to start:
+
+- `PUBLISHER_USERNAME` - the username required to access the web UI
+- `PUBLISHER_PASSWORD` - the password required to access the web UI
+
+When you point your browser to the UA Cloud Publisher, you will be prompted for these credentials.
+
 ### Running on Docker
 
 Docker containers are automatically built and published. Simply run the UA Cloud Publisher on a Docker-enabled computer via:
 
-`docker run -itd -p 80:8080 ghcr.io/barnstee/ua-cloudpublisher:main`
+`docker run -itd -e PUBLISHER_USERNAME=myusername -e PUBLISHER_PASSWORD=mypassword -p 80:8080 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 And then point your browser to <http://yourIPAddress>.
 
@@ -123,7 +132,7 @@ And then point your browser to <http://yourIPAddress>.
 
 UA Cloud Publisher logs, settings, published nodes and OPC UA certificates can be persisted locally across Docker container restarts by running:
 
-`docker run -itd -v c:/publisher/logs:/app/logs -v c:/publisher/settings:/app/settings -v c:/publisher/pki:/app/pki -p 80:8080 ghcr.io/barnstee/ua-cloudpublisher:main`
+`docker run -itd -e PUBLISHER_USERNAME=myusername -e PUBLISHER_PASSWORD=mypassword -v c:/publisher/logs:/app/logs -v c:/publisher/settings:/app/settings -v c:/publisher/pki:/app/pki -p 80:8080 ghcr.io/barnstee/ua-cloudpublisher:main`
 
 For Linux hosts, remove the `c:` instances from the command above.
 
@@ -145,7 +154,8 @@ Once the service has been assigned an external IP (check with `kubectl get servi
 
 Before deploying, review and adjust the following in the manifest to match your environment:
 
-- **OPC UA credentials**: the `OPCUA_USERNAME` and `OPCUA_PASSWORD` environment variables (used when connecting to OPC UA servers and for GDS Server Push). See [Optional Environment Variables](#optional-environment-variables) for the full list of variables you can add here.
+- **Web UI credentials (required)**: the `PUBLISHER_USERNAME` and `PUBLISHER_PASSWORD` environment variables protect the web UI with mandatory HTTP Basic authentication. The application will not start unless both are set.
+- **OPC UA credentials**: the `OPCUA_USERNAME` and `OPCUA_PASSWORD` environment variables (used for connecting to OPC UA servers during GDS Server Push). See [Optional Environment Variables](#optional-environment-variables) for the full list of variables you can add here.
 - **Persistent storage**: the `settings`, `pki` and `logs` volumes persist configuration, OPC UA certificates and logs across pod restarts. The sample uses `hostPath` volumes pointing at `/mnt/c/K3s/PublisherConfig/...` (a K3s-on-Windows layout); change these paths — or replace them with `PersistentVolumeClaim`s — to suit your cluster.
 
 ## Using the Alternative Broker

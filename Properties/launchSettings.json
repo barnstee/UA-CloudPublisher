@@ -12,14 +12,18 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PUBLISHER_USERNAME": "myUsername",
+        "PUBLISHER_PASSWORD": "myPassword"
       }
     },
     "UACloudPublisher": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PUBLISHER_USERNAME": "myUsername",
+        "PUBLISHER_PASSWORD": "myPassword"
       },
       "applicationUrl": "https://localhost:5001;http://localhost:5000"
     },
@@ -35,7 +39,9 @@
         "AZURE_OPENAI_API_KEY": "",
         "AZURE_OPENAI_API_DEPLOYMENT_NAME": "",
         "OPCUA_USERNAME": "myUsername",
-        "OPCUA_PASSWORD": "myPassword"
+        "OPCUA_PASSWORD": "myPassword",
+        "PUBLISHER_USERNAME": "myUsername",
+        "PUBLISHER_PASSWORD": "myPassword"
       }
     }
   }

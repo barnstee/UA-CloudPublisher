@@ -26,6 +26,15 @@ namespace Opc.Ua.Cloud.Publisher
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // basic authentication for the UI is mandatory: fail fast if the credentials are not configured
+            string basicAuthUsername = Environment.GetEnvironmentVariable(BasicAuthMiddleware.UsernameEnvVar);
+            string basicAuthPassword = Environment.GetEnvironmentVariable(BasicAuthMiddleware.PasswordEnvVar);
+            if (string.IsNullOrEmpty(basicAuthUsername) || string.IsNullOrEmpty(basicAuthPassword))
+            {
+                throw new InvalidOperationException(
+                    $"Basic authentication credentials are not configured. Please set the '{BasicAuthMiddleware.UsernameEnvVar}' and '{BasicAuthMiddleware.PasswordEnvVar}' environment variables.");
+            }
+
             // persist the Data Protection key ring to a stable location so session cookies remain
             // decryptable across app/container restarts
             string keyRingPath = Path.Combine(Directory.GetCurrentDirectory(), "settings", "dataprotection-keys");
@@ -112,6 +121,9 @@ namespace Opc.Ua.Cloud.Publisher
             app.UseHttpsRedirection();
 
             app.UseStaticFiles();
+
+            // enforce mandatory HTTP Basic authentication for the whole application
+            app.UseMiddleware<BasicAuthMiddleware>();
 
             app.UseSession();
 
