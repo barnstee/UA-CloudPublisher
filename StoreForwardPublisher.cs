@@ -85,7 +85,18 @@
                     ex = agg.Flatten();
                 }
 
-                _logger.LogError(ex, "Error while sending metadata message.");
+                // a disconnected broker is an expected transient condition while the reconnect loop runs;
+                // log it concisely instead of flooding the log with a full stack trace per dataset writer
+                string exceptionTypeName = ex.GetType().Name;
+                if (exceptionTypeName.Contains("NotConnected", StringComparison.Ordinal)
+                    || exceptionTypeName.Contains("Disconnected", StringComparison.Ordinal))
+                {
+                    _logger.LogWarning("Could not send metadata message, broker not connected: {message}", ex.Message);
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error while sending metadata message.");
+                }
             }
 
             RecordLatency((long)Stopwatch.GetElapsedTime(startTime).TotalMilliseconds);

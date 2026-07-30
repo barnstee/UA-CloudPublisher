@@ -327,9 +327,13 @@
 
         // Builds the MQTT client options for the given broker, applying the same SAS-token, TLS, WebSocket and
         // certificate logic used for the primary broker so the alt broker connection behaves identically.
-        private MqttClientOptionsBuilder BuildClientOptions(string brokerUrl, uint brokerPort, string username, string password)
+        // clientIdSuffix must be non-empty for any additional (e.g. alt broker) connection: MQTT requires a unique
+        // client ID per connection, otherwise the broker disconnects the previously connected client (seen as a
+        // "NormalDisconnection" flapping loop between the primary and alt connections).
+        private MqttClientOptionsBuilder BuildClientOptions(string brokerUrl, uint brokerPort, string username, string password, string clientIdSuffix = "")
         {
             string publisherName = Settings.Instance.PublisherName;
+            string clientId = publisherName + clientIdSuffix;
 
             // create MQTT password
             if (Settings.Instance.CreateBrokerSASToken)
@@ -346,7 +350,7 @@
 
             MqttClientOptionsBuilder clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(brokerUrl, (int?)brokerPort)
-                    .WithClientId(publisherName)
+                    .WithClientId(clientId)
                     .WithTlsOptions(BuildTlsOptions(Settings.Instance.UseTLS, Settings.Instance.AllowUntrustedBrokerCertificate))
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
@@ -358,7 +362,7 @@
             {
                 clientOptions = new MqttClientOptionsBuilder()
                     .WithWebSocketServer(o => o.WithUri(brokerUrl))
-                    .WithClientId(publisherName)
+                    .WithClientId(clientId)
                     .WithTlsOptions(BuildTlsOptions(Settings.Instance.UseTLS, Settings.Instance.AllowUntrustedBrokerCertificate))
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
@@ -371,7 +375,7 @@
             {
                 clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(brokerUrl)
-                    .WithClientId(publisherName)
+                    .WithClientId(clientId)
                     .WithTlsOptions(BuildTlsOptions(true, true, new MqttClientCertificatesProvider(_uAApplication)))
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
@@ -399,7 +403,7 @@
                 return;
             }
 
-            MqttClientOptionsBuilder altClientOptions = BuildClientOptions(brokerUrl, brokerPort, username, password);
+            MqttClientOptionsBuilder altClientOptions = BuildClientOptions(brokerUrl, brokerPort, username, password, "-alt");
 
             _altClient = new MqttClientFactory().CreateMqttClient();
 
