@@ -74,7 +74,7 @@ namespace Opc.Ua.Cloud.Publisher
             UAApplicationInstance.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAServerCertificateValidationCallback);
             await UAApplicationInstance.ApplicationConfiguration.CertificateValidator.UpdateAsync(UAApplicationInstance.ApplicationConfiguration).ConfigureAwait(false);
 
-            await CreateIssuerCertAsync().ConfigureAwait(false);
+            await CreateIssuerCertAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Creating reverse connection endpoint on local port 50000.");
             ReverseConnectManager.AddEndpoint(new Uri("opc.tcp://localhost:50000"));
@@ -91,7 +91,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        private async Task CreateIssuerCertAsync()
+        private async Task CreateIssuerCertAsync(CancellationToken cancellationToken = default)
         {
             string pathToIssuerStore = Path.Combine(Directory.GetCurrentDirectory(), "pki", "issuer", "private");
             if (!Directory.Exists(pathToIssuerStore))
@@ -118,6 +118,20 @@ namespace Opc.Ua.Cloud.Publisher
             else
             {
                 IssuerCert = X509CertificateLoader.LoadPkcs12FromFile(issuerCerts[0], string.Empty);
+            }
+
+            // also add the issuer cert to our trusted store (public key only) so that certificates
+            // issued by it are trusted during certificate chain validation
+            try
+            {
+                X509Certificate2 issuerPublicKey = X509CertificateLoader.LoadCertificate(IssuerCert.RawData);
+                await UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(issuerPublicKey, cancellationToken).ConfigureAwait(false);
+
+                _logger.LogInformation($"Added issuer certificate {issuerPublicKey.Subject} [{issuerPublicKey.Thumbprint}] to the trusted store.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not add the issuer certificate to the trusted store.");
             }
 
             Settings.Instance.UAIssuerCertThumbprint = IssuerCert.Thumbprint;

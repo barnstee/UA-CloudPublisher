@@ -1726,7 +1726,18 @@ namespace Opc.Ua.Cloud.Publisher
                 trusted.Add(cert.Export(X509ContentType.Cert));
             }
 
-            issuers.Add(_app.IssuerCert.Export(X509ContentType.Cert));
+            // Publish our CA as a trust ANCHOR, not just as chain material. Per
+            // OPC 10000-12 7.8.2.8 TrustedCertificates holds "ApplicationInstance and CA
+            // Certificates which are trusted" while IssuerCertificates only holds CAs
+            // "necessary to validate Certificates". Adding the CA here means every server
+            // we push to trusts any certificate this CA has signed - including the
+            // certificates we issue to its peers later in the same run. Without it, a
+            // server pushed early only ever sees a snapshot of our trust list and rejects
+            // peers that are re-issued after it (BadCertificateUntrusted), which breaks
+            // communication.
+            byte[] issuerCertBytes = _app.IssuerCert.Export(X509ContentType.Cert);
+            trusted.Add(issuerCertBytes);
+            issuers.Add(issuerCertBytes);
 
             TrustListDataType trustList = new TrustListDataType()
             {
