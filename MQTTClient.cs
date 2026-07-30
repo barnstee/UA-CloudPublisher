@@ -298,6 +298,33 @@
             }
         }
 
+        // Builds the TLS options for a broker connection. Note that setting AllowUntrustedCertificates and
+        // IgnoreCertificateChainErrors alone is not enough in MQTTnet: its default validation callback still
+        // rejects certificates (e.g. on hostname mismatch or an untrusted root), which surfaces as
+        // "The remote certificate was rejected by the provided RemoteCertificateValidationCallback".
+        // We therefore install an explicit validation handler when the user opted in to untrusted certificates.
+        private static MqttClientTlsOptions BuildTlsOptions(bool useTls, bool allowUntrusted, IMqttClientCertificatesProvider certificatesProvider = null)
+        {
+            MqttClientTlsOptions tlsOptions = new MqttClientTlsOptions
+            {
+                UseTls = useTls,
+                AllowUntrustedCertificates = allowUntrusted,
+                IgnoreCertificateChainErrors = allowUntrusted
+            };
+
+            if (certificatesProvider != null)
+            {
+                tlsOptions.ClientCertificatesProvider = certificatesProvider;
+            }
+
+            if (allowUntrusted)
+            {
+                tlsOptions.CertificateValidationHandler = _ => true;
+            }
+
+            return tlsOptions;
+        }
+
         // Builds the MQTT client options for the given broker, applying the same SAS-token, TLS, WebSocket and
         // certificate logic used for the primary broker so the alt broker connection behaves identically.
         private MqttClientOptionsBuilder BuildClientOptions(string brokerUrl, uint brokerPort, string username, string password)
@@ -320,12 +347,7 @@
             MqttClientOptionsBuilder clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(brokerUrl, (int?)brokerPort)
                     .WithClientId(publisherName)
-                    .WithTlsOptions(new MqttClientTlsOptions
-                    {
-                        UseTls = Settings.Instance.UseTLS,
-                        AllowUntrustedCertificates = Settings.Instance.AllowUntrustedBrokerCertificate,
-                        IgnoreCertificateChainErrors = Settings.Instance.AllowUntrustedBrokerCertificate
-                    })
+                    .WithTlsOptions(BuildTlsOptions(Settings.Instance.UseTLS, Settings.Instance.AllowUntrustedBrokerCertificate))
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
@@ -337,12 +359,7 @@
                 clientOptions = new MqttClientOptionsBuilder()
                     .WithWebSocketServer(o => o.WithUri(brokerUrl))
                     .WithClientId(publisherName)
-                    .WithTlsOptions(new MqttClientTlsOptions
-                    {
-                        UseTls = Settings.Instance.UseTLS,
-                        AllowUntrustedCertificates = Settings.Instance.AllowUntrustedBrokerCertificate,
-                        IgnoreCertificateChainErrors = Settings.Instance.AllowUntrustedBrokerCertificate
-                    })
+                    .WithTlsOptions(BuildTlsOptions(Settings.Instance.UseTLS, Settings.Instance.AllowUntrustedBrokerCertificate))
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
@@ -355,13 +372,7 @@
                 clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(brokerUrl)
                     .WithClientId(publisherName)
-                    .WithTlsOptions(new MqttClientTlsOptions
-                    {
-                        UseTls = true,
-                        AllowUntrustedCertificates = true,
-                        IgnoreCertificateChainErrors = true,
-                        ClientCertificatesProvider = new MqttClientCertificatesProvider(_uAApplication)
-                    })
+                    .WithTlsOptions(BuildTlsOptions(true, true, new MqttClientCertificatesProvider(_uAApplication)))
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
