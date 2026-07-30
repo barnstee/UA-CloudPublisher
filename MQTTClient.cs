@@ -320,7 +320,12 @@
             MqttClientOptionsBuilder clientOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(brokerUrl, (int?)brokerPort)
                     .WithClientId(publisherName)
-                    .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
+                    .WithTlsOptions(new MqttClientTlsOptions
+                    {
+                        UseTls = Settings.Instance.UseTLS,
+                        AllowUntrustedCertificates = Settings.Instance.AllowUntrustedBrokerCertificate,
+                        IgnoreCertificateChainErrors = Settings.Instance.AllowUntrustedBrokerCertificate
+                    })
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))
@@ -332,7 +337,12 @@
                 clientOptions = new MqttClientOptionsBuilder()
                     .WithWebSocketServer(o => o.WithUri(brokerUrl))
                     .WithClientId(publisherName)
-                    .WithTlsOptions(new MqttClientTlsOptions { UseTls = Settings.Instance.UseTLS })
+                    .WithTlsOptions(new MqttClientTlsOptions
+                    {
+                        UseTls = Settings.Instance.UseTLS,
+                        AllowUntrustedCertificates = Settings.Instance.AllowUntrustedBrokerCertificate,
+                        IgnoreCertificateChainErrors = Settings.Instance.AllowUntrustedBrokerCertificate
+                    })
                     .WithProtocolVersion(MQTTnet.Formatter.MqttProtocolVersion.V500)
                     .WithTimeout(TimeSpan.FromSeconds(10))
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(100))

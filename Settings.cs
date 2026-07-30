@@ -166,6 +166,11 @@
 
         public bool UseTLS { get; set; } = true;
 
+        // Accept broker TLS certificates that fail chain validation (self-signed or
+        // signed by a private CA). Defaults to false so certificate validation stays
+        // strict unless explicitly opted out of, e.g. for an in-cluster test broker.
+        public bool AllowUntrustedBrokerCertificate { get; set; } = false;
+
         public bool UseUACertAuth { get; set; } = false;
 
         public bool UseCustomCertAuth { get; set; } = false;
