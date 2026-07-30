@@ -392,9 +392,30 @@ namespace Opc.Ua.Cloud.Publisher
 
                 if (currentMessages != null)
                 {
-                    foreach (KeyValuePair<ushort, string> metadataMessage in currentMessages)
+                    // don't even attempt the batch while the broker is down: with one metadata message per
+                    // DataSetWriter this loop can be hundreds/thousands of publishes, which would just produce
+                    // an equal number of failures and log entries
+                    if (!Diagnostics.Singleton.Info.ConnectedToBroker)
                     {
-                        await SendMetadataMessageAsync(metadataMessage.Value, metadataMessage.Key).ConfigureAwait(false);
+                        _logger.LogInformation("Skipping sending {count} metadata message(s) as the broker is not connected.", currentMessages.Length);
+                    }
+                    else
+                    {
+                        foreach (KeyValuePair<ushort, string> metadataMessage in currentMessages)
+                        {
+                            // stop early if the connection drops part way through the batch
+                            if (!Diagnostics.Singleton.Info.ConnectedToBroker)
+                            {
+                                _logger.LogInformation("Aborting metadata batch as the broker connection was lost.");
+                                break;
+                            }
+
+                            await SendMetadataMessageAsync(metadataMessage.Value, metadataMessage.Key).ConfigureAwait(false);
+
+                            // throttle slightly so we don't overwhelm the broker's flow control / rate limits
+                            // with a large burst of metadata publishes (which can cause it to drop the connection)
+                            await Task.Delay(5).ConfigureAwait(false);
+                        }
                     }
                 }
             }
