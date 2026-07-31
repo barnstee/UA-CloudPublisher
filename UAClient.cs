@@ -1581,6 +1581,22 @@ namespace Opc.Ua.Cloud.Publisher
 
                 byte[] unusedNonce = Array.Empty<byte>();
 
+                // Push the trust list FIRST, before touching the server's certificate. This mirrors the
+                // canonical order in the SDK's own push test (PushTest.cs: UpdateTrustList is [Order(300)],
+                // CreateSigningRequest [Order(4xx)], UpdateCertificate [Order(5xx)], ApplyChanges [Order(700)]).
+                //
+                // Ordering matters because every ServerPushConfigurationClient operation wraps its work in
+                // ElevatePermissionsAsync()/RevertPermissionsAsync(): the session is re-activated with
+                // AdminCredentials and then reverted to the previous (anonymous) identity after each call.
+                // Re-activation sends a UserNameIdentityToken encrypted with the server's public key taken
+                // from the session's endpoint description. Once UpdateCertificate has replaced the server's
+                // key pair (we request regeneratePrivateKey below), that cached key is stale, so the server
+                // can no longer decrypt the token and the next elevated call fails with BadUserAccessDenied.
+                // Doing the trust list first avoids re-elevating after the server's key has changed.
+                TrustListDataType trustList = await GetTrustListsAsync().ConfigureAwait(false);
+
+                await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
+
                 // Ask the server to regenerate its private key (true) instead of reusing the existing one.
                 // Reusing an existing sub-2048-bit server key produces a re-issued certificate that modern
                 // OPC UA servers reject during UpdateCertificate with BadCertificatePolicyCheckFailed
@@ -1597,8 +1613,11 @@ namespace Opc.Ua.Cloud.Publisher
                     null,
                     certificateRequest);
 
+                // store the new server certificate in our own trust list so we keep trusting the server
+                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
+
                 byte[][] issuerCertificates = [_app.IssuerCert.Export(X509ContentType.Cert)];
-                await serverPushClient.UpdateCertificateAsync(
+                bool updateSucceeded = await serverPushClient.UpdateCertificateAsync(
                     NodeId.Null,
                     serverPushClient.ApplicationCertificateType,
                     certificate.Export(X509ContentType.Cert),
@@ -1606,15 +1625,12 @@ namespace Opc.Ua.Cloud.Publisher
                     Array.Empty<byte>(),
                     issuerCertificates).ConfigureAwait(false);
 
-                // store the new server certificate in our own trust list so we keep trusting the server
-                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
-
-                // update trust list on server
-                TrustListDataType trustList = await GetTrustListsAsync().ConfigureAwait(false);
-
-                await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
-
-                await serverPushClient.ApplyChangesAsync().ConfigureAwait(false);
+                // ApplyChanges is only required (and only valid) when the certificate actually changed;
+                // the SDK's push test calls it exclusively when UpdateCertificate returned true
+                if (updateSucceeded)
+                {
+                    await serverPushClient.ApplyChangesAsync().ConfigureAwait(false);
+                }
 
                 await serverPushClient.DisconnectAsync().ConfigureAwait(false);
             }
@@ -1720,10 +1736,22 @@ namespace Opc.Ua.Cloud.Publisher
             ByteStringCollection issuers = new ByteStringCollection();
             ByteStringCollection issuersCrls = new ByteStringCollection();
 
+            // Track thumbprints so the same certificate is never sent twice. The server applies the pushed
+            // list via TrustList.UpdateStoreCertificatesAsync(), which removes only ONE matching entry per
+            // certificate already present in its store and then blindly Add()s whatever is left over. A
+            // duplicate therefore ends up calling DirectoryCertificateStore.AddAsync() for a certificate that
+            // is already there, which throws ArgumentException ("A certificate with the same thumbprint is
+            // already in the store"). For the trusted store that exception is swallowed into result=false,
+            // which makes CloseAndUpdate return BadCertificateInvalid and fails the whole trust list update.
+            HashSet<string> trustedThumbprints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
             foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync(_app.Telemetry).ConfigureAwait(false))
             {
-                trusted.Add(cert.Export(X509ContentType.Cert));
+                if (trustedThumbprints.Add(cert.Thumbprint))
+                {
+                    trusted.Add(cert.Export(X509ContentType.Cert));
+                }
             }
 
             // Publish our CA as a trust ANCHOR, not just as chain material. Per
@@ -1734,9 +1762,13 @@ namespace Opc.Ua.Cloud.Publisher
             // certificates we issue to its peers later in the same run. Without it, a
             // server pushed early only ever sees a snapshot of our trust list and rejects
             // peers that are re-issued after it (BadCertificateUntrusted), which breaks
-            // communication.
+            // communication. Note our CA may already be in the trusted peer store, hence the guard.
             byte[] issuerCertBytes = _app.IssuerCert.Export(X509ContentType.Cert);
-            trusted.Add(issuerCertBytes);
+            if (trustedThumbprints.Add(_app.IssuerCert.Thumbprint))
+            {
+                trusted.Add(issuerCertBytes);
+            }
+
             issuers.Add(issuerCertBytes);
 
             TrustListDataType trustList = new TrustListDataType()
