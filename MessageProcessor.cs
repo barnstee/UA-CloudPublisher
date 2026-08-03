@@ -321,11 +321,20 @@ namespace Opc.Ua.Cloud.Publisher
 
         private async void SendStatusOnTimerAsync(object state)
         {
-            // stop the timer while we're sending
-            _statusTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            // Same pattern as SendMetadataOnTimerAsync: capture the timer, keep the stop inside the
+            // try, and never let an exception escape this async void method - otherwise the timer
+            // is left stopped and status messages cease for the process lifetime.
+            Timer timer = _statusTimer;
+            if (timer == null)
+            {
+                return;
+            }
 
             try
             {
+                // stop the timer while we're sending
+                timer.Change(Timeout.Infinite, Timeout.Infinite);
+
                 using (MemoryStream buffer = new MemoryStream())
                 {
                     buffer.Write(Encoding.UTF8.GetBytes(_encoder.EncodeStatus(Interlocked.Increment(ref _messageID) - 1)));
@@ -342,7 +351,14 @@ namespace Opc.Ua.Cloud.Publisher
             finally
             {
                 // restart the timer
-                _statusTimer.Change((int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+                try
+                {
+                    _statusTimer?.Change((int)Settings.Instance.DiagnosticsLoggingInterval * 1000, (int)Settings.Instance.DiagnosticsLoggingInterval * 1000);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // shutting down - nothing to restart
+                }
             }
         }
 
@@ -376,11 +392,23 @@ namespace Opc.Ua.Cloud.Publisher
 
         private async void SendMetadataOnTimerAsync(object state)
         {
-            // stop the timer while we're sending
-            _metadataTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            // Capture the timer once: Dispose() (see Stop()) nulls the field, and this method is
+            // async void, so a NullReferenceException here would be unobservable - the timer would
+            // simply never be restarted and metadata would stop for the process lifetime.
+            Timer timer = _metadataTimer;
+            if (timer == null)
+            {
+                return;
+            }
 
             try
             {
+                // stop the timer while we're sending
+                // NOTE: this MUST be inside the try. It used to sit above it, so any exception it
+                // raised skipped the finally below and left the timer stopped forever - exactly one
+                // metadata batch was sent after startup and then never again.
+                timer.Change(Timeout.Infinite, Timeout.Infinite);
+
                 KeyValuePair<ushort, string>[] currentMessages = null;
                 lock (_metadataMessagesLock)
                 {
@@ -401,22 +429,34 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                     else
                     {
+                        int sent = 0;
+
                         foreach (KeyValuePair<ushort, string> metadataMessage in currentMessages)
                         {
                             // stop early if the connection drops part way through the batch
                             if (!Diagnostics.Singleton.Info.ConnectedToBroker)
                             {
-                                _logger.LogInformation("Aborting metadata batch as the broker connection was lost.");
+                                _logger.LogInformation("Aborting metadata batch after {sent} of {total} message(s) as the broker connection was lost.", sent, currentMessages.Length);
                                 break;
                             }
 
                             await SendMetadataMessageAsync(metadataMessage.Value, metadataMessage.Key).ConfigureAwait(false);
+                            sent++;
 
                             // throttle slightly so we don't overwhelm the broker's flow control / rate limits
                             // with a large burst of metadata publishes (which can cause it to drop the connection)
                             await Task.Delay(5).ConfigureAwait(false);
                         }
+
+                        if (sent > 0)
+                        {
+                            _logger.LogInformation("Sent {sent} metadata message(s) to topic {topic}; next send in {interval}s.", sent, Settings.Instance.BrokerMetadataTopic, Settings.Instance.MetadataSendInterval);
+                        }
                     }
+                }
+                else
+                {
+                    _logger.LogInformation("No metadata messages to send yet; the cache is populated when telemetry for a DataSetWriter first arrives.");
                 }
             }
             catch (Exception ex)
@@ -426,7 +466,14 @@ namespace Opc.Ua.Cloud.Publisher
             finally
             {
                 // restart the timer
-                _metadataTimer.Change((int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+                try
+                {
+                    _metadataTimer?.Change((int)Settings.Instance.MetadataSendInterval * 1000, (int)Settings.Instance.MetadataSendInterval * 1000);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // shutting down - nothing to restart
+                }
             }
         }
 
