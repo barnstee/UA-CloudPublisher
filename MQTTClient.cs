@@ -211,10 +211,16 @@
 
                     // The INITIAL connect failed, so MQTTnet will never raise DisconnectedAsync for
                     // this client - that event only fires for a connection that was established at
-                    // least once. Without this the publisher would stay up but permanently offline
-                    // whenever the broker is not yet listening (e.g. both come up together after a
-                    // host reboot). Drive the same reconnect loop the disconnect handler uses.
-                    await ReconnectLoopAsync(thisClient, clientOptions, receiveTopic, thisToken, () => ReferenceEquals(_client, thisClient), SetConnected, "MQTT broker").ConfigureAwait(false);
+                    // least once. Without a retry the publisher would stay up but permanently
+                    // offline whenever the broker is not yet listening (e.g. both come up together
+                    // after a host reboot).
+                    //
+                    // This MUST NOT be awaited: ReconnectLoopAsync loops until it connects, and
+                    // ConnectAsync is awaited from Startup, so awaiting here would block startup
+                    // before the telemetry engine and the persistency file are loaded - stopping
+                    // ALL publishing, not just recovering the connection.
+                    _ = Task.Run(async () =>
+                        await ReconnectLoopAsync(thisClient, clientOptions, receiveTopic, thisToken, () => ReferenceEquals(_client, thisClient), SetConnected, "MQTT broker").ConfigureAwait(false));
                 }
             }
             catch (Exception ex)
@@ -462,7 +468,12 @@
                 // PublishMetadataAsync throws while _altClient is null, and would keep throwing
                 // forever if we nulled it here; retaining the instance lets it start working as soon
                 // as the broker accepts the connection.
-                await ReconnectLoopAsync(thisAltClient, altClientOptions, null, thisAltToken, () => ReferenceEquals(_altClient, thisAltClient), connected => Diagnostics.Singleton.Info.ConnectedToAltBroker = connected, "alt MQTT broker").ConfigureAwait(false);
+                //
+                // Not awaited, for the same reason as the primary client above: this method is
+                // called from ConnectAsync, which Startup awaits before starting the telemetry
+                // engine.
+                _ = Task.Run(async () =>
+                    await ReconnectLoopAsync(thisAltClient, altClientOptions, null, thisAltToken, () => ReferenceEquals(_altClient, thisAltClient), connected => Diagnostics.Singleton.Info.ConnectedToAltBroker = connected, "alt MQTT broker").ConfigureAwait(false));
             }
         }
 
