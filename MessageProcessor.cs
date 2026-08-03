@@ -430,6 +430,7 @@ namespace Opc.Ua.Cloud.Publisher
                     else
                     {
                         int sent = 0;
+                        int failed = 0;
 
                         foreach (KeyValuePair<ushort, string> metadataMessage in currentMessages)
                         {
@@ -440,15 +441,27 @@ namespace Opc.Ua.Cloud.Publisher
                                 break;
                             }
 
-                            await SendMetadataMessageAsync(metadataMessage.Value, metadataMessage.Key).ConfigureAwait(false);
-                            sent++;
+                            if (await SendMetadataMessageAsync(metadataMessage.Value, metadataMessage.Key).ConfigureAwait(false))
+                            {
+                                sent++;
+                            }
+                            else
+                            {
+                                failed++;
+                            }
 
                             // throttle slightly so we don't overwhelm the broker's flow control / rate limits
                             // with a large burst of metadata publishes (which can cause it to drop the connection)
                             await Task.Delay(5).ConfigureAwait(false);
                         }
 
-                        if (sent > 0)
+                        if (failed > 0)
+                        {
+                            // Count only what the sink confirmed it published, so this cannot report
+                            // success while the broker is silently rejecting or dropping the messages.
+                            _logger.LogWarning("Metadata send: {sent} of {total} message(s) reached topic {topic}, {failed} FAILED. See the errors above for the cause.", sent, currentMessages.Length, Settings.Instance.BrokerMetadataTopic, failed);
+                        }
+                        else if (sent > 0)
                         {
                             _logger.LogInformation("Sent {sent} metadata message(s) to topic {topic}; next send in {interval}s.", sent, Settings.Instance.BrokerMetadataTopic, Settings.Instance.MetadataSendInterval);
                         }
@@ -534,7 +547,8 @@ namespace Opc.Ua.Cloud.Publisher
         // Sends a single metadata message, either as an OPC UA PubSub NetworkMessage (the network message header is
         // stitched in front of the payload) or as a CloudEvents message (payload-only, with the header information
         // carried in CloudEvents attributes / transport headers), depending on the UseCloudEventsMetadataHeader setting.
-        private async Task SendMetadataMessageAsync(string metadataPayload, ushort dataSetWriterId)
+        // Returns whether the message actually reached the broker.
+        private async Task<bool> SendMetadataMessageAsync(string metadataPayload, ushort dataSetWriterId)
         {
             ulong messageId = Interlocked.Increment(ref _messageID) - 1;
 
@@ -560,7 +574,10 @@ namespace Opc.Ua.Cloud.Publisher
             if (await _sink.SendMetadataAsync(bytesToSend, cloudEventAttributes).ConfigureAwait(false))
             {
                 _logger.LogDebug($"Sent {bytesToSend.Length} metadata bytes to broker!");
+                return true;
             }
+
+            return false;
         }
 
         private int CalculateBatchTimeout(CancellationToken cancellationToken = default)
