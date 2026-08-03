@@ -5,6 +5,7 @@ namespace Opc.Ua.Cloud.Publisher
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
     using System.Text;
     using System.Threading;
@@ -441,7 +442,11 @@ namespace Opc.Ua.Cloud.Publisher
                                 break;
                             }
 
-                            if (await SendMetadataMessageAsync(metadataMessage.Value, metadataMessage.Key).ConfigureAwait(false))
+                            // Re-stamp the cached payload: it was encoded once, when this
+                            // DataSetWriter was first seen, so resending it verbatim would repeat the
+                            // original Timestamp and consumers would treat the republish as a
+                            // duplicate rather than a fresh sample.
+                            if (await SendMetadataMessageAsync(RefreshMetadataTimestamp(metadataMessage.Value), metadataMessage.Key).ConfigureAwait(false))
                             {
                                 sent++;
                             }
@@ -578,6 +583,42 @@ namespace Opc.Ua.Cloud.Publisher
             }
 
             return false;
+        }
+
+        // Refreshes the "Timestamp" member of a cached metadata message.
+        //
+        // The cache holds the fully encoded JSON produced when the DataSetWriter was first seen, so
+        // every periodic resend used to carry that original timestamp - only MessageId (added by the
+        // network message header) differed. Consumers that key on time therefore saw the republished
+        // metadata as a duplicate of a point they already had: InfluxDB overwrites a point with the
+        // same measurement + tag set + timestamp, so the periodic sends were silently collapsing
+        // into the original row instead of appearing as new ones.
+        private static string RefreshMetadataTimestamp(string metadataPayload)
+        {
+            // The payload is the metadata object without its opening brace (it is stitched onto the
+            // network message header), e.g.  "DataSetWriterId":123,"Timestamp":"...","MetaData":{...}
+            const string timestampKey = "\"Timestamp\":\"";
+
+            int start = metadataPayload.IndexOf(timestampKey, StringComparison.Ordinal);
+            if (start < 0)
+            {
+                return metadataPayload;
+            }
+
+            int valueStart = start + timestampKey.Length;
+            int valueEnd = metadataPayload.IndexOf('"', valueStart);
+            if (valueEnd < 0)
+            {
+                return metadataPayload;
+            }
+
+            // Match the encoder's format (JsonEncoder.WriteDateTime uses ISO 8601 round-trip).
+            string now = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ", CultureInfo.InvariantCulture);
+
+            return string.Concat(
+                metadataPayload.AsSpan(0, valueStart),
+                now,
+                metadataPayload.AsSpan(valueEnd));
         }
 
         private int CalculateBatchTimeout(CancellationToken cancellationToken = default)
