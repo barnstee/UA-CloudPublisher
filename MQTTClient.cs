@@ -208,6 +208,13 @@
                             _logger.LogCritical($"{prop.ToString()}");
                         }
                     }
+
+                    // The INITIAL connect failed, so MQTTnet will never raise DisconnectedAsync for
+                    // this client - that event only fires for a connection that was established at
+                    // least once. Without this the publisher would stay up but permanently offline
+                    // whenever the broker is not yet listening (e.g. both come up together after a
+                    // host reboot). Drive the same reconnect loop the disconnect handler uses.
+                    await ReconnectLoopAsync(thisClient, clientOptions, receiveTopic, thisToken, () => ReferenceEquals(_client, thisClient), SetConnected, "MQTT broker").ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -444,10 +451,18 @@
             {
                 _logger.LogCritical("Failed to connect to alt MQTT broker: " + ex.Message);
 
-                _altClient?.Dispose();
-                _altClient = null;
-
                 Diagnostics.Singleton.Info.ConnectedToAltBroker = false;
+
+                // The INITIAL connect failed, so MQTTnet will never raise DisconnectedAsync for this
+                // client - that event only fires for a connection that was established at least once.
+                // Keep the client (rather than disposing it) and drive the same reconnect loop the
+                // disconnect handler uses, so a broker that is merely slow to start does not leave
+                // metadata publishing permanently broken.
+                //
+                // PublishMetadataAsync throws while _altClient is null, and would keep throwing
+                // forever if we nulled it here; retaining the instance lets it start working as soon
+                // as the broker accepts the connection.
+                await ReconnectLoopAsync(thisAltClient, altClientOptions, null, thisAltToken, () => ReferenceEquals(_altClient, thisAltClient), connected => Diagnostics.Singleton.Info.ConnectedToAltBroker = connected, "alt MQTT broker").ConfigureAwait(false);
             }
         }
 
@@ -477,6 +492,13 @@
                 if (_altClient == null)
                 {
                     throw new InvalidOperationException("Alternate MQTT client is not connected.");
+                }
+
+                // The alt client is retained across a failed initial connect while its reconnect
+                // loop retries in the background, so it can exist without being connected yet.
+                if (!_altClient.IsConnected)
+                {
+                    throw new InvalidOperationException("Alternate MQTT client is not connected yet; reconnect in progress.");
                 }
 
                 await _altClient.PublishAsync(BuildMetadataMessage(payload, cloudEventAttributes), _cancellationTokenSource.Token).ConfigureAwait(false);
