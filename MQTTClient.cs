@@ -27,6 +27,17 @@
         private IMqttClient _altClient = null;
         private bool _isAltBroker = false;
 
+        // Guards against concurrent reconnect loops. MQTTnet raises DisconnectedAsync for EVERY
+        // failed ConnectAsync attempt, not only for a connection that was previously established.
+        // Since the reconnect loop itself calls ConnectAsync, each failure re-entered the handler
+        // and started an additional loop, which then produced its own failures: the loops
+        // multiplied until dozens of them were calling ConnectAsync on the same client instance
+        // within the same second. MQTTnet rejects the overlapping calls with
+        // "Not allowed to connect while connect/disconnect is pending", so the client could never
+        // recover and the publisher stayed permanently offline. Only one loop may run per client.
+        private int _reconnecting;
+        private int _altReconnecting;
+
         private readonly ILogger _logger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ICommandProcessor _commandProcessor;
@@ -209,11 +220,15 @@
                         }
                     }
 
-                    // The INITIAL connect failed, so MQTTnet will never raise DisconnectedAsync for
-                    // this client - that event only fires for a connection that was established at
-                    // least once. Without a retry the publisher would stay up but permanently
-                    // offline whenever the broker is not yet listening (e.g. both come up together
-                    // after a host reboot).
+                    // The INITIAL connect failed. Start a retry loop so the publisher does not stay
+                    // up but permanently offline whenever the broker is not yet listening (e.g. both
+                    // come up together after a host reboot).
+                    //
+                    // NOTE: MQTTnet 5 DOES raise DisconnectedAsync for a failed connect attempt, so
+                    // the handler above may also try to start a loop. ReconnectLoopAsync guards
+                    // against that with _reconnecting: whichever call gets there first wins and the
+                    // rest return immediately. Without that guard the loops multiply, because every
+                    // ConnectAsync failure inside a loop raises DisconnectedAsync again.
                     //
                     // This MUST NOT be awaited: ReconnectLoopAsync loops until it connects, and
                     // ConnectAsync is awaited from Startup, so awaiting here would block startup
@@ -270,44 +285,79 @@
         // (clean sessions drop subscriptions on disconnect) and restores the connected diagnostics flag.
         private async Task ReconnectLoopAsync(IMqttClient client, MqttClientOptionsBuilder options, string receiveTopic, CancellationToken token, Func<bool> isCurrent, Action<bool> setConnected, string label)
         {
-            // we just lost the connection, so reflect that immediately
-            setConnected(false);
+            // Only ever run one reconnect loop per client (see _reconnecting). Entering this method
+            // again while a loop is already running would add a second caller of ConnectAsync on the
+            // same client, which MQTTnet rejects outright. A 'ref' local cannot survive an await, so
+            // the two gates are selected explicitly instead.
+            bool isAltClient = ReferenceEquals(client, _altClient);
 
-            while (!token.IsCancellationRequested && isCurrent() && !client.IsConnected)
+            if (isAltClient)
             {
-                try
+                if (Interlocked.CompareExchange(ref _altReconnecting, 1, 0) != 0)
                 {
-                    // wait before (re)trying so we don't hammer the broker
-                    await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
-
-                    MqttClientConnectResult connectResult = await client.ConnectAsync(options.Build(), token).ConfigureAwait(false);
-
-                    if (connectResult.ResultCode == MqttClientConnectResultCode.Success)
-                    {
-                        // a clean session drops server-side subscriptions, so re-subscribe after reconnecting
-                        await SubscribeReceiveTopicAsync(client, receiveTopic).ConfigureAwait(false);
-
-                        _logger.LogInformation($"Reconnected to {label}.");
-                        break;
-                    }
-
-                    string status = GetStatus(connectResult.UserProperties)?.ToString("x4");
-                    _logger.LogWarning($"Reconnect to {label} failed. Status: {connectResult.ResultCode}; status: {status}. Retrying in 5 seconds...");
+                    return;
                 }
-                catch (OperationCanceledException)
+            }
+            else
+            {
+                if (Interlocked.CompareExchange(ref _reconnecting, 1, 0) != 0)
                 {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning($"Reconnect to {label} failed: {ex.Message}. Retrying in 5 seconds...");
+                    return;
                 }
             }
 
-            // restore the flag only if this client is still the active one and actually connected
-            if (isCurrent() && client.IsConnected)
+            try
             {
-                setConnected(true);
+                // we just lost the connection, so reflect that immediately
+                setConnected(false);
+
+                while (!token.IsCancellationRequested && isCurrent() && !client.IsConnected)
+                {
+                    try
+                    {
+                        // wait before (re)trying so we don't hammer the broker
+                        await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
+
+                        MqttClientConnectResult connectResult = await client.ConnectAsync(options.Build(), token).ConfigureAwait(false);
+
+                        if (connectResult.ResultCode == MqttClientConnectResultCode.Success)
+                        {
+                            // a clean session drops server-side subscriptions, so re-subscribe after reconnecting
+                            await SubscribeReceiveTopicAsync(client, receiveTopic).ConfigureAwait(false);
+
+                            _logger.LogInformation($"Reconnected to {label}.");
+                            break;
+                        }
+
+                        string status = GetStatus(connectResult.UserProperties)?.ToString("x4");
+                        _logger.LogWarning($"Reconnect to {label} failed. Status: {connectResult.ResultCode}; status: {status}. Retrying in 5 seconds...");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"Reconnect to {label} failed: {ex.Message}. Retrying in 5 seconds...");
+                    }
+                }
+
+                // restore the flag only if this client is still the active one and actually connected
+                if (isCurrent() && client.IsConnected)
+                {
+                    setConnected(true);
+                }
+            }
+            finally
+            {
+                if (isAltClient)
+                {
+                    Interlocked.Exchange(ref _altReconnecting, 0);
+                }
+                else
+                {
+                    Interlocked.Exchange(ref _reconnecting, 0);
+                }
             }
         }
 
