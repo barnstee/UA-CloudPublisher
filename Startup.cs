@@ -3,6 +3,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.DataProtection;
     using Microsoft.AspNetCore.Hosting;
+    using Microsoft.AspNetCore.HttpOverrides;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
@@ -26,6 +27,25 @@ namespace Opc.Ua.Cloud.Publisher
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // When this server runs behind a TLS-terminating reverse proxy, the proxy
+            // forwards the request over plain HTTP and records the original scheme in
+            // X-Forwarded-Proto. Honouring it keeps Request.Scheme accurate, which
+            // matters for the Blazor Server circuit: the negotiated websocket URI is
+            // derived from the request scheme, so without this the client would be
+            // told to connect to ws:// from an https:// page and be blocked as mixed
+            // content.
+            //
+            // KnownIPNetworks/KnownProxies are cleared because the proxy's address is not
+            // known ahead of time. That is safe only where this server is reachable
+            // exclusively through the proxy; expose it directly and a caller could spoof
+            // these headers.
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownIPNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+
             // basic authentication for the UI is mandatory: fail fast if the credentials are not configured
             string basicAuthUsername = Environment.GetEnvironmentVariable(BasicAuthMiddleware.UsernameEnvVar);
             string basicAuthPassword = Environment.GetEnvironmentVariable(BasicAuthMiddleware.PasswordEnvVar);
@@ -106,6 +126,10 @@ namespace Opc.Ua.Cloud.Publisher
                               Settings.BrokerResolver brokerResolver,
                               IPublishedNodesFileHandler publishedNodesFileHandler)
         {
+            // Must run before anything that reads the request scheme - UseHsts,
+            // UseHttpsRedirection and the Blazor hub negotiation all do.
+            app.UseForwardedHeaders();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
