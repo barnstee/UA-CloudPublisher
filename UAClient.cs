@@ -1579,7 +1579,9 @@ namespace Opc.Ua.Cloud.Publisher
 
                 await serverPushClient.ConnectAsync(endpointURL).ConfigureAwait(false);
 
-                byte[] unusedNonce = Array.Empty<byte>();
+                // When regeneratePrivateKey is true, OPC UA Part 12 requires a nonce of at least 32 random bytes
+                // (used as additional entropy for the new key).
+                byte[] nonce = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
 
                 // Push the trust list FIRST, before touching the server's certificate. This mirrors the
                 // canonical order in the SDK's own push test (PushTest.cs: UpdateTrustList is [Order(300)],
@@ -1595,7 +1597,16 @@ namespace Opc.Ua.Cloud.Publisher
                 // Doing the trust list first avoids re-elevating after the server's key has changed.
                 TrustListDataType trustList = await GetTrustListsAsync().ConfigureAwait(false);
 
-                await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
+                bool trustListApplyRequired = await serverPushClient.UpdateTrustListAsync(trustList).ConfigureAwait(false);
+
+                // Servers (e.g. UA stack V2.0) only stage the new trust list; it does not become active until
+                // ApplyChanges is called. UpdateCertificate validates the new certificate's chain against the
+                // ACTIVE trust/issuer stores, so without applying here our CA is unknown to the server and
+                // UpdateCertificate fails with BadCertificateChainIncomplete (PartialChain).
+                if (trustListApplyRequired)
+                {
+                    await serverPushClient.ApplyChangesAsync().ConfigureAwait(false);
+                }
 
                 // Ask the server to regenerate its private key (true) instead of reusing the existing one.
                 // Reusing an existing sub-2048-bit server key produces a re-issued certificate that modern
@@ -1606,11 +1617,13 @@ namespace Opc.Ua.Cloud.Publisher
                     serverPushClient.ApplicationCertificateType,
                     string.Empty,
                     true,
-                    unusedNonce).ConfigureAwait(false);
+                    nonce).ConfigureAwait(false);
 
                 X509Certificate2 certificate = ProcessSigningRequest(
                     serverPushClient.Session.ServerUris.ToArray()[0],
-                    null,
+                    // default the SAN DNS/IP entry to the host we connect to, so clients don't hit
+                    // "domain is not listed in the server certificate"; CSR-provided names take precedence
+                    [new Uri(endpointURL).Host],
                     certificateRequest);
 
                 // store the new server certificate in our own trust list so we keep trusting the server
@@ -1675,10 +1688,17 @@ namespace Opc.Ua.Cloud.Publisher
 
                     if (altNameExtension.IPAddresses.Count > 0 || altNameExtension.DomainNames.Count > 0)
                     {
+                        // merge CSR-provided names with the caller-supplied ones (e.g. the endpoint host we
+                        // connect to) instead of replacing them; otherwise clients connecting via that host get
+                        // "domain is not listed in the server certificate"
                         var domainNameList = new List<string>();
                         domainNameList.AddRange(altNameExtension.DomainNames);
                         domainNameList.AddRange(altNameExtension.IPAddresses);
-                        domainNames = domainNameList.ToArray();
+                        if (domainNames != null)
+                        {
+                            domainNameList.AddRange(domainNames);
+                        }
+                        domainNames = domainNameList.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
                     }
                 }
 

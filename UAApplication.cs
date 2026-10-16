@@ -9,6 +9,7 @@ namespace Opc.Ua.Cloud.Publisher
     using System;
     using System.IO;
     using System.Linq;
+    using System.Text.RegularExpressions;
     using System.Security.Cryptography.X509Certificates;
     using System.Threading;
     using System.Threading.Tasks;
@@ -47,9 +48,25 @@ namespace Opc.Ua.Cloud.Publisher
             ReverseConnectManager = new(Telemetry);
 
             // overwrite app name in UA config file, while removing spaces from the app name
-            string fileContent = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"));
-            fileContent = fileContent.Replace("UACloudPublisher", UAApplicationInstance.ApplicationName.Replace(" ", string.Empty));
-            File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml"), fileContent);
+            // The replacement must be idempotent: the file is rewritten on every start, and if the app name contains
+            // the placeholder (e.g. "UACloudPublisher.local"), a plain Replace() would append the suffix again each time
+            // ("UACloudPublisher.local.local..."). Match the placeholder plus any number of already-applied suffixes
+            // and replace the whole thing, which also heals files corrupted by earlier runs.
+            const string placeholder = "UACloudPublisher";
+            string appName = UAApplicationInstance.ApplicationName.Replace(" ", string.Empty);
+            string pattern = Regex.Escape(placeholder);
+            if (appName.StartsWith(placeholder, StringComparison.Ordinal) && appName.Length > placeholder.Length)
+            {
+                pattern += "(?:" + Regex.Escape(appName.Substring(placeholder.Length)) + ")*";
+            }
+
+            string configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "UACloudPublisher.Config.xml");
+            string fileContent = File.ReadAllText(configFilePath);
+            string newContent = Regex.Replace(fileContent, pattern, appName);
+            if (newContent != fileContent)
+            {
+                File.WriteAllText(configFilePath, newContent);
+            }
 
             // now load UA config file
             await UAApplicationInstance.LoadApplicationConfigurationAsync(false).ConfigureAwait(false);
