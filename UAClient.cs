@@ -1832,16 +1832,16 @@ namespace Opc.Ua.Cloud.Publisher
                 try
                 {
                     assetId = await ExecuteCommandAsync(session, createNodeId, parentNodeId, Variant.From(assetName)).ConfigureAwait(false);
-                    }
-                    catch (ServiceResultException ex)
+                }
+                catch (ServiceResultException ex)
+                {
+                    if (ex.StatusCode == StatusCodes.BadBrowseNameDuplicated)
                     {
-                        if (ex.StatusCode == StatusCodes.BadBrowseNameDuplicated)
-                        {
-                            // delete existing asset first
-                            assetId = await ExecuteCommandAsync(session, deleteNodeId, parentNodeId, Variant.From(NodeId.Parse(ex.Result.LocalizedText.Text))).ConfigureAwait(false);
+                        // delete existing asset first
+                        assetId = await ExecuteCommandAsync(session, deleteNodeId, parentNodeId, Variant.From(NodeId.Parse(ex.Result.LocalizedText.Text))).ConfigureAwait(false);
 
-                            // now try again
-                            assetId = await ExecuteCommandAsync(session, createNodeId, parentNodeId, Variant.From(assetName)).ConfigureAwait(false);
+                        // now try again
+                        assetId = await ExecuteCommandAsync(session, createNodeId, parentNodeId, Variant.From(assetName)).ConfigureAwait(false);
                     }
                     else
                     {
