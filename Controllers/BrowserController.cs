@@ -29,13 +29,17 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         }
 
         [HttpPost]
-        public IActionResult DownloadUACert()
+        public async Task<IActionResult> DownloadUACert()
         {
             _session.EndpointUrl = HttpContext.Session.GetString("EndpointUrl");
 
             try
             {
-                return File(_app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
+                using var certificate = await CertificateIdentifierResolver.ResolveAsync(
+                    _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate,
+                    telemetry: _app.Telemetry).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException("The OPC UA application certificate could not be resolved.");
+                return File(certificate.Export(X509ContentType.Cert), "APPLICATION/octet-stream", "cert.der");
             }
             catch (Exception ex)
             {
@@ -306,7 +310,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
 
                 foreach (UANodeInformation nodeInfo in results)
                 {
-                    if ((nodeInfo.Type != "Variable") || (nodeInfo.NodeId == null) || (nodeInfo.VariableNode == null))
+                    if ((nodeInfo.Type != "Variable") || nodeInfo.NodeId.IsNull || (nodeInfo.VariableNode == null))
                     {
                         continue;
                     }
@@ -325,7 +329,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     VariableNode variableNode = nodeInfo.VariableNode;
 
                     NodeId dataType;
-                    if (!NodeId.IsNull(variableNode.DataType) && (variableNode.DataType.NamespaceIndex != 0))
+                    if (!variableNode.DataType.IsNull && (variableNode.DataType.NamespaceIndex != 0))
                     {
                         // custom DataType: reference it directly (its defining namespace becomes a required model)
                         dataType = variableNode.DataType;
@@ -343,7 +347,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         // standard DataType: use the built-in base type (resolved via the type tree) so newer/unknown
                         // standard types stay resolvable; never emit a potentially-missing standard DataType
                         dataType = nodeInfo.VariableDataTypeId;
-                        if (NodeId.IsNull(dataType))
+                        if (dataType.IsNull)
                         {
                             dataType = DataTypeIds.BaseDataType;
                         }
@@ -366,12 +370,12 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                         TypeDefinitionId = VariableTypeIds.BaseDataVariableType
                     };
 
-                    if ((variableNode.ArrayDimensions != null) && (variableNode.ArrayDimensions.Count > 0))
+                    if (!variableNode.ArrayDimensions.IsEmpty)
                     {
-                        variableState.ArrayDimensions = new ReadOnlyList<uint>(variableNode.ArrayDimensions);
+                        variableState.ArrayDimensions = variableNode.ArrayDimensions;
                     }
 
-                    if (nodeInfo.VariableValue != null)
+                    if (!nodeInfo.VariableValue.IsNull)
                     {
                         variableState.Value = nodeInfo.VariableValue;
                     }

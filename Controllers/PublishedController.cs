@@ -169,7 +169,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     }
                 }
 
-                if (node.ExpandedNodeId == null)
+                if (node.ExpandedNodeId.IsNull)
                 {
                     throw new Exception("No node selected for deletion.");
                 }

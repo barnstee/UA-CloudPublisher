@@ -35,7 +35,7 @@ namespace Opc.Ua.Cloud.Publisher.Configuration
         {
             if (!string.IsNullOrEmpty(encryptedString))
             {
-                X509Certificate2 cert = _uaApplication.IssuerCert;
+                using X509Certificate2 cert = _uaApplication.IssuerCert?.AsX509Certificate2();
                 if (cert == null)
                 {
                     return encryptedString;

@@ -6,6 +6,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Client;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Configuration;
+    using Opc.Ua.Security.Certificates;
     using System;
     using System.IO;
     using System.Linq;
@@ -20,7 +21,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         public ConsoleTelemetry Telemetry { get; } = new();
 
-        public X509Certificate2 IssuerCert { get; set; }
+        public Certificate IssuerCert { get; set; }
 
         public ApplicationInstance UAApplicationInstance { get; set; }
 
@@ -79,33 +80,37 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                // store UA cert thumbprint
-                Settings.Instance.UAClientCertThumbprint = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.Thumbprint;
-                Settings.Instance.UAClientCertExpiry = UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate.NotAfter;
+                // only the public certificate is needed for the thumbprint and expiry; the directory store
+                // enumerates public certificates, so requesting the private key here would not find it
+                using var applicationCertificate = await CertificateIdentifierResolver.ResolveAsync(
+                    UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate,
+                    needPrivateKey: false,
+                    telemetry: Telemetry).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException("The OPC UA application certificate could not be resolved.");
+
+                Settings.Instance.UAClientCertThumbprint = applicationCertificate.Thumbprint;
+                Settings.Instance.UAClientCertExpiry = applicationCertificate.NotAfter;
             }
 
             _logger.LogInformation($"Application Certificate subject name is: {UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.SubjectName}");
 
-            // create OPC UA cert validator
-            UAApplicationInstance.ApplicationConfiguration.CertificateValidator = new CertificateValidator(Telemetry);
-            UAApplicationInstance.ApplicationConfiguration.CertificateValidator.CertificateValidation += new CertificateValidationEventHandler(OPCUAServerCertificateValidationCallback);
-            await UAApplicationInstance.ApplicationConfiguration.CertificateValidator.UpdateAsync(UAApplicationInstance.ApplicationConfiguration).ConfigureAwait(false);
+            // Preserve the existing policy of accepting untrusted OPC UA server certificates.
+            UAApplicationInstance.ApplicationConfiguration.CertificateManager.AcceptError = (certificate, error) =>
+            {
+                if (error.StatusCode != StatusCodes.BadCertificateUntrusted)
+                {
+                    return false;
+                }
+
+                _logger.LogInformation($"Auto-accepting untrusted OPC UA server certificate {certificate.Subject}");
+                return true;
+            };
 
             await CreateIssuerCertAsync(cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Creating reverse connection endpoint on local port 50000.");
             ReverseConnectManager.AddEndpoint(new Uri("opc.tcp://localhost:50000"));
-            ReverseConnectManager.StartService(UAApplicationInstance.ApplicationConfiguration);
-        }
-
-        private void OPCUAServerCertificateValidationCallback(CertificateValidator validator, CertificateValidationEventArgs e)
-        {
-            // always trust the OPC UA server certificate
-            if (e.Error.StatusCode == StatusCodes.BadCertificateUntrusted)
-            {
-                _logger.LogInformation($"Auto-accepting untrusted OPC UA server certificate {e.Certificate.Subject}");
-                e.Accept = true;
-            }
+            await ReverseConnectManager.StartServiceAsync(UAApplicationInstance.ApplicationConfiguration, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task CreateIssuerCertAsync(CancellationToken cancellationToken = default)
@@ -122,7 +127,7 @@ namespace Opc.Ua.Cloud.Publisher
                 _logger.LogError("Could not load issuer cert file, creating a new one. This means all connected OPC UA servers need to be issued a new cert!");
 
                 string subjectName = "CN=" + Settings.Instance.PublisherName + ", O=OPC Foundation";
-                IssuerCert = await CertificateFactory.CreateCertificate(subjectName)
+                IssuerCert = await DefaultCertificateFactory.Instance.CreateCertificate(subjectName)
                   .SetNotBefore(DateTime.Today.AddDays(-1))
                   .SetLifeTime(12)
                   .SetHashAlgorithm(X509Utils.GetRSAHashAlgorithmName(2048))
@@ -134,14 +139,14 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                IssuerCert = X509CertificateLoader.LoadPkcs12FromFile(issuerCerts[0], string.Empty);
+                IssuerCert = Certificate.From(X509CertificateLoader.LoadPkcs12FromFile(issuerCerts[0], string.Empty));
             }
 
             // also add the issuer cert to our trusted store (public key only) so that certificates
             // issued by it are trusted during certificate chain validation
             try
             {
-                X509Certificate2 issuerPublicKey = X509CertificateLoader.LoadCertificate(IssuerCert.RawData);
+                using var issuerPublicKey = Certificate.FromRawData(IssuerCert.RawData);
                 await UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(issuerPublicKey, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation($"Added issuer certificate {issuerPublicKey.Subject} [{issuerPublicKey.Thumbprint}] to the trusted store.");

@@ -4,8 +4,8 @@
   xmlns="http://opcfoundation.org/UA/SDK/Configuration.xsd"
   schemaLocation="./Schema/ApplicationConfiguration.xsd"
 >
-  <ApplicationName>UACloudPublisher</ApplicationName>
-  <ApplicationUri>urn:UACloudPublisher</ApplicationUri>
+  <ApplicationName>UACloudPublisher.local</ApplicationName>
+  <ApplicationUri>urn:UACloudPublisher.local</ApplicationUri>
   <ProductUri>https://github.com/azure/iot-edge-opc-publisher</ProductUri>
   <ApplicationType>Client_1</ApplicationType>
   <SecurityConfiguration>
@@ -13,7 +13,7 @@
       <CertificateIdentifier>
         <StoreType>Directory</StoreType>
         <StorePath>./pki/own</StorePath>
-        <SubjectName>CN=UACloudPublisher, C=US, S=Arizona, O=OPC Foundation</SubjectName>
+        <SubjectName>CN=UACloudPublisher.local, C=US, S=Arizona, O=OPC Foundation</SubjectName>
         <CertificateTypeString>RsaSha256</CertificateTypeString>
       </CertificateIdentifier>
     </ApplicationCertificates>
@@ -73,7 +73,7 @@
   <Extensions/>
   <TraceConfiguration>
     <!-- The following setting is not used, but a combined UA Cloud Publisher tracelog is written to the configured directory instead -->
-    <OutputFilePath>./logs/UACloudPublisher.log</OutputFilePath>
+    <OutputFilePath>./logs/UACloudPublisher.local.log</OutputFilePath>
     <DeleteOnLoad>true</DeleteOnLoad>
     <!--
     Masks supported by the trace feature.

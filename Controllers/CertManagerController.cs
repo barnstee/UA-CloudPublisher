@@ -37,7 +37,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
         {
             List<string> trustList = new();
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync(_app.Telemetry).ConfigureAwait(false))
+            foreach (var cert in await ownTrustList.GetCertificatesAsync(_app.Telemetry).ConfigureAwait(false))
             {
                 trustList.Add(cert.Subject + " [" + cert.Thumbprint + "] ");
             }
@@ -77,7 +77,8 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                 }
 
                 // store in our own trust list
-                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
+                using var trustedCertificate = Opc.Ua.Security.Certificates.Certificate.FromRawData(certificate.RawData);
+                await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(trustedCertificate, CancellationToken.None).ConfigureAwait(false);
 
                 return View("Index", new CertManagerModel() { Certs = new SelectList(await LoadTrustlist().ConfigureAwait(false)) });
             }
@@ -126,7 +127,7 @@ namespace Opc.Ua.Cloud.Publisher.Controllers
                     throw new Exception("No plain text provided.");
                 }
 
-                X509Certificate2 cert = _app.IssuerCert;
+                using X509Certificate2 cert = _app.IssuerCert?.AsX509Certificate2();
                 if (cert == null)
                 {
                     throw new Exception("Issuer certificate is not available.");

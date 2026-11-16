@@ -5,6 +5,9 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua;
     using Opc.Ua.Client;
     using Opc.Ua.Client.ComplexTypes;
+    using ReferenceDescriptionCollection = Opc.Ua.ArrayOf<Opc.Ua.ReferenceDescription>;
+    using SimpleAttributeOperandCollection = Opc.Ua.ArrayOf<Opc.Ua.SimpleAttributeOperand>;
+    using QualifiedNameCollection = Opc.Ua.ArrayOf<Opc.Ua.QualifiedName>;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using Opc.Ua.Gds.Client;
@@ -254,11 +257,11 @@ namespace Opc.Ua.Cloud.Publisher
                     configuredEndpoint,
                     connection == null,
                     false,
-                    _app.UAApplicationInstance.ApplicationConfiguration.ApplicationName,
-                    timeout,
-                    userIdentity,
-                    null
-                ).ConfigureAwait(false);
+                     _app.UAApplicationInstance.ApplicationConfiguration.ApplicationName,
+                        timeout,
+                        userIdentity,
+                        default
+                    ).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -297,7 +300,7 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 if (!_complexTypeList.ContainsKey(newSession))
                 {
-                    _complexTypeList.Add(newSession, new ComplexTypeSystem(newSession));
+                    _complexTypeList.Add(newSession, new ComplexTypeSystemFactory(_app.Telemetry).Create(newSession));
                 }
 
                 await _complexTypeList[newSession].LoadAsync().ConfigureAwait(false);
@@ -580,33 +583,34 @@ namespace Opc.Ua.Cloud.Publisher
                 throw new Exception($"Could not create session for endpoint {endpointUrl}!");
             }
 
-            ReadValueIdCollection nodesToRead = new ReadValueIdCollection();
+            List<ReadValueId> nodesToRead = new();
 
             ReadValueId valueId = new()
             {
-                NodeId = new NodeId(nodeId),
+                NodeId = NodeId.Parse(nodeId),
                 AttributeId = Attributes.Value,
                 IndexRange = null,
-                DataEncoding = null
+                DataEncoding = QualifiedName.Null
             };
             nodesToRead.Add(valueId);
 
             // handle complex types (reuse cached type system when available)
-            VariableNode node = (VariableNode)await session.ReadNodeAsync(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris)).ConfigureAwait(false);
+            VariableNode node = (VariableNode)await session.ReadNodeAsync(ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(nodeId), session.NamespaceUris)).ConfigureAwait(false);
             if (!_complexTypeList.TryGetValue(session, out ComplexTypeSystem complexTypeSystem))
             {
-                complexTypeSystem = new ComplexTypeSystem(session);
+                complexTypeSystem = new ComplexTypeSystemFactory(_app.Telemetry).Create(session);
                 _complexTypeList[session] = complexTypeSystem;
             }
             ExpandedNodeId nodeTypeId = node.DataType;
             await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
 
-            ReadResponse response = await session.ReadAsync(null, 0, TimestampsToReturn.Both, nodesToRead, CancellationToken.None).ConfigureAwait(false);
+            ArrayOf<ReadValueId> readNodes = nodesToRead.ToArrayOf();
+            ReadResponse response = await session.ReadAsync(null, 0, TimestampsToReturn.Both, readNodes, CancellationToken.None).ConfigureAwait(false);
 
-            ClientBase.ValidateResponse(response.Results, nodesToRead);
-            ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, nodesToRead);
+            ClientBase.ValidateResponse(response.Results, readNodes);
+            ClientBase.ValidateDiagnosticInfos(response.DiagnosticInfos, readNodes);
 
-            if (response.Results.Count > 0 && response.Results[0].Value != null)
+            if (response.Results.Count > 0 && !response.Results[0].WrappedValue.IsNull)
             {
                 return response.Results[0].WrappedValue.ToString();
             }
@@ -671,7 +675,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 // if no nodeid was specified, select the server object root
                 NodeId resolvedNodeId;
-                if (nodeToPublish.ExpandedNodeId.Identifier == null)
+                if (nodeToPublish.ExpandedNodeId.IsNull)
                 {
                     _logger.LogWarning("Selecting server root as no expanded node ID specified to publish!");
                     resolvedNodeId = ObjectIds.Server;
@@ -685,7 +689,7 @@ namespace Opc.Ua.Cloud.Publisher
                     }
                     else
                     {
-                        resolvedNodeId = new NodeId(nodeToPublish.ExpandedNodeId.Identifier, nodeToPublish.ExpandedNodeId.NamespaceIndex);
+                        resolvedNodeId = (NodeId)nodeToPublish.ExpandedNodeId;
                     }
                 }
 
@@ -727,7 +731,7 @@ namespace Opc.Ua.Cloud.Publisher
                 // read display name
                 newMonitoredItem.DisplayName = string.Empty;
                 Ua.Node node = await session.ReadNodeAsync(resolvedNodeId).ConfigureAwait(false);
-                if ((node != null) && (node.DisplayName != null))
+                if ((node != null) && !node.DisplayName.IsNull)
                 {
                     newMonitoredItem.DisplayName = node.DisplayName.Text;
                 }
@@ -772,35 +776,32 @@ namespace Opc.Ua.Cloud.Publisher
             }
             catch (ServiceResultException sre)
             {
-                switch ((uint)sre.Result.StatusCode)
+                if (sre.Result.StatusCode == StatusCodes.BadSessionIdInvalid)
                 {
-                    case StatusCodes.BadSessionIdInvalid:
-                        _logger.LogError("Session with Id {sessionId} is no longer available on endpoint {endpointUrl}. Cleaning up.",
-                            session.SessionId,
-                            session.ConfiguredEndpoint.EndpointUrl);
-                        break;
+                    _logger.LogError("Session with Id {sessionId} is no longer available on endpoint {endpointUrl}. Cleaning up.",
+                        session.SessionId,
+                        session.ConfiguredEndpoint.EndpointUrl);
+                }
+                else if (sre.Result.StatusCode == StatusCodes.BadSubscriptionIdInvalid)
+                {
+                    _logger.LogError("Subscription with Id {subscription} is no longer available on endpoint {endpointUrl}. Cleaning up.",
+                        opcSubscription.Id,
+                        session.ConfiguredEndpoint.EndpointUrl);
+                }
+                else if (sre.Result.StatusCode == StatusCodes.BadNodeIdInvalid || sre.Result.StatusCode == StatusCodes.BadNodeIdUnknown)
+                {
+                    _logger.LogError("Failed to monitor node {expandedNodeId} on endpoint {endpointUrl}.",
+                        nodeToPublish.ExpandedNodeId,
+                        session.ConfiguredEndpoint.EndpointUrl);
 
-                    case StatusCodes.BadSubscriptionIdInvalid:
-                        _logger.LogError("Subscription with Id {subscription} is no longer available on endpoint {endpointUrl}. Cleaning up.",
-                            opcSubscription.Id,
-                            session.ConfiguredEndpoint.EndpointUrl);
-                        break;
-
-                    case StatusCodes.BadNodeIdInvalid:
-                    case StatusCodes.BadNodeIdUnknown:
-                        _logger.LogError("Failed to monitor node {expandedNodeId} on endpoint {endpointUrl}.",
-                            nodeToPublish.ExpandedNodeId,
-                            session.ConfiguredEndpoint.EndpointUrl);
-
-                        _logger.LogError("OPC UA ServiceResultException is {result}. Please check your UA Cloud Publisher configuration for this node.", sre.Result);
-                        break;
-
-                    default:
-                        _logger.LogError("Unhandled OPC UA ServiceResultException {result} when monitoring node {expandedNodeId} on endpoint {endpointUrl}. Continue.",
-                            sre.Result,
-                            nodeToPublish.ExpandedNodeId,
-                            session.ConfiguredEndpoint.EndpointUrl);
-                        break;
+                    _logger.LogError("OPC UA ServiceResultException is {result}. Please check your UA Cloud Publisher configuration for this node.", sre.Result);
+                }
+                else
+                {
+                    _logger.LogError("Unhandled OPC UA ServiceResultException {result} when monitoring node {expandedNodeId} on endpoint {endpointUrl}. Continue.",
+                        sre.Result,
+                        nodeToPublish.ExpandedNodeId,
+                        session.ConfiguredEndpoint.EndpointUrl);
                 }
 
                 return sre.Message;
@@ -858,7 +859,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
             else
             {
-                resolvedNodeId = new NodeId(nodeToUnpublish.ExpandedNodeId.Identifier, nodeToUnpublish.ExpandedNodeId.NamespaceIndex);
+                resolvedNodeId = (NodeId)nodeToUnpublish.ExpandedNodeId;
             }
 
             // loop through all subscriptions of the session
@@ -908,9 +909,9 @@ namespace Opc.Ua.Cloud.Publisher
                         {
                             authenticationMode = UserAuthModeEnum.UsernamePassword;
 
-                            UserNameIdentityToken token = (UserNameIdentityToken)session.Identity.GetIdentityToken();
+                            UserNameIdentityTokenHandler token = (UserNameIdentityTokenHandler)session.Identity.TokenHandler;
                             username = token.UserName;
-                            password = Encoding.UTF8.GetString(token.DecryptedPassword);
+                            password = Encoding.UTF8.GetString(token.DecryptedPassword ?? Array.Empty<byte>());
                         }
 
                         PublishNodesInterfaceModel publisherConfigurationFileEntry = new PublishNodesInterfaceModel
@@ -947,12 +948,16 @@ namespace Opc.Ua.Cloud.Publisher
                                                 {
                                                     foreach (ExtensionObject operand in whereClauseElement.FilterOperands)
                                                     {
-                                                        FilterModel filter = new FilterModel()
+                                                        if (operand.TryGetValue(out LiteralOperand literalOperand, session.MessageContext)
+                                                            && literalOperand.Value.TryGetValue(out NodeId ofTypeId))
                                                         {
-                                                            OfType = NodeId.ToExpandedNodeId(new NodeId(operand.ToString()), session.NamespaceUris).ToString()
-                                                        };
+                                                            FilterModel filter = new FilterModel()
+                                                            {
+                                                                OfType = NodeId.ToExpandedNodeId(ofTypeId, session.NamespaceUris).ToString()
+                                                            };
 
-                                                        publishedEvent.Filter.Add(filter);
+                                                            publishedEvent.Filter.Add(filter);
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1058,54 +1063,59 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 // start the browse operation.
                 (ResponseHeader responseHeader,
-                Byte[] continuationPoints,
-                ReferenceDescriptionCollection referencesList) = await session.BrowseAsync(
+                ByteString continuationPoint,
+                ReferenceDescriptionCollection referencesList) = await SessionClientExtensions.BrowseAsync(
+                    session,
                     null,
                     null,
                     nodeToBrowse.NodeId,
                     0,
                     BrowseDirection.Forward,
-                    null,
+                    NodeId.Null,
                     true,
-                    nodeToBrowse.NodeClassMask
+                    nodeToBrowse.NodeClassMask,
+                    CancellationToken.None
                     ).ConfigureAwait(false);
+                List<ReferenceDescription> accumulatedReferences = referencesList.ToList();
 
                 do
                 {
                     // check if all references have been fetched.
-                    if (referencesList.Count == 0 || continuationPoints == null)
+                    if (accumulatedReferences.Count == 0 || continuationPoint.IsEmpty)
                     {
                         break;
                     }
 
                     // continue browse operation.
                     (ResponseHeader responseHeaderNext,
-                    Byte[] continuationPointsNext,
-                    ReferenceDescriptionCollection referencesListNext) = await session.BrowseNextAsync(
+                    ByteString continuationPointNext,
+                    ReferenceDescriptionCollection referencesListNext) = await SessionClientExtensions.BrowseNextAsync(
+                        session,
                         null,
                         false,
-                        continuationPoints
+                        continuationPoint,
+                        CancellationToken.None
                     ).ConfigureAwait(false);
 
                     if (referencesListNext.Count > 0)
                     {
                         // append results to the master list
-                        referencesList.AddRange(referencesListNext);
+                        accumulatedReferences.AddRange(referencesListNext);
                     }
 
-                    if (continuationPointsNext == null)
+                    if (continuationPointNext.IsEmpty)
                     {
                         break;
                     }
                     else
                     {
-                        continuationPoints = continuationPointsNext;
+                        continuationPoint = continuationPointNext;
                     }
                 }
                 while (true);
 
                 // return complete list.
-                return referencesList;
+                return accumulatedReferences.ToArrayOf();
             }
             catch (Exception exception)
             {
@@ -1114,22 +1124,18 @@ namespace Opc.Ua.Cloud.Publisher
                     throw new ServiceResultException(exception, StatusCodes.BadUnexpectedError);
                 }
 
-                return null;
+                return default;
             }
         }
 
-        public async Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId nodeId)
+        public async Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId? nodeId)
         {
             List<UANodeInformation> results = new();
-
-            if (nodeId == null)
-            {
-                nodeId = ObjectIds.ObjectsFolder;
-            }
+            NodeId startNodeId = nodeId ?? ObjectIds.ObjectsFolder;
 
             BrowseDescription nodeToBrowse = new BrowseDescription
             {
-                NodeId = nodeId,
+                NodeId = startNodeId,
                 BrowseDirection = BrowseDirection.Forward,
                 ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
                 IncludeSubtypes = true,
@@ -1140,7 +1146,7 @@ namespace Opc.Ua.Cloud.Publisher
             ReferenceDescriptionCollection references = await BrowseAsync(endpointUrl, username, password, nodeToBrowse, true).ConfigureAwait(false);
 
             List<string> processedReferences = new();
-            foreach (ReferenceDescription nodeReference in references)
+            foreach (ReferenceDescription nodeReference in references.ToArray())
             {
                 UANodeInformation nodeInfo = new()
                 {
@@ -1166,13 +1172,13 @@ namespace Opc.Ua.Cloud.Publisher
                     nodeInfo.ApplicationUri = session.ServerUris.ToArray()[0];
                     nodeInfo.Endpoint = session.Endpoint.EndpointUrl;
 
-                    if (nodeId.NamespaceIndex == 0)
+                    if (startNodeId.NamespaceIndex == 0)
                     {
-                        nodeInfo.Parent = "nsu=http://opcfoundation.org/UA;" + nodeId.ToString();
+                        nodeInfo.Parent = "nsu=http://opcfoundation.org/UA;" + startNodeId.ToString();
                     }
                     else
                     {
-                        nodeInfo.Parent = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(nodeId, session.NamespaceUris), session.NamespaceUris).ToString();
+                        nodeInfo.Parent = NodeId.ToExpandedNodeId(ExpandedNodeId.ToNodeId(startNodeId, session.NamespaceUris), session.NamespaceUris).ToString();
                     }
 
                     if (nodeReference.NodeId.NamespaceIndex == 0)
@@ -1195,7 +1201,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                             // resolve the DataType to its built-in base type via the type tree; this stays resolvable even
                             // for newer/unknown standard DataTypes and does not require the value to be readable
-                            if ((nodeInfo.VariableNode != null) && !NodeId.IsNull(nodeInfo.VariableNode.DataType))
+                            if ((nodeInfo.VariableNode != null) && !nodeInfo.VariableNode.DataType.IsNull)
                             {
                                 BuiltInType baseType = TypeInfo.GetBuiltInType(nodeInfo.VariableNode.DataType, session.TypeTree);
                                 if ((baseType != BuiltInType.Null) && (baseType != BuiltInType.Variant))
@@ -1212,13 +1218,13 @@ namespace Opc.Ua.Cloud.Publisher
                         try
                         {
                             DataValue value = await session.ReadValueAsync(resolvedNodeId).ConfigureAwait(false);
-                            if ((value != null) && (value.WrappedValue != Variant.Null))
+                            if (!value.WrappedValue.IsNull)
                             {
                                 nodeInfo.VariableCurrentValue = value.ToString();
                                 nodeInfo.VariableType = value.WrappedValue.TypeInfo.ToString();
 
                                 // fall back to the value's built-in type if the DataType could not be resolved above
-                                if (NodeId.IsNull(nodeInfo.VariableDataTypeId))
+                                if (nodeInfo.VariableDataTypeId.IsNull)
                                 {
                                     BuiltInType builtInType = value.WrappedValue.TypeInfo.BuiltInType;
                                     if ((builtInType != BuiltInType.Null) && (builtInType != BuiltInType.Variant))
@@ -1229,7 +1235,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                                 if (StatusCode.IsGood(value.StatusCode))
                                 {
-                                    nodeInfo.VariableValue = value.Value;
+                                    nodeInfo.VariableValue = value.WrappedValue;
                                 }
                             }
                         }
@@ -1328,15 +1334,15 @@ namespace Opc.Ua.Cloud.Publisher
                     true,
                     (uint)NodeClass.Object).ConfigureAwait(false);
 
-                if (metadataObjects == null)
+                if (metadataObjects.Count == 0)
                 {
                     return publicationDates;
                 }
 
-                foreach (ReferenceDescription metadataObject in metadataObjects)
+                foreach (ReferenceDescription metadataObject in metadataObjects.ToArray())
                 {
                     NodeId metadataNodeId = ExpandedNodeId.ToNodeId(metadataObject.NodeId, session.NamespaceUris);
-                    if (NodeId.IsNull(metadataNodeId))
+                    if (metadataNodeId.IsNull)
                     {
                         continue;
                     }
@@ -1352,27 +1358,27 @@ namespace Opc.Ua.Cloud.Publisher
                         true,
                         (uint)NodeClass.Variable).ConfigureAwait(false);
 
-                    if (properties == null)
+                    if (properties.Count == 0)
                     {
                         continue;
                     }
 
-                    NodeId uriPropertyId = null;
-                    NodeId datePropertyId = null;
+                    NodeId uriPropertyId = NodeId.Null;
+                    NodeId datePropertyId = NodeId.Null;
 
                     foreach (ReferenceDescription property in properties)
                     {
-                        if (property.BrowseName?.Name == BrowseNames.NamespaceUri)
+                        if (property.BrowseName.Name == BrowseNames.NamespaceUri)
                         {
                             uriPropertyId = ExpandedNodeId.ToNodeId(property.NodeId, session.NamespaceUris);
                         }
-                        else if (property.BrowseName?.Name == BrowseNames.NamespacePublicationDate)
+                        else if (property.BrowseName.Name == BrowseNames.NamespacePublicationDate)
                         {
                             datePropertyId = ExpandedNodeId.ToNodeId(property.NodeId, session.NamespaceUris);
                         }
                     }
 
-                    if (NodeId.IsNull(uriPropertyId) || NodeId.IsNull(datePropertyId))
+                    if (uriPropertyId.IsNull || datePropertyId.IsNull)
                     {
                         continue;
                     }
@@ -1382,10 +1388,10 @@ namespace Opc.Ua.Cloud.Publisher
                         DataValue uriValue = await session.ReadValueAsync(uriPropertyId).ConfigureAwait(false);
                         DataValue dateValue = await session.ReadValueAsync(datePropertyId).ConfigureAwait(false);
 
-                        if ((uriValue?.Value is string namespaceUri) && !string.IsNullOrEmpty(namespaceUri)
-                            && (dateValue?.Value is DateTime publicationDate))
+                        if (uriValue.WrappedValue.TryGetValue(out string namespaceUri) && !string.IsNullOrEmpty(namespaceUri)
+                            && dateValue.WrappedValue.TryGetValue(out DateTimeUtc publicationDate))
                         {
-                            publicationDates[namespaceUri] = publicationDate;
+                            publicationDates[namespaceUri] = publicationDate.ToDateTime();
                         }
                     }
                     catch (Exception)
@@ -1423,7 +1429,7 @@ namespace Opc.Ua.Cloud.Publisher
         private async Task CollectDataTypeAsync(ISession session, NodeId dataTypeId, Dictionary<NodeId, NodeState> collected)
         {
             // standard OPC UA DataTypes (namespace 0) are already known to importers and must not be redefined
-            if (NodeId.IsNull(dataTypeId) || (dataTypeId.NamespaceIndex == 0) || collected.ContainsKey(dataTypeId))
+            if (dataTypeId.IsNull || (dataTypeId.NamespaceIndex == 0) || collected.ContainsKey(dataTypeId))
             {
                 return;
             }
@@ -1454,8 +1460,7 @@ namespace Opc.Ua.Cloud.Publisher
                 UserWriteMask = (AttributeWriteMask)node.UserWriteMask
             };
 
-            DataTypeDefinition definition = node.DataTypeDefinition?.Body as DataTypeDefinition;
-            if (definition != null)
+            if (node.DataTypeDefinition.TryGetValue(out DataTypeDefinition definition, session.MessageContext))
             {
                 state.DataTypeDefinition = node.DataTypeDefinition;
             }
@@ -1464,7 +1469,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             // include the supertype chain so the DataType hierarchy remains intact
             NodeId superTypeId = await GetSuperTypeAsync(session, dataTypeId).ConfigureAwait(false);
-            if (!NodeId.IsNull(superTypeId))
+            if (!superTypeId.IsNull)
             {
                 state.SuperTypeId = superTypeId;
                 await CollectDataTypeAsync(session, superTypeId, collected).ConfigureAwait(false);
@@ -1473,7 +1478,7 @@ namespace Opc.Ua.Cloud.Publisher
             // include any custom DataTypes referenced by structure fields
             if ((definition is StructureDefinition structureDefinition) && (structureDefinition.Fields != null))
             {
-                foreach (StructureField field in structureDefinition.Fields)
+                foreach (StructureField field in structureDefinition.Fields.ToArray())
                 {
                     await CollectDataTypeAsync(session, field.DataType, collected).ConfigureAwait(false);
                 }
@@ -1497,7 +1502,7 @@ namespace Opc.Ua.Cloud.Publisher
                     true,
                     (uint)NodeClass.Object).ConfigureAwait(false);
 
-                if (encodings == null)
+                if (encodings.Count == 0)
                 {
                     return;
                 }
@@ -1505,7 +1510,7 @@ namespace Opc.Ua.Cloud.Publisher
                 foreach (ReferenceDescription encoding in encodings)
                 {
                     NodeId encodingNodeId = ExpandedNodeId.ToNodeId(encoding.NodeId, session.NamespaceUris);
-                    if (NodeId.IsNull(encodingNodeId) || (encodingNodeId.NamespaceIndex == 0) || collected.ContainsKey(encodingNodeId))
+                    if (encodingNodeId.IsNull || (encodingNodeId.NamespaceIndex == 0) || collected.ContainsKey(encodingNodeId))
                     {
                         continue;
                     }
@@ -1545,7 +1550,7 @@ namespace Opc.Ua.Cloud.Publisher
                     true,
                     (uint)NodeClass.DataType).ConfigureAwait(false);
 
-                if ((references != null) && (references.Count > 0))
+                if (references.Count > 0)
                 {
                     return ExpandedNodeId.ToNodeId(references[0].NodeId, session.NamespaceUris);
                 }
@@ -1555,7 +1560,7 @@ namespace Opc.Ua.Cloud.Publisher
                 // no supertype available
             }
 
-            return null;
+            return NodeId.Null;
         }
 
         public async Task GDSServerPushAsync(string endpointURL, string adminUsername, string adminPassword)
@@ -1612,14 +1617,14 @@ namespace Opc.Ua.Cloud.Publisher
                 // Reusing an existing sub-2048-bit server key produces a re-issued certificate that modern
                 // OPC UA servers reject during UpdateCertificate with BadCertificatePolicyCheckFailed
                 // ("doesn't meet minimum key length requirement"); regenerating yields a compliant key size.
-                byte[] certificateRequest = await serverPushClient.CreateSigningRequestAsync(
+                byte[] certificateRequest = (await serverPushClient.CreateSigningRequestAsync(
                     NodeId.Null,
                     serverPushClient.ApplicationCertificateType,
                     string.Empty,
                     true,
-                    nonce).ConfigureAwait(false);
+                    nonce.ToByteString()).ConfigureAwait(false)).ToArray();
 
-                X509Certificate2 certificate = ProcessSigningRequest(
+                Certificate certificate = ProcessSigningRequest(
                     serverPushClient.Session.ServerUris.ToArray()[0],
                     // default the SAN DNS/IP entry to the host we connect to, so clients don't hit
                     // "domain is not listed in the server certificate"; CSR-provided names take precedence
@@ -1629,13 +1634,13 @@ namespace Opc.Ua.Cloud.Publisher
                 // store the new server certificate in our own trust list so we keep trusting the server
                 await _app.UAApplicationInstance.AddOwnCertificateToTrustedStoreAsync(certificate, CancellationToken.None).ConfigureAwait(false);
 
-                byte[][] issuerCertificates = [_app.IssuerCert.Export(X509ContentType.Cert)];
+                ArrayOf<ByteString> issuerCertificates = [_app.IssuerCert.Export(X509ContentType.Cert).ToByteString()];
                 bool updateSucceeded = await serverPushClient.UpdateCertificateAsync(
                     NodeId.Null,
                     serverPushClient.ApplicationCertificateType,
-                    certificate.Export(X509ContentType.Cert),
+                    certificate.Export(X509ContentType.Cert).ToByteString(),
                     string.Empty,
-                    Array.Empty<byte>(),
+                    Array.Empty<byte>().ToByteString(),
                     issuerCertificates).ConfigureAwait(false);
 
                 // ApplyChanges is only required (and only valid) when the certificate actually changed;
@@ -1654,7 +1659,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        private X509Certificate2 ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
+        private Certificate ProcessSigningRequest(string applicationUri, string[] domainNames, byte[] certificateRequest)
         {
             try
             {
@@ -1751,10 +1756,10 @@ namespace Opc.Ua.Cloud.Publisher
 
         private async Task<TrustListDataType> GetTrustListsAsync()
         {
-            ByteStringCollection trusted = new ByteStringCollection();
-            ByteStringCollection trustedCrls = new ByteStringCollection();
-            ByteStringCollection issuers = new ByteStringCollection();
-            ByteStringCollection issuersCrls = new ByteStringCollection();
+            List<ByteString> trusted = new();
+            List<ByteString> trustedCrls = new();
+            List<ByteString> issuers = new();
+            List<ByteString> issuersCrls = new();
 
             // Track thumbprints so the same certificate is never sent twice. The server applies the pushed
             // list via TrustList.UpdateStoreCertificatesAsync(), which removes only ONE matching entry per
@@ -1766,11 +1771,11 @@ namespace Opc.Ua.Cloud.Publisher
             HashSet<string> trustedThumbprints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             CertificateTrustList ownTrustList = _app.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.TrustedPeerCertificates;
-            foreach (X509Certificate2 cert in await ownTrustList.GetCertificatesAsync(_app.Telemetry).ConfigureAwait(false))
+            foreach (var cert in await ownTrustList.GetCertificatesAsync(_app.Telemetry).ConfigureAwait(false))
             {
                 if (trustedThumbprints.Add(cert.Thumbprint))
                 {
-                    trusted.Add(cert.Export(X509ContentType.Cert));
+                    trusted.Add(cert.RawData.ToByteString());
                 }
             }
 
@@ -1784,20 +1789,21 @@ namespace Opc.Ua.Cloud.Publisher
             // peers that are re-issued after it (BadCertificateUntrusted), which breaks
             // communication. Note our CA may already be in the trusted peer store, hence the guard.
             byte[] issuerCertBytes = _app.IssuerCert.Export(X509ContentType.Cert);
+            ByteString issuerCertificate = issuerCertBytes.ToByteString();
             if (trustedThumbprints.Add(_app.IssuerCert.Thumbprint))
             {
-                trusted.Add(issuerCertBytes);
+                trusted.Add(issuerCertificate);
             }
 
-            issuers.Add(issuerCertBytes);
+            issuers.Add(issuerCertificate);
 
             TrustListDataType trustList = new TrustListDataType()
             {
                 SpecifiedLists = (uint)(TrustListMasks.All),
-                TrustedCertificates = trusted,
-                TrustedCrls = trustedCrls,
-                IssuerCertificates = issuers,
-                IssuerCrls = issuersCrls
+                TrustedCertificates = trusted.ToArrayOf(),
+                TrustedCrls = trustedCrls.ToArrayOf(),
+                IssuerCertificates = issuers.ToArrayOf(),
+                IssuerCrls = issuersCrls.ToArrayOf()
             };
 
             return trustList;
@@ -1806,8 +1812,8 @@ namespace Opc.Ua.Cloud.Publisher
         public async Task WoTConUploadAsync(string endpoint, string username, string password, byte[] bytes, string assetName)
         {
             ISession session = null;
-            NodeId fileId = null;
-            object fileHandle = null;
+            NodeId fileId = NodeId.Null;
+            Variant fileHandle = Variant.Null;
             try
             {
                 session = await ConnectSessionAsync(endpoint, username, password).ConfigureAwait(false);
@@ -1825,17 +1831,17 @@ namespace Opc.Ua.Cloud.Publisher
 
                 try
                 {
-                    assetId = await ExecuteCommandAsync(session, createNodeId, parentNodeId, assetName, null).ConfigureAwait(false);
-                }
-                catch (ServiceResultException ex)
-                {
-                    if (ex.StatusCode == StatusCodes.BadBrowseNameDuplicated)
+                    assetId = await ExecuteCommandAsync(session, createNodeId, parentNodeId, Variant.From(assetName)).ConfigureAwait(false);
+                    }
+                    catch (ServiceResultException ex)
                     {
-                        // delete existing asset first
-                        assetId = await ExecuteCommandAsync(session, deleteNodeId, parentNodeId, new NodeId(ex.Result.LocalizedText?.Text), null).ConfigureAwait(false);
+                        if (ex.StatusCode == StatusCodes.BadBrowseNameDuplicated)
+                        {
+                            // delete existing asset first
+                            assetId = await ExecuteCommandAsync(session, deleteNodeId, parentNodeId, Variant.From(NodeId.Parse(ex.Result.LocalizedText.Text))).ConfigureAwait(false);
 
-                        // now try again
-                        assetId = await ExecuteCommandAsync(session, createNodeId, parentNodeId, assetName, null).ConfigureAwait(false);
+                            // now try again
+                            assetId = await ExecuteCommandAsync(session, createNodeId, parentNodeId, Variant.From(assetName)).ConfigureAwait(false);
                     }
                     else
                     {
@@ -1845,7 +1851,9 @@ namespace Opc.Ua.Cloud.Publisher
 
                 BrowseDescription nodeToBrowse = new()
                 {
-                    NodeId = (NodeId)assetId.Value,
+                    NodeId = assetId.TryGetValue(out NodeId assetNodeId)
+                        ? assetNodeId
+                        : throw new ServiceResultException(StatusCodes.BadUnexpectedError, $"Creating asset '{assetName}' did not return a NodeId."),
                     BrowseDirection = BrowseDirection.Forward,
                     NodeClassMask = (uint)NodeClass.Object,
                     ResultMask = (uint)BrowseResultMask.All
@@ -1853,30 +1861,30 @@ namespace Opc.Ua.Cloud.Publisher
 
                 ReferenceDescriptionCollection references = await BrowseAsync(endpoint, username, password, nodeToBrowse, true).ConfigureAwait(false);
 
-                if (references == null || references.Count == 0)
+                if (references.Count == 0)
                 {
                     throw new Exception($"Asset '{assetName}' has no FileType child node; cannot upload WoT Thing Description.");
                 }
 
                 fileId = (NodeId)references[0].NodeId;
-                fileHandle = await ExecuteCommandAsync(session, MethodIds.FileType_Open, fileId, (byte)6, null).ConfigureAwait(false);
+                fileHandle = await ExecuteCommandAsync(session, MethodIds.FileType_Open, fileId, Variant.From((byte)6)).ConfigureAwait(false);
 
                 for (int i = 0; i < bytes.Length; i += 3000)
                 {
                     byte[] chunk = bytes.AsSpan(i, Math.Min(3000, bytes.Length - i)).ToArray();
 
-                    await ExecuteCommandAsync(session, MethodIds.FileType_Write, fileId, fileHandle, chunk).ConfigureAwait(false);
+                    await ExecuteCommandAsync(session, MethodIds.FileType_Write, fileId, fileHandle, Variant.From(chunk.ToByteString())).ConfigureAwait(false);
                 }
 
-                await ExecuteCommandAsync(session, MethodIds.FileType_Close, fileId, fileHandle, null).ConfigureAwait(false);
+                await ExecuteCommandAsync(session, MethodIds.FileType_Close, fileId, fileHandle).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to upload WoT Thing Description");
 
-                if ((session != null) && (fileId != null) && (fileHandle != null))
+                if ((session != null) && !fileId.IsNull && !fileHandle.IsNull)
                 {
-                    await ExecuteCommandAsync(session, MethodIds.FileType_Close, fileId, fileHandle, null).ConfigureAwait(false);
+                    await ExecuteCommandAsync(session, MethodIds.FileType_Close, fileId, fileHandle).ConfigureAwait(false);
                 }
 
                 throw;
@@ -1891,8 +1899,8 @@ namespace Opc.Ua.Cloud.Publisher
         public async Task UANodesetUploadAsync(string endpoint, string username, string password, byte[] bytes)
         {
             ISession session = null;
-            NodeId methodNodeId = null;
-            object fileHandle = null;
+            NodeId methodNodeId = NodeId.Null;
+            Variant fileHandle = Variant.Null;
             try
             {
                 session = await ConnectSessionAsync(endpoint, username, password).ConfigureAwait(false);
@@ -1904,24 +1912,24 @@ namespace Opc.Ua.Cloud.Publisher
 
                 methodNodeId = new("NodesetFileUpload", (ushort)session.NamespaceUris.GetIndex("http://opcfoundation.org/UA/WoT-Con/"));
 
-                fileHandle = await ExecuteCommandAsync(session, MethodIds.FileType_Open, methodNodeId, (byte)6, null).ConfigureAwait(false);
+                fileHandle = await ExecuteCommandAsync(session, MethodIds.FileType_Open, methodNodeId, Variant.From((byte)6)).ConfigureAwait(false);
 
                 for (int i = 0; i < bytes.Length; i += 3000)
                 {
                     byte[] chunk = bytes.AsSpan(i, Math.Min(3000, bytes.Length - i)).ToArray();
 
-                    await ExecuteCommandAsync(session, MethodIds.FileType_Write, methodNodeId, fileHandle, chunk).ConfigureAwait(false);
+                    await ExecuteCommandAsync(session, MethodIds.FileType_Write, methodNodeId, fileHandle, Variant.From(chunk.ToByteString())).ConfigureAwait(false);
                 }
 
-                await ExecuteCommandAsync(session, MethodIds.FileType_Close, methodNodeId, fileHandle, null).ConfigureAwait(false);
+                await ExecuteCommandAsync(session, MethodIds.FileType_Close, methodNodeId, fileHandle).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to upload WoT Thing Description");
 
-                if ((session != null) && (methodNodeId != null) && (fileHandle != null))
+                if ((session != null) && !methodNodeId.IsNull && !fileHandle.IsNull)
                 {
-                    await ExecuteCommandAsync(session, MethodIds.FileType_Close, methodNodeId, fileHandle, null).ConfigureAwait(false);
+                    await ExecuteCommandAsync(session, MethodIds.FileType_Close, methodNodeId, fileHandle).ConfigureAwait(false);
                 }
 
                 throw;
@@ -1932,25 +1940,15 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        private async Task<Variant> ExecuteCommandAsync(ISession session, NodeId nodeId, NodeId parentNodeId, object argument1, object argument2)
+        private async Task<Variant> ExecuteCommandAsync(ISession session, NodeId nodeId, NodeId parentNodeId, params Variant[] inputArguments)
         {
             try
             {
-                List<object> arguments = new();
-                if (argument1 != null)
-                {
-                    arguments.Add(argument1);
-                }
-                if (argument2 != null)
-                {
-                    arguments.Add(argument2);
-                }
+                ArrayOf<Variant> results = await session.CallAsync(parentNodeId, nodeId, CancellationToken.None, inputArguments).ConfigureAwait(false);
 
-                IList<object> results = await session.CallAsync(parentNodeId, nodeId, CancellationToken.None, arguments.ToArray()).ConfigureAwait(false);
-
-                if ((results != null) && (results.Count > 0))
+                if (results.Count > 0)
                 {
-                    return new Variant(results[0]);
+                    return results[0];
                 }
 
                 return new Variant(string.Empty);
@@ -1965,7 +1963,7 @@ namespace Opc.Ua.Cloud.Publisher
         private async Task<SimpleAttributeOperandCollection> ConstructSelectClausesAsync(ISession session)
         {
             // browse the type model in the server address space to find the fields available for the event type.
-            SimpleAttributeOperandCollection selectClauses = new SimpleAttributeOperandCollection();
+            List<SimpleAttributeOperand> selectClauses = new();
 
             // must always request the NodeId for the condition instances.
             // this can be done by specifying an operand with an empty browse path.
@@ -1980,7 +1978,7 @@ namespace Opc.Ua.Cloud.Publisher
             // add the fields for the selected EventTypes.
             await CollectFieldsAsync(session, ObjectTypeIds.BaseEventType, selectClauses).ConfigureAwait(false);
 
-            return selectClauses;
+            return selectClauses.ToArrayOf();
         }
 
         private ContentFilter ConstructWhereClause(IList<NodeId> eventTypes, EventSeverity severity)
@@ -1997,7 +1995,7 @@ namespace Opc.Ua.Cloud.Publisher
                 // select the Severity property of the event.
                 SimpleAttributeOperand operand1 = new SimpleAttributeOperand();
                 operand1.TypeDefinitionId = ObjectTypeIds.BaseEventType;
-                operand1.BrowsePath.Add(BrowseNames.Severity);
+                operand1.BrowsePath = [new QualifiedName(BrowseNames.Severity)];
                 operand1.AttributeId = Attributes.Value;
 
                 // specify the value to compare the Severity property with.
@@ -2005,7 +2003,7 @@ namespace Opc.Ua.Cloud.Publisher
                 operand2.Value = new Variant((ushort)severity);
 
                 // specify that the Severity property must be GreaterThanOrEqual the value specified.
-                element1 = whereClause.Push(FilterOperator.GreaterThanOrEqual, operand1, operand2);
+                element1 = whereClause.Push(FilterOperator.GreaterThanOrEqual, Variant.FromStructure(operand1), Variant.FromStructure(operand2));
             }
 
             // add the event types.
@@ -2018,12 +2016,12 @@ namespace Opc.Ua.Cloud.Publisher
                     // we uses the 'OfType' operator to limit events to those with specified event type.
                     LiteralOperand operand1 = new LiteralOperand();
                     operand1.Value = new Variant(eventTypes[i]);
-                    ContentFilterElement element3 = whereClause.Push(FilterOperator.OfType, operand1);
+                    ContentFilterElement element3 = whereClause.Push(FilterOperator.OfType, Variant.FromStructure(operand1));
 
                     // need to chain multiple types together with an OR clause.
                     if (element2 != null)
                     {
-                        element2 = whereClause.Push(FilterOperator.Or, element2, element3);
+                        element2 = whereClause.Push(FilterOperator.Or, Variant.FromStructure(element2), Variant.FromStructure(element3));
                     }
                     else
                     {
@@ -2034,26 +2032,26 @@ namespace Opc.Ua.Cloud.Publisher
                 // need to link the set of event types with the previous filters.
                 if (element1 != null)
                 {
-                    whereClause.Push(FilterOperator.And, element1, element2);
+                    whereClause.Push(FilterOperator.And, Variant.FromStructure(element1), Variant.FromStructure(element2));
                 }
             }
 
             return whereClause;
         }
 
-        private async Task CollectFieldsAsync(ISession session, NodeId eventTypeId, SimpleAttributeOperandCollection eventFields)
+        private async Task CollectFieldsAsync(ISession session, NodeId eventTypeId, List<SimpleAttributeOperand> eventFields)
         {
             // get the supertypes.
             ReferenceDescriptionCollection supertypes = await BrowseSuperTypesAsync(session, eventTypeId, false).ConfigureAwait(false);
 
-            if (supertypes == null)
+            if (supertypes.Count == 0)
             {
                 return;
             }
 
             // process the types starting from the top of the tree.
             Dictionary<NodeId, QualifiedNameCollection> foundNodes = new Dictionary<NodeId, QualifiedNameCollection>();
-            QualifiedNameCollection parentPath = new QualifiedNameCollection();
+            QualifiedNameCollection parentPath = default;
 
             for (int i = supertypes.Count - 1; i >= 0; i--)
             {
@@ -2068,7 +2066,7 @@ namespace Opc.Ua.Cloud.Publisher
             ISession session,
             NodeId nodeId,
             QualifiedNameCollection parentPath,
-            SimpleAttributeOperandCollection eventFields,
+            List<SimpleAttributeOperand> eventFields,
             Dictionary<NodeId, QualifiedNameCollection> foundNodes)
         {
             // find all of the children of the field.
@@ -2083,7 +2081,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             ReferenceDescriptionCollection children = await BrowseAsync(session, nodeToBrowse, false).ConfigureAwait(false);
 
-            if (children == null)
+            if (children.Count == 0)
             {
                 return;
             }
@@ -2099,9 +2097,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // construct browse path.
-                QualifiedNameCollection browsePath = new(parentPath) {
-                    child.BrowseName
-                };
+                QualifiedNameCollection browsePath = parentPath.ToList().Append(child.BrowseName).ToArray().ToArrayOf();
 
                 // check if the browse path is already in the list.
                 if (!ContainsPath(eventFields, browsePath))
@@ -2127,7 +2123,7 @@ namespace Opc.Ua.Cloud.Publisher
             }
         }
 
-        private bool ContainsPath(SimpleAttributeOperandCollection selectClause, QualifiedNameCollection browsePath)
+        private bool ContainsPath(IReadOnlyList<SimpleAttributeOperand> selectClause, QualifiedNameCollection browsePath)
         {
             for (int i = 0; i < selectClause.Count; i++)
             {
@@ -2160,7 +2156,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         public static async Task<ReferenceDescriptionCollection> BrowseSuperTypesAsync(ISession session, NodeId typeId, bool throwOnError)
         {
-            ReferenceDescriptionCollection supertypes = new ReferenceDescriptionCollection();
+            List<ReferenceDescription> supertypes = new();
 
             try
             {
@@ -2176,7 +2172,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 ReferenceDescriptionCollection references = await BrowseAsync(session, nodeToBrowse, throwOnError).ConfigureAwait(false);
 
-                while (references != null && references.Count > 0)
+                while (references.Count > 0)
                 {
                     // should never be more than one supertype.
                     supertypes.Add(references[0]);
@@ -2193,7 +2189,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // return complete list.
-                return supertypes;
+                return supertypes.ToArrayOf();
             }
             catch (Exception exception)
             {
@@ -2202,7 +2198,7 @@ namespace Opc.Ua.Cloud.Publisher
                     throw new ServiceResultException(exception, StatusCodes.BadUnexpectedError);
                 }
 
-                return null;
+                return default;
             }
         }
     }

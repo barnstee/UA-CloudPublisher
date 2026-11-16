@@ -25,7 +25,7 @@
 
         public VariableNode VariableNode { get; set; }
 
-        public object VariableValue { get; set; }
+        public Variant VariableValue { get; set; }
 
         // Built-in base DataType of the variable's actual value (a standard ns=0 DataType), used so the exported
         // NodeSet2 references only resolvable DataTypes even when the server's DataType is custom or unknown.

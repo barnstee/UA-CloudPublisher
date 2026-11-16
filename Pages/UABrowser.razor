@@ -132,7 +132,7 @@
     {
         BrowseDescription nodeToBrowse = new()
         {
-            NodeId = string.IsNullOrEmpty(node.NodeId)? ObjectIds.ObjectsFolder : node.NodeId,
+            NodeId = string.IsNullOrEmpty(node.NodeId) ? ObjectIds.ObjectsFolder : Opc.Ua.NodeId.Parse(node.NodeId),
             BrowseDirection = BrowseDirection.Forward,
             ReferenceTypeId = ReferenceTypeIds.HierarchicalReferences,
             IncludeSubtypes = true,
@@ -142,14 +142,14 @@
 
         try
         {
-            ReferenceDescriptionCollection references = await _client.BrowseAsync(EndpointUrl, Username, Password, nodeToBrowse, true);
+            ArrayOf<ReferenceDescription> references = await _client.BrowseAsync(EndpointUrl, Username, Password, nodeToBrowse, true);
 
             Dictionary<string, UANode> processedReferences = new();
             foreach (ReferenceDescription nodeReference in references)
             {
                 UANode newNode = new() {
-                    NodeId = nodeReference.NodeId?.ToString() ?? string.Empty,
-                    Text = nodeReference.DisplayName?.ToString() ?? string.Empty
+                    NodeId = nodeReference.NodeId.ToString(),
+                    Text = nodeReference.DisplayName.Text
                 };
 
                 if (!string.IsNullOrEmpty(newNode.NodeId) && !processedReferences.ContainsKey(newNode.NodeId))
@@ -196,7 +196,7 @@
         {
             NodePublishingModel node = new NodePublishingModel
                 {
-                    ExpandedNodeId = new ExpandedNodeId(NodeId),
+                    ExpandedNodeId = Opc.Ua.ExpandedNodeId.Parse(NodeId),
                     EndpointUrl = EndpointUrl,
                     SkipFirst = false,
                     Username = Username,

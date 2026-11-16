@@ -2,6 +2,7 @@
 namespace Opc.Ua.Cloud.Publisher.Interfaces
 {
     using Opc.Ua.Cloud.Publisher.Models;
+    using ReferenceDescriptionCollection = Opc.Ua.ArrayOf<Opc.Ua.ReferenceDescription>;
     using System;
     using System.Collections.Generic;
     using System.Threading;
@@ -11,7 +12,7 @@ namespace Opc.Ua.Cloud.Publisher.Interfaces
     {
         Task<ReferenceDescriptionCollection> BrowseAsync(string endpointUrl, string username, string password, BrowseDescription nodeToBrowse, bool throwOnError);
 
-        Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId nodeId);
+        Task<List<UANodeInformation>> BrowseVariableNodesResursivelyAsync(string endpointUrl, string username, string password, NodeId? nodeId);
 
         Task<ISystemContext> GetSystemContextAsync(string endpointUrl, string username, string password);
 

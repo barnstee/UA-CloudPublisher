@@ -4,17 +4,20 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua;
     using Opc.Ua.Client;
     using Opc.Ua.Client.ComplexTypes;
+    using ReferenceDescriptionCollection = Opc.Ua.ArrayOf<Opc.Ua.ReferenceDescription>;
     using Opc.Ua.Cloud.Publisher.Interfaces;
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class MonitoredItemNotification : IMessageSource
     {
         private readonly ILogger _logger;
+        private readonly IComplexTypeSystemFactory _complexTypeSystemFactory;
         private readonly ConditionalWeakTable<ISession, ComplexTypeSystem> _complexTypeSystems = new();
 
         // caches the resolved browse path per node so that not every notification triggers a browse session
@@ -38,9 +41,10 @@ namespace Opc.Ua.Cloud.Publisher
             ObjectTypeIds.AuditUpdateMethodEventType
         };
 
-        public MonitoredItemNotification(ILoggerFactory loggerFactory)
+        public MonitoredItemNotification(ILoggerFactory loggerFactory, IUAApplication app)
         {
             _logger = loggerFactory.CreateLogger("MonitoredItemNotification");
+            _complexTypeSystemFactory = new ComplexTypeSystemFactory(app.Telemetry);
         }
 
         public async void EventNotificationHandlerAsync(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
@@ -54,7 +58,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 NodeId eventTypeId = FindEventType(monitoredItem, notification);
-                if (NodeId.IsNull(eventTypeId))
+                if (eventTypeId.IsNull)
                 {
                     return;
                 }
@@ -116,7 +120,7 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // Branch
-                if (condition.BranchId != null && !NodeId.IsNull(condition.BranchId.Value))
+                if (condition.BranchId != null && !condition.BranchId.Value.IsNull)
                 {
                     EventValueModel eventValue = new EventValueModel()
                     {
@@ -134,7 +138,7 @@ namespace Opc.Ua.Cloud.Publisher
                     EventValueModel eventValue = new EventValueModel()
                     {
                         Name = "Type",
-                        Value = new DataValue(type.ToString() + " (" + NodeId.ToExpandedNodeId(new NodeId(type.NodeId.ToString()), monitoredItem.Subscription.Session.NamespaceUris).ToString() + ")")
+                        Value = new DataValue(type.ToString() + " (" + NodeId.ToExpandedNodeId(NodeId.Parse(type.NodeId.ToString()), monitoredItem.Subscription.Session.NamespaceUris).ToString() + ")")
                     };
 
                     messageData.EventValues.Add(eventValue);
@@ -213,13 +217,13 @@ namespace Opc.Ua.Cloud.Publisher
 
         private async Task<string> GetNameWithBrowsePathAsync(ISession session, NodeId nodeId, string displayName)
         {
-            if (session == null || nodeId == null || NodeId.IsNull(nodeId))
+            if (session == null || nodeId.IsNull)
             {
                 return displayName;
             }
 
             // nodeIds are not unique across OPC UA servers, so combine the session id with the expanded node id
-            string cacheKey = session.SessionId + "|" + NodeId.ToExpandedNodeId(nodeId, session.NamespaceUris)?.ToString();
+            string cacheKey = session.SessionId + "|" + NodeId.ToExpandedNodeId(nodeId, session.NamespaceUris).ToString();
 
             // only browse the first time we see a node; every subsequent notification uses the cached path
             if (_browsePathCache.TryGetValue(cacheKey, out string cachedPath))
@@ -233,8 +237,7 @@ namespace Opc.Ua.Cloud.Publisher
                 NodeId currentNodeId = nodeId;
 
                 // walk up the hierarchy towards the Objects/Root folder, collecting browse names
-                while (currentNodeId != null
-                    && !NodeId.IsNull(currentNodeId)
+                while (!currentNodeId.IsNull
                     && currentNodeId != ObjectIds.ObjectsFolder
                     && currentNodeId != ObjectIds.RootFolder)
                 {
@@ -244,13 +247,14 @@ namespace Opc.Ua.Cloud.Publisher
                         break;
                     }
 
-                    string segment = (node.BrowseName != null && !string.IsNullOrEmpty(node.BrowseName.Name))
+                    string segment = (!node.BrowseName.IsNull && !string.IsNullOrEmpty(node.BrowseName.Name))
                         ? node.BrowseName.Name
-                        : node.DisplayName?.Text;
+                        : node.DisplayName.Text;
                     segments.Insert(0, segment);
 
                     // browse the parent via inverse hierarchical references
-                    (_, _, ReferenceDescriptionCollection parents) = await session.BrowseAsync(
+                    (_, _, ReferenceDescriptionCollection parents) = await SessionClientExtensions.BrowseAsync(
+                        session,
                         null,
                         null,
                         currentNodeId,
@@ -258,9 +262,10 @@ namespace Opc.Ua.Cloud.Publisher
                         BrowseDirection.Inverse,
                         ReferenceTypeIds.HierarchicalReferences,
                         true,
-                        0).ConfigureAwait(false);
+                        0,
+                        CancellationToken.None).ConfigureAwait(false);
 
-                    if (parents == null || parents.Count == 0 || parents[0].NodeId == null || parents[0].NodeId.IsAbsolute)
+                    if (parents.Count == 0 || parents[0].NodeId.IsNull || parents[0].NodeId.IsAbsolute)
                     {
                         break;
                     }
@@ -292,14 +297,14 @@ namespace Opc.Ua.Cloud.Publisher
                 {
                     SimpleAttributeOperand clause = filter.SelectClauses[i];
 
-                    if (clause.BrowsePath.Count == 1 && clause.BrowsePath[0] == BrowseNames.EventType)
+                    if (clause.BrowsePath.Count == 1 && clause.BrowsePath[0] == new QualifiedName(BrowseNames.EventType))
                     {
-                        return notification.EventFields[i].Value as NodeId;
+                        return notification.EventFields[i].TryGetValue(out NodeId nodeId) ? nodeId : NodeId.Null;
                     }
                 }
             }
 
-            return null;
+            return NodeId.Null;
         }
 
         private async Task<BaseEventState> ConstructEventAsync(
@@ -311,13 +316,13 @@ namespace Opc.Ua.Cloud.Publisher
             // find the event type.
             NodeId eventTypeId = FindEventType(monitoredItem, notification);
 
-            if (eventTypeId == null)
+            if (eventTypeId.IsNull)
             {
                 return null;
             }
 
             // look up the known event type.
-            NodeId knownTypeId = null;
+            NodeId knownTypeId = default;
 
             if (!eventTypeMappings.TryGetValue(eventTypeId, out knownTypeId))
             {
@@ -333,12 +338,12 @@ namespace Opc.Ua.Cloud.Publisher
                 }
 
                 // browse for the supertypes of the event type.
-                if (knownTypeId == null)
+                if (knownTypeId.IsNull)
                 {
                     ReferenceDescriptionCollection supertypes = await UAClient.BrowseSuperTypesAsync(session, eventTypeId, false).ConfigureAwait(false);
 
                     // can't do anything with unknown types.
-                    if (supertypes == null)
+                    if (supertypes.Count == 0)
                     {
                         return null;
                     }
@@ -356,7 +361,7 @@ namespace Opc.Ua.Cloud.Publisher
                             }
                         }
 
-                        if (knownTypeId != null)
+                        if (!knownTypeId.IsNull)
                         {
                             break;
                         }
@@ -364,15 +369,13 @@ namespace Opc.Ua.Cloud.Publisher
                 }
             }
 
-            if (knownTypeId == null)
+            if (knownTypeId.IsNull)
             {
                 return null;
             }
 
             // all of the known event types have a UInt32 as identifier.
-            uint? id = knownTypeId.Identifier as uint?;
-
-            if (id == null)
+            if (!knownTypeId.TryGetValue(out uint id))
             {
                 return null;
             }
@@ -380,7 +383,7 @@ namespace Opc.Ua.Cloud.Publisher
             // construct the event based on the known event type.
             BaseEventState e = null;
 
-            switch (id.Value)
+            switch (id)
             {
                 case ObjectTypes.ConditionType: { e = new ConditionState(null); break; }
                 case ObjectTypes.DialogConditionType: { e = new DialogConditionState(null); break; }
@@ -433,7 +436,7 @@ namespace Opc.Ua.Cloud.Publisher
                     // only custom/complex types (defined in a server-specific namespace) need to be loaded via the
                     // complex type system; built-in base types (namespace 0, e.g. i=11 Double) never do, and attempting
                     // to load them just times out. Also only attempt each type once per session.
-                    if (nodeTypeId != null && nodeTypeId.NamespaceIndex != 0)
+                    if (!nodeTypeId.IsNull && nodeTypeId.NamespaceIndex != 0)
                     {
                         string typeCacheKey = session.SessionId + "|" + nodeTypeId.ToString();
                         if (_loadedComplexTypes.TryAdd(typeCacheKey, true))
@@ -441,7 +444,7 @@ namespace Opc.Ua.Cloud.Publisher
                             try
                             {
                                 // handle complex types using a per-session cached type system
-                                ComplexTypeSystem complexTypeSystem = _complexTypeSystems.GetValue(session, s => new ComplexTypeSystem(s));
+                                ComplexTypeSystem complexTypeSystem = _complexTypeSystems.GetValue(session, s => _complexTypeSystemFactory.Create(s));
                                 await complexTypeSystem.LoadTypeAsync(nodeTypeId).ConfigureAwait(false);
                             }
                             catch (Exception ex)

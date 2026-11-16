@@ -8,6 +8,7 @@ namespace Opc.Ua.Cloud.Publisher
     using Opc.Ua.Cloud.Publisher.Models;
     using System;
     using System.Collections.Generic;
+    using System.IO;
 
     public class PubSubTelemetryEncoder : IMessageEncoder
     {
@@ -17,6 +18,11 @@ namespace Opc.Ua.Cloud.Publisher
 
         private readonly IUAApplication _app;
         private readonly ILogger _logger;
+
+        private static JsonEncoderOptions GetJsonEncoderOptions(bool reversible)
+        {
+            return reversible ? JsonEncoderOptions.Verbose : JsonEncoderOptions.Compact;
+        }
 
         public PubSubTelemetryEncoder(IUAApplication app, ILoggerFactory loggerFactory)
         {
@@ -36,7 +42,7 @@ namespace Opc.Ua.Cloud.Publisher
 
             // add PubSub JSON network message header (the mandatory fields of the OPC UA PubSub JSON NetworkMessage definition)
             // see https://reference.opcfoundation.org/v105/Core/docs/Part14/7.2.5/#7.2.5.4
-            JsonEncoder encoder = new(new ServiceMessageContext(_app.Telemetry), Settings.Instance.ReversiblePubSubEncoding);
+            JsonEncoder encoder = new(new MemoryStream(), ServiceMessageContext.Create(_app.Telemetry), GetJsonEncoderOptions(Settings.Instance.ReversiblePubSubEncoding));
 
             encoder.WriteString("MessageId", messageID.ToString());
 
@@ -51,20 +57,23 @@ namespace Opc.Ua.Cloud.Publisher
 
             encoder.WriteString("PublisherId", Settings.Instance.PublisherName);
 
+            // remove the closing bracket as we will add this later
+            string header = encoder.CloseAndReturnText().TrimEnd('}');
+
             if (!isMetaData)
             {
-                encoder.PushArray("Messages");
+                // JsonEncoder no longer provides PushArray, so open the Messages array manually
+                header += ",\"Messages\":[";
             }
 
-            // remove the closing bracket as we will add this later
-            return encoder.CloseAndReturnText().TrimEnd('}');
+            return header;
         }
 
         public string EncodeMetadata(MessageProcessorModel messageData)
         {
             try
             {
-                JsonEncoder encoder = new(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new(new MemoryStream(), messageData.MessageContext, GetJsonEncoderOptions(Settings.Instance.ReversiblePubSubEncoding));
 
                 ushort hash = (ushort)(messageData.ApplicationUri.GetDeterministicHashCode() ^ messageData.ExpandedNodeId.GetDeterministicHashCode());
                 encoder.WriteUInt16("DataSetWriterId", hash);
@@ -73,7 +82,7 @@ namespace Opc.Ua.Cloud.Publisher
 
                 encoder.WriteDateTime("Timestamp", DateTime.UtcNow);
 
-                encoder.WriteEncodeable("MetaData", dataSetMetaData, typeof(DataSetMetaDataType));
+                encoder.WriteEncodeable("MetaData", dataSetMetaData, dataSetMetaData.TypeId);
 
                 // remove the opening bracket as we need to stitch this together with the header
                 return encoder.CloseAndReturnText().TrimStart('{');
@@ -89,10 +98,10 @@ namespace Opc.Ua.Cloud.Publisher
         // OPC UA PubSub metadata message and the CloudEvents metadata message.
         private DataSetMetaDataType BuildDataSetMetaData(MessageProcessorModel messageData)
         {
+            List<FieldMetaData> fields = new();
             DataSetMetaDataType dataSetMetaData = new()
             {
-                Name = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId,
-                Fields = new FieldMetaDataCollection()
+                Name = messageData.ApplicationUri + ";" + messageData.ExpandedNodeId
             };
 
             if (messageData.EventValues != null && messageData.EventValues.Count > 0)
@@ -100,36 +109,37 @@ namespace Opc.Ua.Cloud.Publisher
                 // process events
                 foreach (EventValueModel eventValue in messageData.EventValues)
                 {
-                    TypeInfo eventTypeInfo = eventValue.Value?.WrappedValue.TypeInfo;
+                    TypeInfo eventTypeInfo = eventValue.Value.WrappedValue.TypeInfo;
                     FieldMetaData fieldData = new()
                     {
                         Name = eventValue.Name,
                         DataSetFieldId = new Uuid(Guid.NewGuid()),
-                        BuiltInType = (byte)(eventTypeInfo?.BuiltInType ?? BuiltInType.Null),
-                        DataType = eventValue.Value != null ? TypeInfo.GetDataTypeId(eventValue.Value.WrappedValue) : null,
-                        ValueRank = eventTypeInfo?.ValueRank ?? ValueRanks.Scalar,
+                        BuiltInType = (byte)eventTypeInfo.BuiltInType,
+                        DataType = TypeInfo.GetDataTypeId(eventValue.Value.WrappedValue),
+                        ValueRank = eventTypeInfo.ValueRank,
                         Description = LocalizedText.Null
                     };
 
-                    dataSetMetaData.Fields.Add(fieldData);
+                    fields.Add(fieldData);
                 }
             }
             else
             {
-                TypeInfo typeInfo = messageData.Value?.WrappedValue.TypeInfo;
+                TypeInfo typeInfo = messageData.Value.WrappedValue.TypeInfo;
                 FieldMetaData fieldData = new()
                 {
                     Name = messageData.Name,
                     DataSetFieldId = new Uuid(Guid.NewGuid()),
-                    BuiltInType = (byte)(typeInfo?.BuiltInType ?? BuiltInType.Null),
-                    DataType = messageData.Value != null ? TypeInfo.GetDataTypeId(messageData.Value.WrappedValue) : null,
-                    ValueRank = typeInfo?.ValueRank ?? ValueRanks.Scalar,
+                    BuiltInType = (byte)typeInfo.BuiltInType,
+                    DataType = TypeInfo.GetDataTypeId(messageData.Value.WrappedValue),
+                    ValueRank = typeInfo.ValueRank,
                     Description = new LocalizedText(messageData.DataType)
                 };
 
-                dataSetMetaData.Fields.Add(fieldData);
+                fields.Add(fieldData);
             }
 
+            dataSetMetaData.Fields = fields.ToArrayOf();
             dataSetMetaData.ConfigurationVersion = new ConfigurationVersionDataType()
             {
                 MinorVersion = 1,
@@ -145,19 +155,22 @@ namespace Opc.Ua.Cloud.Publisher
             NamespaceTable namespaceUris = messageData.MessageContext?.NamespaceUris;
             if (namespaceUris != null)
             {
+                List<string> namespaces = new();
                 foreach (FieldMetaData field in dataSetMetaData.Fields)
                 {
-                    if (field.DataType == null)
+                    if (field.DataType.IsNull)
                     {
                         continue;
                     }
 
                     string namespaceUri = namespaceUris.GetString(field.DataType.NamespaceIndex);
-                    if (!string.IsNullOrEmpty(namespaceUri) && !dataSetMetaData.Namespaces.Contains(namespaceUri))
+                    if (!string.IsNullOrEmpty(namespaceUri) && !namespaces.Contains(namespaceUri))
                     {
-                        dataSetMetaData.Namespaces.Add(namespaceUri);
+                        namespaces.Add(namespaceUri);
                     }
                 }
+
+                dataSetMetaData.Namespaces = namespaces.ToArrayOf();
             }
 
             return dataSetMetaData;
@@ -170,11 +183,11 @@ namespace Opc.Ua.Cloud.Publisher
                 // CloudEvents binary mode: the OPC UA NetworkMessage and DataSet headers are mapped to CloudEvents
                 // attributes (carried as transport headers), so the payload contains only the DataSetMetaData object,
                 // encoded non-reversibly. See https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/opcua.md
-                JsonEncoder encoder = new(messageData.MessageContext, false);
+                JsonEncoder encoder = new(new MemoryStream(), messageData.MessageContext, GetJsonEncoderOptions(false));
 
                 DataSetMetaDataType dataSetMetaData = BuildDataSetMetaData(messageData);
 
-                encoder.WriteEncodeable("MetaData", dataSetMetaData, typeof(DataSetMetaDataType));
+                encoder.WriteEncodeable("MetaData", dataSetMetaData, dataSetMetaData.TypeId);
 
                 // the encoder wraps the value as {"MetaData":{...}}; return just the inner DataSetMetaData object
                 string wrapped = encoder.CloseAndReturnText();
@@ -213,7 +226,7 @@ namespace Opc.Ua.Cloud.Publisher
         {
             try
             {
-                JsonEncoder encoder = new(messageData.MessageContext, Settings.Instance.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new(new MemoryStream(), messageData.MessageContext, GetJsonEncoderOptions(Settings.Instance.ReversiblePubSubEncoding));
 
                 hash = (ushort)(messageData.ApplicationUri.GetDeterministicHashCode() ^ messageData.ExpandedNodeId.GetDeterministicHashCode());
                 encoder.WriteUInt16("DataSetWriterId", hash);
@@ -223,10 +236,10 @@ namespace Opc.Ua.Cloud.Publisher
                     // use the server timestamp for the DataSetMessage timestamp; fall back to the source
                     // timestamp and finally to the current time, since many servers don't populate the
                     // server timestamp (which would otherwise serialize as 0001-01-01T00:00:00Z)
-                    DateTime dataSetTimestamp = messageData.Value.ServerTimestamp;
+                    DateTime dataSetTimestamp = (DateTime)messageData.Value.ServerTimestamp;
                     if (dataSetTimestamp == DateTime.MinValue)
                     {
-                        dataSetTimestamp = messageData.Value.SourceTimestamp;
+                        dataSetTimestamp = (DateTime)messageData.Value.SourceTimestamp;
                     }
                     if (dataSetTimestamp == DateTime.MinValue)
                     {
@@ -241,45 +254,51 @@ namespace Opc.Ua.Cloud.Publisher
                     encoder.WriteUInt32("Status", messageData.Value.StatusCode.Code);
                 }
 
-                encoder.PushStructure("Payload");
+                JsonEncoder payloadEncoder = new(new MemoryStream(), messageData.MessageContext, GetJsonEncoderOptions(Settings.Instance.ReversiblePubSubEncoding));
 
                 if ((messageData.EventValues != null) && (messageData.EventValues.Count > 0))
                 {
                     // process events
                     foreach (EventValueModel eventValue in messageData.EventValues)
                     {
-                        // filter source timestamp before encoding
-                        eventValue.Value.SourceTimestamp = DateTime.MinValue;
+                        DataValue eventDataValue = new(
+                            eventValue.Value.WrappedValue,
+                            eventValue.Value.StatusCode,
+                            DateTimeUtc.MinValue,
+                            eventValue.Value.ServerTimestamp);
 
                         if (Settings.Instance.ReversiblePubSubEncoding)
                         {
-                            encoder.WriteVariant(eventValue.Name, eventValue.Value.WrappedValue);
+                            payloadEncoder.WriteVariant(eventValue.Name, eventDataValue.WrappedValue);
                         }
                         else
                         {
-                            encoder.WriteVariant(eventValue.Name, eventValue.Value);
+                            payloadEncoder.WriteVariant(eventValue.Name, eventDataValue);
                         }
                     }
                 }
                 else
                 {
                     // filter timestamps before encoding as we already encoded the server timestamp above
-                    messageData.Value.SourceTimestamp = DateTime.MinValue;
-                    messageData.Value.ServerTimestamp = DateTime.MinValue;
+                    DataValue dataValue = new(
+                        messageData.Value.WrappedValue,
+                        messageData.Value.StatusCode,
+                        DateTimeUtc.MinValue,
+                        DateTimeUtc.MinValue);
 
                     if (Settings.Instance.ReversiblePubSubEncoding)
                     {
-                        encoder.WriteVariant(messageData.Name, messageData.Value.WrappedValue);
+                        payloadEncoder.WriteVariant(messageData.Name, dataValue.WrappedValue);
                     }
                     else
                     {
-                        encoder.WriteVariant(messageData.Name, messageData.Value);
+                        payloadEncoder.WriteVariant(messageData.Name, dataValue);
                     }
                 }
 
-                encoder.PopStructure();
-
-                return encoder.CloseAndReturnText();
+                string message = encoder.CloseAndReturnText();
+                string payload = payloadEncoder.CloseAndReturnText();
+                return message.TrimEnd('}') + ",\"Payload\":" + payload + "}";
             }
             catch (Exception e)
             {
@@ -294,7 +313,7 @@ namespace Opc.Ua.Cloud.Publisher
             try
             {
                 // encode a PubSub JSON status message
-                JsonEncoder encoder = new(new ServiceMessageContext(_app.Telemetry), Settings.Instance.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new(new MemoryStream(), ServiceMessageContext.Create(_app.Telemetry), GetJsonEncoderOptions(Settings.Instance.ReversiblePubSubEncoding));
 
                 encoder.WriteString("MessageId", messageID.ToString());
                 encoder.WriteString("MessageType", "ua-status");
@@ -320,14 +339,15 @@ namespace Opc.Ua.Cloud.Publisher
                 // encode a PubSub JSON connection (discovery) message, describing this Publisher's PubSubConnection.
                 // See the JSON PubSubConnection definition (Table 192) in OPC UA Part 14 JSON message mapping:
                 // https://reference.opcfoundation.org/v105/Core/docs/Part14/7.2.5.5.6
-                JsonEncoder encoder = new(new ServiceMessageContext(_app.Telemetry), Settings.Instance.ReversiblePubSubEncoding);
+                JsonEncoder encoder = new(new MemoryStream(), ServiceMessageContext.Create(_app.Telemetry), GetJsonEncoderOptions(Settings.Instance.ReversiblePubSubEncoding));
 
                 encoder.WriteString("MessageId", messageID.ToString());
                 encoder.WriteString("MessageType", "ua-connection");
                 encoder.WriteString("PublisherId", Settings.Instance.PublisherName);
                 encoder.WriteDateTime("Timestamp", DateTime.UtcNow);
 
-                encoder.WriteEncodeable("Connection", BuildPubSubConnection(dataSetWriters), typeof(PubSubConnectionDataType));
+                PubSubConnectionDataType connection = BuildPubSubConnection(dataSetWriters);
+                encoder.WriteEncodeable("Connection", connection, connection.TypeId);
 
                 return encoder.CloseAndReturnText();
             }
@@ -343,13 +363,13 @@ namespace Opc.Ua.Cloud.Publisher
         // properties are included in the PubSubConnection, WriterGroup or DataSetWriter.
         private static PubSubConnectionDataType BuildPubSubConnection(IReadOnlyDictionary<ushort, string> dataSetWriters)
         {
+            List<DataSetWriterDataType> dataSetWritersList = new();
             WriterGroupDataType writerGroup = new()
             {
                 Name = Settings.Instance.PublisherName,
                 Enabled = true,
                 WriterGroupId = 1,
                 PublishingInterval = Settings.Instance.DefaultSendIntervalSeconds * 1000.0,
-                DataSetWriters = new DataSetWriterDataTypeCollection(),
                 // advertise the JSON network message layout produced by this WriterGroup
                 MessageSettings = new ExtensionObject(new JsonWriterGroupMessageDataType()
                 {
@@ -369,7 +389,7 @@ namespace Opc.Ua.Cloud.Publisher
             {
                 foreach (KeyValuePair<ushort, string> dataSetWriter in dataSetWriters)
                 {
-                    writerGroup.DataSetWriters.Add(new DataSetWriterDataType()
+                    dataSetWritersList.Add(new DataSetWriterDataType()
                     {
                         Name = dataSetWriter.Value,
                         Enabled = true,
@@ -396,6 +416,8 @@ namespace Opc.Ua.Cloud.Publisher
                 }
             }
 
+            writerGroup.DataSetWriters = dataSetWritersList.ToArrayOf();
+
             return new PubSubConnectionDataType()
             {
                 Name = Settings.Instance.PublisherName,
@@ -409,7 +431,7 @@ namespace Opc.Ua.Cloud.Publisher
                     Url = Settings.Instance.BrokerUrl
                 }),
                 TransportSettings = new ExtensionObject(new BrokerConnectionTransportDataType()),
-                WriterGroups = new WriterGroupDataTypeCollection() { writerGroup }
+                WriterGroups = [writerGroup]
             };
         }
     }

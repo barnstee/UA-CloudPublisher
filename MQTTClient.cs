@@ -83,7 +83,12 @@
                 }
                 else
                 {
-                    appCert = _uAApplication.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate.Certificate;
+                    using var certificate = CertificateIdentifierResolver.ResolveAsync(
+                        _uAApplication.UAApplicationInstance.ApplicationConfiguration.SecurityConfiguration.ApplicationCertificate,
+                        needPrivateKey: true,
+                        telemetry: _uAApplication.Telemetry).GetAwaiter().GetResult()
+                        ?? throw new InvalidOperationException("The OPC UA application certificate could not be resolved.");
+                    appCert = certificate.AsX509Certificate2();
                 }
 
                 if (appCert == null)

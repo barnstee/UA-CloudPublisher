@@ -30,14 +30,18 @@
 using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Opc.Ua.Cloud
 {
     public class ConsoleTelemetry : ITelemetryContext, IDisposable
     {
+        private readonly ConcurrentDictionary<Assembly, ActivitySource> _activitySources = new();
+
         public ConsoleTelemetry(Action<ILoggingBuilder> configure = null)
         {
             LoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
@@ -54,17 +58,43 @@ namespace Opc.Ua.Cloud
 
         public Meter CreateMeter() => new("UA cloud app", "1.0.0");
 
+        public Meter CreateMeter(Assembly assembly)
+        {
+            ArgumentNullException.ThrowIfNull(assembly);
+            return new Meter(assembly.FullName ?? "UA cloud app", GetAssemblyVersion(assembly));
+        }
+
         public ActivitySource ActivitySource { get; } = new("UA cloud app", "1.0.0");
+
+        public ActivitySource GetActivitySource(Assembly assembly)
+        {
+            ArgumentNullException.ThrowIfNull(assembly);
+            return _activitySources.GetOrAdd(
+                assembly,
+                componentAssembly => new ActivitySource(
+                    componentAssembly.FullName ?? "UA cloud app",
+                    GetAssemblyVersion(componentAssembly)));
+        }
 
         public void Dispose()
         {
-            // Note: CreateMeter() is a factory that returns a new Meter on every call.
-            // Meters returned from it are owned by their callers and must be disposed by them.
+            // Meters returned by the factory methods are owned by their callers and must be disposed by them.
             ActivitySource.Dispose();
+            foreach (ActivitySource activitySource in _activitySources.Values)
+            {
+                activitySource.Dispose();
+            }
+
+            _activitySources.Clear();
             LoggerFactory?.Dispose();
 
             AppDomain.CurrentDomain.UnhandledException -= CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException -= Unobserved_TaskException;
+        }
+
+        private static string GetAssemblyVersion(Assembly assembly)
+        {
+            return assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "1.0.0";
         }
 
         private void CurrentDomain_UnhandledException(

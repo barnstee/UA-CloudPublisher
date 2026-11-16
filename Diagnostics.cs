@@ -119,7 +119,7 @@ namespace Opc.Ua.Cloud.Publisher
 
         private void DiagnosticsSend(string displayName, DataValue value)
         {
-            value.ServerTimestamp = DateTime.UtcNow;
+            value = new DataValue(value.WrappedValue, value.StatusCode, value.SourceTimestamp, DateTimeUtc.From(DateTime.UtcNow));
 
             if (Settings.Instance.SendDiagnosticsMessages)
             {
@@ -129,7 +129,7 @@ namespace Opc.Ua.Cloud.Publisher
                     {
                         ExpandedNodeId = "nsu=http://opcfoundation.org/UA/CloudPublisher/;s=" + displayName,
                         ApplicationUri = "urn:" + Settings.Instance.PublisherName,
-                        MessageContext = new ServiceMessageContext(null),
+                        MessageContext = ServiceMessageContext.Create(null),
                         Name = displayName,
                         Value = value
                     };

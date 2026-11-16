@@ -64,15 +64,7 @@ namespace Opc.Ua.Cloud.Publisher
                     Name = DisplayName
                 };
 
-                DataValue value = await HeartBeatSession.ReadValueAsync(HeartBeatNodeId).ConfigureAwait(false);
-                if (value == null)
-                {
-                    // can't enqueue a heartbeat without a value; the encoders dereference Value.WrappedValue
-                    _logger.LogWarning($"Heartbeat for node {HeartBeatNodeId} returned no value, skipping.");
-                    return;
-                }
-
-                messageData.Value = value;
+                messageData.Value = await HeartBeatSession.ReadValueAsync(HeartBeatNodeId).ConfigureAwait(false);
 
                 // enqueue the message
                 MessageProcessor.Enqueue(messageData);
